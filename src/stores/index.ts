@@ -5,6 +5,7 @@ export * from './expense'
 export * from './locale'
 export * from './auth'
 export * from './couple'
+export * from './theme'
 export { useNotificationStore, type NotificationHistory } from './notification'
 
 const pinia = createPinia()

@@ -18,23 +18,11 @@
 </template>
 
 <script setup lang="ts">
-import { useDark, useToggle } from '@vueuse/core'
 import { Button } from '@/components/ui/button'
 import { Sun, Moon } from 'lucide-vue-next'
+import { useThemeStore } from '@/stores'
 
-// 使用 VueUse 的 useDark
-const isDark = useDark({
-  // 使用默認的存儲 key
-  storageKey: 'vueuse-color-scheme',
-  // 儲存在 localStorage
-  storage: localStorage,
-  // 默認使用淺色模式，而不是系統偏好
-  initialValue: 'light',
-  // 添加具體的值設定
-  valueDark: 'dark',
-  valueLight: 'light'
-})
-
-// 使用 useToggle 來切換主題
-const toggleDark = useToggle(isDark)
+// 使用 theme store
+const themeStore = useThemeStore()
+const { isDark, toggleDark } = themeStore
 </script>

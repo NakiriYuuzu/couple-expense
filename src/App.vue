@@ -7,7 +7,7 @@ import type { RouteLocationNormalized } from 'vue-router'
 import BottomNavigation from '@/components/BottomNavigation.vue'
 import AddExpenseDrawer from '@/components/AddExpenseDrawer.vue'
 import { routes } from '@/routers/routes/index.ts'
-import { useExpenseStore } from '@/stores'
+import { useExpenseStore, useThemeStore } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
 import { useCoupleStore } from '@/stores/couple'
 
@@ -16,6 +16,7 @@ const route = useRoute()
 const expenseStore = useExpenseStore()
 const authStore = useAuthStore()
 const coupleStore = useCoupleStore()
+const themeStore = useThemeStore()
 
 // 定義頁面索引來決定動畫方向
 const pageIndexMap: Record<string, number> = {
@@ -158,6 +159,9 @@ watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
 
 // 應用初始化
 onMounted(async () => {
+    // 初始化主題
+    themeStore.initializeTheme()
+    
     // 如果用戶已經登入，載入所有資料
     if (authStore.isLoggedIn) {
         await loadAllData()
