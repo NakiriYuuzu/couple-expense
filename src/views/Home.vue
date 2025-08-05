@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { parseDate, type DateValue } from '@internationalized/date'
 import TopBar from '@/components/TopBar.vue'
 import ExpenseGroup from '@/components/ExpenseGroup.vue'
+import PullToRefresh from '@/components/PullToRefresh.vue'
 import { useExpenseStore, useCoupleStore } from '@/stores'
 import { toast } from 'vue-sonner'
 import { 
@@ -222,17 +223,32 @@ const cancelEditExpense = () => {
     editingExpense.value = null
 }
 
+// 下拉刷新處理函數
+const handleRefresh = async () => {
+    try {
+        await Promise.all([
+            expenseStore.fetchExpenses(),
+            coupleStore.fetchUserProfile()
+        ])
+        toast.success('資料已更新')
+    } catch (error) {
+        console.error('刷新失敗:', error)
+        toast.error('刷新失敗，請稍後重試')
+    }
+}
+
 // 不需要在這裡載入資料，已在 App.vue 中統一處理
 </script>
 
 <template>
-    <div class="min-h-screen bg-background">
+    <div class="min-h-screen bg-background flex flex-col">
         <!-- 頂部導航欄 -->
         <TopBar />
 
         <!-- 主要內容區域 -->
-        <main class="px-4 pb-20">
-            <!-- 餘額卡片區域 -->
+        <PullToRefresh :on-refresh="handleRefresh" class="flex-1 overflow-hidden">
+            <main class="px-4 pb-20">
+                <!-- 餘額卡片區域 -->
             <div class="mt-6 grid gap-4 sm:grid-cols-2">
                 <!-- 剩餘餘額卡片 -->
                 <Card 
@@ -307,7 +323,8 @@ const cancelEditExpense = () => {
                     />
                 </div>
             </div>
-        </main>
+            </main>
+        </PullToRefresh>
 
         <!-- 設定餘額 Dialog -->
         <Dialog v-model:open="isBalanceDialogOpen">
