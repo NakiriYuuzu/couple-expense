@@ -2,7 +2,7 @@
   <Button
     variant="outline"
     size="icon"
-    @click="toggleTheme"
+    @click="toggleDark()"
     class="relative"
   >
     <!-- Light mode icon -->
@@ -18,41 +18,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { useDark, useToggle } from '@vueuse/core'
 import { Button } from '@/components/ui/button'
 import { Sun, Moon } from 'lucide-vue-next'
 
-const theme = ref<'light' | 'dark'>('light')
-
-// 初始化主題
-onMounted(() => {
-  // 檢查 localStorage 中保存的主題
-  const savedTheme = localStorage.getItem('theme')
-  
-  if (savedTheme) {
-    theme.value = savedTheme as 'light' | 'dark'
-  } else {
-    // 檢查系統偏好
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    theme.value = prefersDark ? 'dark' : 'light'
-  }
-  
-  applyTheme()
+// 使用 VueUse 的 useDark
+const isDark = useDark({
+  // 使用 'vueuse-theme' 作為存儲 key，避免與其他 key 衝突
+  storageKey: 'vueuse-theme',
+  // 儲存在 localStorage
+  storage: localStorage
 })
 
-// 應用主題
-const applyTheme = () => {
-  if (theme.value === 'dark') {
-    document.documentElement.classList.add('dark')
-  } else {
-    document.documentElement.classList.remove('dark')
-  }
-  localStorage.setItem('theme', theme.value)
-}
-
-// 切換主題
-const toggleTheme = () => {
-  theme.value = theme.value === 'light' ? 'dark' : 'light'
-  applyTheme()
-}
+// 使用 useToggle 來切換主題
+const toggleDark = useToggle(isDark)
 </script>

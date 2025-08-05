@@ -57,8 +57,8 @@
             </p>
           </div>
           <Switch
-            v-model:checked="localSettings.enabled"
-            @update:checked="updateSetting('enabled', $event)"
+            :model-value="localSettings.enabled"
+            @update:model-value="updateSetting('enabled', $event)"
           />
         </div>
 
@@ -74,8 +74,8 @@
               </p>
             </div>
             <Switch
-              v-model:checked="localSettings.expenseReminders"
-              @update:checked="updateSetting('expenseReminders', $event)"
+              :model-value="localSettings.expenseReminders"
+              @update:model-value="updateSetting('expenseReminders', $event)"
               :disabled="!localSettings.enabled"
             />
           </div>
@@ -88,8 +88,8 @@
               </p>
             </div>
             <Switch
-              v-model:checked="localSettings.dailySummary"
-              @update:checked="updateSetting('dailySummary', $event)"
+              :model-value="localSettings.dailySummary"
+              @update:model-value="updateSetting('dailySummary', $event)"
               :disabled="!localSettings.enabled"
             />
           </div>
@@ -102,8 +102,8 @@
               </p>
             </div>
             <Switch
-              v-model:checked="localSettings.weeklyReport"
-              @update:checked="updateSetting('weeklyReport', $event)"
+              :model-value="localSettings.weeklyReport"
+              @update:model-value="updateSetting('weeklyReport', $event)"
               :disabled="!localSettings.enabled"
             />
           </div>
@@ -116,8 +116,8 @@
               </p>
             </div>
             <Switch
-              v-model:checked="localSettings.budgetAlerts"
-              @update:checked="updateSetting('budgetAlerts', $event)"
+              :model-value="localSettings.budgetAlerts"
+              @update:model-value="updateSetting('budgetAlerts', $event)"
               :disabled="!localSettings.enabled"
             />
           </div>
@@ -132,8 +132,8 @@
               </p>
             </div>
             <Switch
-              v-model:checked="localSettings.soundEnabled"
-              @update:checked="updateSetting('soundEnabled', $event)"
+              :model-value="localSettings.soundEnabled"
+              @update:model-value="updateSetting('soundEnabled', $event)"
               :disabled="!localSettings.enabled"
             />
           </div>
@@ -146,8 +146,8 @@
               </p>
             </div>
             <Switch
-              v-model:checked="localSettings.vibrationEnabled"
-              @update:checked="updateSetting('vibrationEnabled', $event)"
+              :model-value="localSettings.vibrationEnabled"
+              @update:model-value="updateSetting('vibrationEnabled', $event)"
               :disabled="!localSettings.enabled"
             />
           </div>

@@ -45,7 +45,7 @@ export function usePullToRefresh(options: {
             distThreshold: 60, // 觸發刷新的下拉距離
             distMax: 80, // 最大下拉距離
             distReload: 50, // 刷新時保持的距離
-            distIgnore: 0, // 開始追踪的最小距離
+            distIgnore: 10, // 開始追踪的最小距離，避免誤觸
             resistanceFunction: (t: number) => Math.min(1, t / 2.5), // 阻力函數
             // 樣式相關
             iconArrow: '&#8675;', // 下箭頭
@@ -112,7 +112,7 @@ export function usePullToRefresh(options: {
                     transition: transform .3s;\
                 }\
                 .__PREFIX__top {\
-                    touch-action: pan-x pan-down pinch-zoom;\
+                    touch-action: pan-down;\
                 }\
                 .__PREFIX__release .__PREFIX__icon {\
                     transform: rotate(180deg);\

@@ -315,7 +315,7 @@ input, textarea {
 }
 
 .ptr--top {
-  touch-action: pan-x pan-down pinch-zoom;
+  touch-action: pan-down;
 }
 
 .ptr--release .ptr--icon-arrow {
