@@ -122,7 +122,7 @@ try {
 } catch (err) {}
 
 function preventDefault(e: TouchEvent) {
-    if (scrollY.value <= 0 && e.touches[0].clientY > touchStartY.value) {
+    if (e.touches[0].clientY > touchStartY.value) {
         e.preventDefault()
     }
 }
