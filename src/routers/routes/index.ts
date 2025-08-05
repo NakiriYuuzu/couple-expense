@@ -76,7 +76,13 @@ export const routes = {
  */
 const objectRoutes = Object.values(routes)
 const routerRoutes: RouteRecordRaw[] = [
-    ...objectRoutes
+    ...objectRoutes,
+    // 404 fallback route - 必須放在最後，導向 startup
+    {
+        path: '/:pathMatch(.*)*',
+        name: 'NotFound',
+        redirect: { name: 'Startup' }
+    }
 ]
 
 export default routerRoutes

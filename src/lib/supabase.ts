@@ -38,25 +38,25 @@ export const auth = {
   signInWithGoogle: async () => {
     const baseUrl = import.meta.env.VITE_APP_ROUTER_BASE || '/'
     const origin = window.location.origin
-    
+
     // 構建正確的重定向 URL
     let redirectUrl: string
     if (baseUrl === '/') {
-      redirectUrl = `${origin}/home`
+      redirectUrl = `${origin}/`
     } else {
       // 確保 baseUrl 以 / 開頭和結尾
       const normalizedBase = baseUrl.startsWith('/') ? baseUrl : `/${baseUrl}`
       const finalBase = normalizedBase.endsWith('/') ? normalizedBase : `${normalizedBase}/`
-      redirectUrl = `${origin}${finalBase}home`
+      redirectUrl = `${origin}${finalBase}`
     }
-    
+
     console.log('OAuth Redirect Debug:', {
       baseUrl,
       origin,
       redirectUrl,
       env: import.meta.env.VITE_APP_ROUTER_BASE
     })
-    
+
     return supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -78,7 +78,7 @@ export const auth = {
   },
 
   getCurrentSession: () => {
-    return supabase.auth.getSession()  
+    return supabase.auth.getSession()
   },
 
   onAuthStateChange: (callback: (event: string, session: any) => void) => {
