@@ -60,7 +60,8 @@ export function usePullToRefresh(options: {
                 
                 // 如果是 body，檢查 window 滾動
                 if (targetElement === 'body' || !el) {
-                    return !window.scrollY
+                    // 只有在頁面完全在頂部時才允許下拉刷新
+                    return window.scrollY === 0
                 }
                 
                 // 否則檢查元素本身的滾動
@@ -112,7 +113,7 @@ export function usePullToRefresh(options: {
                     transition: transform .3s;\
                 }\
                 .__PREFIX__top {\
-                    touch-action: pan-down;\
+                    touch-action: pan-y;\
                 }\
                 .__PREFIX__release .__PREFIX__icon {\
                     transform: rotate(180deg);\

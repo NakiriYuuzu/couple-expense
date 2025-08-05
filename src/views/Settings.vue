@@ -28,9 +28,6 @@ const router = useRouter()
 // 通知設定 Drawer 狀態
 const isNotificationDrawerOpen = ref(false)
 
-// 主題相關
-const isDarkMode = ref(false)
-
 // 處理語言變更
 const handleLanguageChange = async (value: any) => {
     if (value && typeof value === 'string') {

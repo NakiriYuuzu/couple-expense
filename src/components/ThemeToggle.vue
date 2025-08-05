@@ -24,10 +24,15 @@ import { Sun, Moon } from 'lucide-vue-next'
 
 // 使用 VueUse 的 useDark
 const isDark = useDark({
-  // 使用 'vueuse-theme' 作為存儲 key，避免與其他 key 衝突
-  storageKey: 'vueuse-theme',
+  // 使用默認的存儲 key
+  storageKey: 'vueuse-color-scheme',
   // 儲存在 localStorage
-  storage: localStorage
+  storage: localStorage,
+  // 默認使用淺色模式，而不是系統偏好
+  initialValue: 'light',
+  // 添加具體的值設定
+  valueDark: 'dark',
+  valueLight: 'light'
 })
 
 // 使用 useToggle 來切換主題
