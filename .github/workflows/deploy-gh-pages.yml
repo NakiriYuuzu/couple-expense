@@ -42,10 +42,14 @@ jobs:
           VITE_APP_ROUTER_BASE: /${{ github.event.repository.name }}/
           # 使用 production mode
           NODE_ENV: production
-          # 其他環境變數可以在這裡添加
+          # Firebase 環境變數
           VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
+          # Supabase 環境變數
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          # 應用設定
+          VITE_APP_TITLE: ${{ secrets.VITE_APP_TITLE }}
+          VITE_APP_API_BASE: ${{ secrets.VITE_APP_API_BASE }}
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

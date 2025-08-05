@@ -36,10 +36,13 @@ export const auth = {
   },
 
   signInWithGoogle: async () => {
+    const baseUrl = import.meta.env.VITE_APP_ROUTER_BASE || '/'
+    const redirectUrl = `${window.location.origin}${baseUrl}home`.replace(/\/+/g, '/') // 清理多餘的斜線
+    
     return supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/home`,
+        redirectTo: redirectUrl,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
