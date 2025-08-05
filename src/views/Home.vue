@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -86,6 +87,9 @@ const cancelBalanceUpdate = () => {
 // 編輯 Dialog 狀態
 const isEditDialogOpen = ref(false)
 const editingExpense = ref<any>(null)
+
+// 刪除確認 Dialog 狀態
+const isDeleteDialogOpen = ref(false)
 
 // 類別選項
 const categories = computed(() => [
@@ -221,6 +225,36 @@ const saveEditExpense = async () => {
 const cancelEditExpense = () => {
     isEditDialogOpen.value = false
     editingExpense.value = null
+}
+
+// 顯示刪除確認對話框
+const showDeleteConfirmation = () => {
+    isDeleteDialogOpen.value = true
+}
+
+// 確認刪除費用
+const confirmDeleteExpense = async () => {
+    if (editingExpense.value) {
+        try {
+            await expenseStore.deleteExpense(editingExpense.value.id)
+            
+            // 關閉所有對話框
+            isDeleteDialogOpen.value = false
+            isEditDialogOpen.value = false
+            editingExpense.value = null
+            
+            // 顯示成功訊息
+            toast.success('費用記錄已刪除')
+        } catch (error) {
+            console.error('刪除費用失敗:', error)
+            toast.error('刪除失敗，請稍後重試')
+        }
+    }
+}
+
+// 取消刪除
+const cancelDeleteExpense = () => {
+    isDeleteDialogOpen.value = false
 }
 
 // 使用下拉刷新
@@ -385,6 +419,29 @@ usePullToRefresh({
         </Dialog>
 
 
+        <!-- 刪除確認 Dialog -->
+        <AlertDialog v-model:open="isDeleteDialogOpen">
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>{{ t('common.confirmDelete') }}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        {{ t('home.deleteExpenseConfirm') }}
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel @click="cancelDeleteExpense">
+                        {{ t('common.cancel') }}
+                    </AlertDialogCancel>
+                    <AlertDialogAction 
+                        @click="confirmDeleteExpense"
+                        class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                        {{ t('common.delete') }}
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+
         <!-- 編輯費用 Dialog -->
         <Dialog v-model:open="isEditDialogOpen">
             <DialogContent class="sm:max-w-md">
@@ -468,13 +525,29 @@ usePullToRefresh({
                     </div>
                 </div>
 
-                <DialogFooter>
-                    <Button variant="outline" @click="cancelEditExpense">
-                        {{ t('common.cancel') }}
+                <DialogFooter class="flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
+                    <Button 
+                        variant="destructive" 
+                        @click="showDeleteConfirmation"
+                        class="w-full sm:w-auto"
+                    >
+                        {{ t('common.delete') }}
                     </Button>
-                    <Button @click="saveEditExpense">
-                        {{ t('common.save') }}
-                    </Button>
+                    <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        <Button 
+                            variant="outline" 
+                            @click="cancelEditExpense"
+                            class="w-full sm:w-auto"
+                        >
+                            {{ t('common.cancel') }}
+                        </Button>
+                        <Button 
+                            @click="saveEditExpense"
+                            class="w-full sm:w-auto"
+                        >
+                            {{ t('common.save') }}
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
