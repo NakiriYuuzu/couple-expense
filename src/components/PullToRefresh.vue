@@ -7,11 +7,14 @@ interface Props {
     onRefresh: () => Promise<void>
     threshold?: number
     disabled?: boolean
+    /* 用於支持有固定頭部的頁面 */
+    offsetTop?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
     threshold: 80,
-    disabled: false
+    disabled: false,
+    offsetTop: 0
 })
 
 const emit = defineEmits<{
@@ -33,11 +36,11 @@ const {
     direction
 } = usePointerSwipe(containerRef, {
     onSwipeStart: (e) => {
-        if (props.disabled || isRefreshing.value || scrollY.value > 0) return
+        if (props.disabled || isRefreshing.value) return
         touchStartY.value = e.y
     },
     onSwipe: (e) => {
-        if (props.disabled || isRefreshing.value || scrollY.value > 0) return
+        if (props.disabled || isRefreshing.value) return
         
         if (direction.value === 'down' && distanceY.value > 0) {
             const distance = Math.min(distanceY.value * 0.5, props.threshold * 1.5)
@@ -192,6 +195,8 @@ onUnmounted(() => {
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     will-change: transform;
+    /* 為 sticky 元素預留空間 */
+    position: relative;
 }
 
 @keyframes spin {
