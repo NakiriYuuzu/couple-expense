@@ -37,8 +37,15 @@ const initializeMessaging = async (): Promise<Messaging | null> => {
     let registration: ServiceWorkerRegistration | undefined
 
     try {
-      registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-        scope: '/firebase-cloud-messaging-push-scope',
+      // 使用正確的 base path
+      const baseUrl = import.meta.env.VITE_APP_ROUTER_BASE || '/'
+      const swPath = baseUrl === '/' ? '/firebase-messaging-sw.js' : `${baseUrl}firebase-messaging-sw.js`
+      const swScope = baseUrl === '/' ? '/firebase-cloud-messaging-push-scope' : `${baseUrl}firebase-cloud-messaging-push-scope`
+      
+      console.log('Registering Firebase SW:', { swPath, swScope, baseUrl })
+      
+      registration = await navigator.serviceWorker.register(swPath, {
+        scope: swScope,
       })
       console.log('Firebase Messaging Service Worker registered successfully')
     } catch (error) {
