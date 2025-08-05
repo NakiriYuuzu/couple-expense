@@ -47,17 +47,17 @@ jobs:
           # 使用 production mode
           NODE_ENV: production
       
+      # 設置 GitHub Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      
+      # 上傳構建檔案
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist/production
+      
       # 部署到 GitHub Pages
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist/production
-          # 在部署時保留 .nojekyll 文件（防止 Jekyll 處理）
-          enable_jekyll: false
-          # 自定義 commit 訊息
-          commit_message: 'Deploy to GitHub Pages from Release ${{ github.event.release.tag_name }}'
-          # 保留舊版本的檔案
-          keep_files: false
-          # 強制推送
-          force_orphan: true
+        id: deployment
+        uses: actions/deploy-pages@v4
