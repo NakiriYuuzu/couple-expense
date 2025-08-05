@@ -1,0 +1,63 @@
+name: Deploy to GitHub Pages
+
+on:
+  # 當發布新的 release 時觸發
+  release:
+    types: [published]
+  
+  # 允許手動觸發 workflow
+  workflow_dispatch:
+
+# 設定 GITHUB_TOKEN 的權限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 只允許一個並發部署，跳過運行中的部署
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 檢出代碼
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      # 設置 Bun
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      
+      # 安裝依賴
+      - name: Install dependencies
+        run: bun install
+      
+      # 構建專案
+      - name: Build project
+        run: bun run build
+        env:
+          # 設定 base URL 為 repository name
+          VITE_APP_ROUTER_BASE: /${{ github.event.repository.name }}/
+          # 使用 production mode
+          NODE_ENV: production
+      
+      # 部署到 GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist/production
+          # 在部署時保留 .nojekyll 文件（防止 Jekyll 處理）
+          enable_jekyll: false
+          # 自定義 commit 訊息
+          commit_message: 'Deploy to GitHub Pages from Release ${{ github.event.release.tag_name }}'
+          # 保留舊版本的檔案
+          keep_files: false
+          # 強制推送
+          force_orphan: true
