@@ -1,12 +1,10 @@
 <template>
-    <div class="min-h-screen bg-background flex flex-col">
+    <div class="min-h-screen bg-background">
         <!-- 頂部導航欄 -->
         <TopBar :title="t('search.title')" />
 
-        <!-- 主要內容區域 -->
-        <PullToRefresh :on-refresh="handleRefresh" class="flex-1 overflow-hidden">
-            <!-- 搜尋區域 -->
-            <div class="sticky top-0 z-40 bg-background px-4 py-4 shadow-sm">
+        <!-- 搜尋區域 -->
+        <div class="sticky top-[64px] z-40 bg-background px-4 py-4 shadow-sm">
             <div class="flex gap-2">
                 <!-- 搜尋輸入框 -->
                 <div class="flex-1 relative">
@@ -52,8 +50,7 @@
                     {{ searchQuery ? t('search.noResultsFound') : t('search.enterKeywordToSearch') }}
                 </p>
             </div>
-            </main>
-        </PullToRefresh>
+        </main>
 
         <!-- 篩選 Dialog -->
         <Dialog v-model:open="isFilterDialogOpen">
@@ -283,7 +280,6 @@ import {
 } from '@internationalized/date'
 import TopBar from '@/components/TopBar.vue'
 import ExpenseGroup from '@/components/ExpenseGroup.vue'
-import PullToRefresh from '@/components/PullToRefresh.vue'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -293,6 +289,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Slider } from '@/components/ui/slider'
 import { useExpenseStore } from '@/stores'
 import { toast } from 'vue-sonner'
+import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { 
     Search, 
     SlidersHorizontal, 
@@ -561,16 +558,18 @@ const cancelEditExpense = () => {
     editingExpense.value = null
 }
 
-// 下拉刷新處理函數
-const handleRefresh = async () => {
-    try {
-        await expenseStore.fetchExpenses()
-        toast.success('資料已更新')
-    } catch (error) {
-        console.error('刷新失敗:', error)
-        toast.error('刷新失敗，請稍後重試')
+// 使用下拉刷新
+usePullToRefresh({
+    onRefresh: async () => {
+        try {
+            await expenseStore.fetchExpenses()
+            toast.success('資料已更新')
+        } catch (error) {
+            console.error('刷新失敗:', error)
+            toast.error('刷新失敗，請稍後重試')
+        }
     }
-}
+})
 </script>
 
 <style scoped>

@@ -70,6 +70,8 @@ export default defineConfig(({mode}) =>{
                     theme_color: '#8790DC',
                     background_color: '#e1e3ed',
                     orientation: 'portrait',
+                    display_override: ['window-controls-overlay', 'standalone'],
+                    categories: ['finance', 'lifestyle'],
                     icons: [
                         {
                             src: `apple-touch-icon.png`,
