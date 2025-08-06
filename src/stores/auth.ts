@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase, auth as authHelper } from '@/lib/supabase'
 import type { User, Session } from '@supabase/supabase-js'
+import { useAccountManagerStore } from './accountManager'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -31,6 +32,12 @@ export const useAuthStore = defineStore('auth', () => {
         
         session.value = sessionData
         user.value = sessionData?.user || null
+        
+        // 更新多帳號管理器
+        const accountManager = useAccountManagerStore()
+        if (event === 'SIGNED_IN' && sessionData?.user) {
+          accountManager.addOrUpdateAccount(sessionData.user)
+        }
         
         if (event === 'SIGNED_OUT') {
           // 清除錯誤狀態

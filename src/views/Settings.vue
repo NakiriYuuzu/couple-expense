@@ -18,6 +18,7 @@ import { useLocaleStore, useNotificationStore } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
 import { useCoupleStore } from '@/stores/couple'
 import { useExpenseStore } from '@/stores'
+import { useAccountManagerStore } from '@/stores/accountManager'
 import { routes } from '@/routers/routes/index.ts'
 import { toast } from 'vue-sonner'
 import { 
@@ -35,6 +36,7 @@ const notificationStore = useNotificationStore()
 const authStore = useAuthStore()
 const coupleStore = useCoupleStore()
 const expenseStore = useExpenseStore()
+const accountManagerStore = useAccountManagerStore()
 const router = useRouter()
 
 // 通知設定 Drawer 狀態
@@ -42,17 +44,15 @@ const isNotificationDrawerOpen = ref(false)
 
 // 登出確認 Dialog 狀態
 const isLogoutDialogOpen = ref(false)
-const isSwitchAccountDialogOpen = ref(false)
-
-// 切換帳號表單狀態
-const switchAccountForm = ref({
-    email: '',
-    password: ''
-})
-const isSwitchingAccount = ref(false)
+const isAccountSwitchDrawerOpen = ref(false)
 
 // 獲取用戶資訊
 const userEmail = computed(() => authStore.user?.email || '')
+const currentUser = computed(() => authStore.user)
+
+// 獲取所有儲存的帳號
+const storedAccounts = computed(() => accountManagerStore.storedAccounts)
+const currentAccountId = computed(() => accountManagerStore.currentAccountId)
 
 // 處理語言變更
 const handleLanguageChange = async (value: any) => {
@@ -113,74 +113,62 @@ const handleLogout = async () => {
     }
 }
 
-// 切換帳號處理
-const handleSwitchAccount = async () => {
-    if (!switchAccountForm.value.email || !switchAccountForm.value.password) {
-        toast.error(t('settings.pleaseEnterCredentials'))
-        return
-    }
-    
+// 切換到已存在的帳號
+const handleSwitchToAccount = async (accountId: string) => {
     try {
-        isSwitchingAccount.value = true
+        // 如果是當前帳號，不需要切換
+        if (accountId === currentAccountId.value) {
+            isAccountSwitchDrawerOpen.value = false
+            return
+        }
         
-        // 先登出當前帳號
-        await authStore.signOut()
-        clearAllData()
+        const result = await accountManagerStore.switchToAccount(accountId)
         
-        // 登入新帳號
-        await authStore.signIn(switchAccountForm.value.email, switchAccountForm.value.password)
-        
-        // 重新載入資料
-        await Promise.all([
-            coupleStore.fetchUserProfile(),
-            expenseStore.fetchExpenses()
-        ])
-        
-        // 清空表單
-        switchAccountForm.value = { email: '', password: '' }
-        isSwitchAccountDialogOpen.value = false
-        
-        toast.success(t('settings.switchAccountSuccess'))
+        if (result.success) {
+            // 重新載入資料
+            await Promise.all([
+                coupleStore.fetchUserProfile(),
+                expenseStore.fetchExpenses()
+            ])
+            
+            isAccountSwitchDrawerOpen.value = false
+            toast.success(t('settings.switchAccountSuccess'))
+        } else {
+            toast.error(result.error || t('settings.switchAccountError'))
+        }
     } catch (error) {
         console.error('切換帳號失敗:', error)
         toast.error(t('settings.switchAccountError'))
-    } finally {
-        isSwitchingAccount.value = false
     }
 }
 
-// 使用 Google 切換帳號
-const handleSwitchWithGoogle = async () => {
+// 新增帳號（使用 Google）
+const handleAddAccount = async () => {
     try {
-        isSwitchingAccount.value = true
+        const result = await accountManagerStore.addNewAccountWithGoogle()
         
-        // 先登出當前帳號
-        await authStore.signOut()
-        clearAllData()
-        
-        // 使用 Google 登入
-        await authStore.signInWithGoogle()
-        
-        // 重新載入資料
-        await Promise.all([
-            coupleStore.fetchUserProfile(),
-            expenseStore.fetchExpenses()
-        ])
-        
-        isSwitchAccountDialogOpen.value = false
-        toast.success(t('settings.switchAccountSuccess'))
+        if (result.success) {
+            // Google OAuth 會自動重新導向，所以這裡不需要做什麼
+            toast.info(t('settings.addAccountInfo'))
+        } else {
+            toast.error(result.error || t('settings.addAccountError'))
+        }
     } catch (error) {
-        console.error('Google 切換帳號失敗:', error)
-        toast.error(t('settings.switchAccountError'))
-    } finally {
-        isSwitchingAccount.value = false
+        console.error('新增帳號失敗:', error)
+        toast.error(t('settings.addAccountError'))
     }
 }
 
-// 開啟切換帳號對話框
-const openSwitchAccountDialog = () => {
-    switchAccountForm.value = { email: '', password: '' }
-    isSwitchAccountDialogOpen.value = true
+// 移除帳號
+const handleRemoveAccount = (accountId: string) => {
+    // 不能移除當前帳號
+    if (accountId === currentAccountId.value) {
+        toast.error(t('settings.cannotRemoveCurrentAccount'))
+        return
+    }
+    
+    accountManagerStore.removeAccount(accountId)
+    toast.success(t('settings.accountRemoved'))
 }
 </script>
 
@@ -300,10 +288,13 @@ const openSwitchAccountDialog = () => {
                             <Button 
                                 variant="outline" 
                                 class="w-full justify-start"
-                                @click="openSwitchAccountDialog"
+                                @click="isAccountSwitchDrawerOpen = true"
                             >
                                 <UserCog class="mr-2 h-4 w-4" />
                                 {{ t('settings.switchAccount') }}
+                                <span v-if="storedAccounts.length > 1" class="ml-auto text-muted-foreground">
+                                    {{ storedAccounts.length }}
+                                </span>
                             </Button>
                             
                             <!-- 登出按鈕 -->
@@ -369,61 +360,73 @@ const openSwitchAccountDialog = () => {
             </DialogContent>
         </Dialog>
         
-        <!-- 切換帳號 Dialog -->
-        <Dialog v-model:open="isSwitchAccountDialogOpen">
-            <DialogContent class="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>{{ t('settings.switchAccountTitle') }}</DialogTitle>
-                    <DialogDescription>
-                        {{ t('settings.switchAccountDesc') }}
-                    </DialogDescription>
-                </DialogHeader>
-                
-                <div class="grid gap-4 py-4">
-                    <!-- Email 輸入 -->
-                    <div class="grid gap-2">
-                        <Label for="switch-email">{{ t('settings.email') }}</Label>
-                        <Input
-                            id="switch-email"
-                            v-model="switchAccountForm.email"
-                            type="email"
-                            :placeholder="t('settings.enterEmail')"
-                            :disabled="isSwitchingAccount"
-                            @keyup.enter="handleSwitchAccount"
-                        />
-                    </div>
-                    
-                    <!-- 密碼輸入 -->
-                    <div class="grid gap-2">
-                        <Label for="switch-password">{{ t('settings.password') }}</Label>
-                        <Input
-                            id="switch-password"
-                            v-model="switchAccountForm.password"
-                            type="password"
-                            :placeholder="t('settings.enterPassword')"
-                            :disabled="isSwitchingAccount"
-                            @keyup.enter="handleSwitchAccount"
-                        />
-                    </div>
-                    
-                    <!-- 分隔線 -->
-                    <div class="relative">
-                        <div class="absolute inset-0 flex items-center">
-                            <span class="w-full border-t" />
+        <!-- 帳號切換 Drawer -->
+        <Drawer v-model:open="isAccountSwitchDrawerOpen">
+            <DrawerContent class="max-h-[90vh]">
+                <DrawerHeader>
+                    <DrawerTitle>{{ t('settings.manageAccounts') }}</DrawerTitle>
+                </DrawerHeader>
+                <div class="px-4 pb-6 overflow-y-auto">
+                    <!-- 帳號列表 -->
+                    <div class="space-y-2 mb-4">
+                        <div
+                            v-for="account in storedAccounts"
+                            :key="account.id"
+                            class="flex items-center justify-between p-3 rounded-lg border cursor-pointer hover:bg-accent transition-colors"
+                            :class="account.id === currentAccountId ? 'border-brand-primary bg-brand-accent' : 'border-border'"
+                            @click="handleSwitchToAccount(account.id)"
+                        >
+                            <div class="flex items-center gap-3">
+                                <!-- 頭像或默認圖標 -->
+                                <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                                    <img 
+                                        v-if="account.avatarUrl" 
+                                        :src="account.avatarUrl" 
+                                        :alt="account.name"
+                                        class="w-10 h-10 rounded-full"
+                                    >
+                                    <span v-else class="text-lg">
+                                        {{ account.email?.charAt(0)?.toUpperCase() || '?' }}
+                                    </span>
+                                </div>
+                                <!-- 帳號資訊 -->
+                                <div>
+                                    <p class="font-medium text-foreground">
+                                        {{ account.name || account.email }}
+                                    </p>
+                                    <p v-if="account.name" class="text-sm text-muted-foreground">
+                                        {{ account.email }}
+                                    </p>
+                                </div>
+                            </div>
+                            <!-- 當前帳號標記 -->
+                            <div class="flex items-center gap-2">
+                                <span 
+                                    v-if="account.id === currentAccountId" 
+                                    class="text-xs bg-brand-primary text-primary-foreground px-2 py-1 rounded"
+                                >
+                                    {{ t('settings.current') }}
+                                </span>
+                                <!-- 移除帳號按鈕 -->
+                                <Button
+                                    v-if="account.id !== currentAccountId && storedAccounts.length > 1"
+                                    variant="ghost"
+                                    size="sm"
+                                    @click.stop="handleRemoveAccount(account.id)"
+                                >
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </Button>
+                            </div>
                         </div>
-                        <div class="relative flex justify-center text-xs uppercase">
-                            <span class="bg-background px-2 text-muted-foreground">
-                                {{ t('settings.or') }}
-                            </span>
-                        </div>
                     </div>
                     
-                    <!-- Google 登入按鈕 -->
+                    <!-- 新增帳號按鈕 -->
                     <Button 
                         variant="outline" 
-                        @click="handleSwitchWithGoogle"
-                        :disabled="isSwitchingAccount"
                         class="w-full"
+                        @click="handleAddAccount"
                     >
                         <svg class="mr-2 h-4 w-4" viewBox="0 0 24 24">
                             <path
@@ -443,27 +446,11 @@ const openSwitchAccountDialog = () => {
                                 fill="#EA4335"
                             />
                         </svg>
-                        {{ t('settings.switchWithGoogle') }}
+                        {{ t('settings.addAccountWithGoogle') }}
                     </Button>
                 </div>
-                
-                <DialogFooter>
-                    <Button 
-                        variant="outline" 
-                        @click="isSwitchAccountDialogOpen = false"
-                        :disabled="isSwitchingAccount"
-                    >
-                        {{ t('common.cancel') }}
-                    </Button>
-                    <Button 
-                        @click="handleSwitchAccount"
-                        :disabled="isSwitchingAccount || !switchAccountForm.email || !switchAccountForm.password"
-                    >
-                        {{ isSwitchingAccount ? t('settings.switching') : t('settings.confirmSwitch') }}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            </DrawerContent>
+        </Drawer>
     </div>
 </template>
 
