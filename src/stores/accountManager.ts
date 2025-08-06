@@ -77,10 +77,14 @@ export const useAccountManagerStore = defineStore('accountManager', () => {
     try {
       isLoadingAccounts.value = true
       
+      // 獲取 base path
+      const basePath = import.meta.env.VITE_APP_ROUTER_BASE || '/'
+      const normalizedBase = basePath === '/' ? '' : basePath
+      
       // 構建重導向 URL，使用 startup 頁面 + redirect 參數
       const redirectUrl = currentPath 
-        ? `${window.location.origin}/?redirect=${encodeURIComponent(currentPath)}`
-        : `${window.location.origin}/`
+        ? `${window.location.origin}${normalizedBase}/?redirect=${encodeURIComponent(currentPath)}`
+        : `${window.location.origin}${normalizedBase}/`
       
       // 使用 Google OAuth 登入
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -121,10 +125,14 @@ export const useAccountManagerStore = defineStore('accountManager', () => {
       // 先登出當前帳號
       await supabase.auth.signOut()
       
+      // 獲取 base path
+      const basePath = import.meta.env.VITE_APP_ROUTER_BASE || '/'
+      const normalizedBase = basePath === '/' ? '' : basePath
+      
       // 構建重導向 URL，使用 startup 頁面 + redirect 參數
       const redirectUrl = currentPath 
-        ? `${window.location.origin}/?redirect=${encodeURIComponent(currentPath)}`
-        : `${window.location.origin}/`
+        ? `${window.location.origin}${normalizedBase}/?redirect=${encodeURIComponent(currentPath)}`
+        : `${window.location.origin}${normalizedBase}/`
       
       // 由於 Supabase 不支援多 session，需要重新使用 Google OAuth 登入
       // 但可以提示用戶選擇特定的 Google 帳號
