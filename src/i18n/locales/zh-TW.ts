@@ -174,12 +174,20 @@ const zhTW = {
     logoutConfirmDesc: '您確定要登出嗎？登出後需要重新登入才能使用。',
     confirmLogout: '確認登出',
     switchAccountTitle: '切換帳號',
-    switchAccountDesc: '您將登出目前帳號，並可以使用其他帳號重新登入。',
-    confirmSwitch: '確認切換',
+    switchAccountDesc: '請輸入另一個帳號的登入資訊以切換帳號',
+    confirmSwitch: '切換帳號',
+    switching: '切換中...',
     logoutSuccess: '已成功登出',
     logoutError: '登出失敗，請稍後再試',
-    switchAccountSuccess: '請使用新帳號登入',
-    switchAccountError: '切換帳號失敗，請稍後再試'
+    switchAccountSuccess: '帳號切換成功',
+    switchAccountError: '帳號切換失敗，請檢查您的登入資訊',
+    email: '電子郵件',
+    password: '密碼',
+    enterEmail: '請輸入電子郵件',
+    enterPassword: '請輸入密碼',
+    or: '或',
+    switchWithGoogle: '使用 Google 帳號切換',
+    pleaseEnterCredentials: '請輸入電子郵件和密碼'
   },
 
   // 驗證訊息

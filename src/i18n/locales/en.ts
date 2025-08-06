@@ -174,12 +174,20 @@ const en = {
     logoutConfirmDesc: 'Are you sure you want to logout? You will need to login again to use the app.',
     confirmLogout: 'Confirm Logout',
     switchAccountTitle: 'Switch Account',
-    switchAccountDesc: 'You will be logged out and can login with a different account.',
-    confirmSwitch: 'Confirm Switch',
+    switchAccountDesc: 'Enter another account credentials to switch accounts',
+    confirmSwitch: 'Switch Account',
+    switching: 'Switching...',
     logoutSuccess: 'Successfully logged out',
     logoutError: 'Logout failed, please try again',
-    switchAccountSuccess: 'Please login with your new account',
-    switchAccountError: 'Account switch failed, please try again'
+    switchAccountSuccess: 'Account switched successfully',
+    switchAccountError: 'Account switch failed, please check your credentials',
+    email: 'Email',
+    password: 'Password',
+    enterEmail: 'Enter your email',
+    enterPassword: 'Enter your password',
+    or: 'Or',
+    switchWithGoogle: 'Switch with Google',
+    pleaseEnterCredentials: 'Please enter email and password'
   },
 
   // Validation messages
