@@ -5,7 +5,6 @@ import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -87,9 +86,6 @@ const cancelBalanceUpdate = () => {
 // 編輯 Dialog 狀態
 const isEditDialogOpen = ref(false)
 const editingExpense = ref<any>(null)
-
-// 刪除確認 Dialog 狀態
-const isDeleteDialogOpen = ref(false)
 
 // 類別選項
 const categories = computed(() => [
@@ -227,34 +223,51 @@ const cancelEditExpense = () => {
     editingExpense.value = null
 }
 
-// 顯示刪除確認對話框
-const showDeleteConfirmation = () => {
-    isDeleteDialogOpen.value = true
-}
-
-// 確認刪除費用
-const confirmDeleteExpense = async () => {
+// 直接刪除費用（帶 undo 功能）
+const handleDeleteExpense = async () => {
     if (editingExpense.value) {
+        // 保存要刪除的費用資料，用於 undo
+        const deletedExpense = { ...editingExpense.value }
+        const expenseTitle = deletedExpense.title
+        
         try {
-            await expenseStore.deleteExpense(editingExpense.value.id)
-            
-            // 關閉所有對話框
-            isDeleteDialogOpen.value = false
+            // 先關閉編輯對話框
             isEditDialogOpen.value = false
             editingExpense.value = null
             
-            // 顯示成功訊息
-            toast.success('費用記錄已刪除')
+            // 執行刪除
+            await expenseStore.deleteExpense(deletedExpense.id)
+            
+            // 顯示成功訊息並提供 undo 選項
+            toast.success(`已刪除「${expenseTitle}」`, {
+                action: {
+                    label: '復原',
+                    onClick: async () => {
+                        try {
+                            // 復原刪除的費用
+                            await expenseStore.addExpense({
+                                title: deletedExpense.title,
+                                amount: deletedExpense.amount,
+                                category: deletedExpense.category,
+                                icon: deletedExpense.icon,
+                                date: deletedExpense.date
+                            })
+                            toast.success('已復原費用記錄')
+                            // 刷新費用列表以確保資料同步
+                            await expenseStore.fetchExpenses()
+                        } catch (error) {
+                            console.error('復原失敗:', error)
+                            toast.error('復原失敗，請稍後重試')
+                        }
+                    }
+                },
+                duration: 5000 // 給用戶 5 秒時間來決定是否復原
+            })
         } catch (error) {
             console.error('刪除費用失敗:', error)
             toast.error('刪除失敗，請稍後重試')
         }
     }
-}
-
-// 取消刪除
-const cancelDeleteExpense = () => {
-    isDeleteDialogOpen.value = false
 }
 
 // 使用下拉刷新
@@ -419,29 +432,6 @@ usePullToRefresh({
         </Dialog>
 
 
-        <!-- 刪除確認 Dialog -->
-        <AlertDialog v-model:open="isDeleteDialogOpen">
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>{{ t('common.confirmDelete') }}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        {{ t('home.deleteExpenseConfirm') }}
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel @click="cancelDeleteExpense">
-                        {{ t('common.cancel') }}
-                    </AlertDialogCancel>
-                    <AlertDialogAction 
-                        @click="confirmDeleteExpense"
-                        class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                        {{ t('common.delete') }}
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-
         <!-- 編輯費用 Dialog -->
         <Dialog v-model:open="isEditDialogOpen">
             <DialogContent class="sm:max-w-md">
@@ -528,7 +518,7 @@ usePullToRefresh({
                 <DialogFooter class="flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
                     <Button 
                         variant="destructive" 
-                        @click="showDeleteConfirmation"
+                        @click="handleDeleteExpense"
                         class="w-full sm:w-auto"
                     >
                         {{ t('common.delete') }}

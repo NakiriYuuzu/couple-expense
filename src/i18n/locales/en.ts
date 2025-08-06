@@ -166,7 +166,20 @@ const en = {
       'zh-CN': '简体中文',
       'en': 'English',
       'ja': '日本語'
-    }
+    },
+    // Account management
+    logout: 'Logout',
+    switchAccount: 'Switch Account',
+    logoutConfirmTitle: 'Confirm Logout',
+    logoutConfirmDesc: 'Are you sure you want to logout? You will need to login again to use the app.',
+    confirmLogout: 'Confirm Logout',
+    switchAccountTitle: 'Switch Account',
+    switchAccountDesc: 'You will be logged out and can login with a different account.',
+    confirmSwitch: 'Confirm Switch',
+    logoutSuccess: 'Successfully logged out',
+    logoutError: 'Logout failed, please try again',
+    switchAccountSuccess: 'Please login with your new account',
+    switchAccountError: 'Account switch failed, please try again'
   },
 
   // Validation messages

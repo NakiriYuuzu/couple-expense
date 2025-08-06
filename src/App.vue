@@ -170,7 +170,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <Toaster/>
+    <Toaster position="top-right" richColors />
     <div class="app-container">
         <!-- 主要內容區域 -->
         <div class="main-content">

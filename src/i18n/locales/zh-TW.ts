@@ -166,7 +166,20 @@ const zhTW = {
       'zh-CN': '简体中文',
       'en': 'English',
       'ja': '日本語'
-    }
+    },
+    // 帳戶管理
+    logout: '登出',
+    switchAccount: '切換帳號',
+    logoutConfirmTitle: '確認登出',
+    logoutConfirmDesc: '您確定要登出嗎？登出後需要重新登入才能使用。',
+    confirmLogout: '確認登出',
+    switchAccountTitle: '切換帳號',
+    switchAccountDesc: '您將登出目前帳號，並可以使用其他帳號重新登入。',
+    confirmSwitch: '確認切換',
+    logoutSuccess: '已成功登出',
+    logoutError: '登出失敗，請稍後再試',
+    switchAccountSuccess: '請使用新帳號登入',
+    switchAccountError: '切換帳號失敗，請稍後再試'
   },
 
   // 驗證訊息
