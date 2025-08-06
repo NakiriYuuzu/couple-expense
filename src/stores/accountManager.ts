@@ -19,6 +19,7 @@ export const useAccountManagerStore = defineStore('accountManager', () => {
   const currentAccountId = ref<string | null>(null)
   const isLoadingAccounts = ref(false)
   
+  
   // 當前活躍帳號
   const currentAccount = computed(() => {
     if (!currentAccountId.value) return null
@@ -72,14 +73,20 @@ export const useAccountManagerStore = defineStore('accountManager', () => {
   }
   
   // 切換帳號（使用 Google OAuth 新增帳號）
-  const addNewAccountWithGoogle = async () => {
+  const addNewAccountWithGoogle = async (currentPath?: string) => {
     try {
       isLoadingAccounts.value = true
+      
+      // 構建重導向 URL，使用 startup 頁面 + redirect 參數
+      const redirectUrl = currentPath 
+        ? `${window.location.origin}/?redirect=${encodeURIComponent(currentPath)}`
+        : `${window.location.origin}/`
       
       // 使用 Google OAuth 登入
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
+          redirectTo: redirectUrl,
           queryParams: {
             prompt: 'select_account' // 強制顯示帳號選擇器
           }
@@ -101,7 +108,7 @@ export const useAccountManagerStore = defineStore('accountManager', () => {
   }
   
   // 快速切換到已存在的帳號
-  const switchToAccount = async (accountId: string) => {
+  const switchToAccount = async (accountId: string, currentPath?: string) => {
     try {
       isLoadingAccounts.value = true
       
@@ -114,11 +121,17 @@ export const useAccountManagerStore = defineStore('accountManager', () => {
       // 先登出當前帳號
       await supabase.auth.signOut()
       
+      // 構建重導向 URL，使用 startup 頁面 + redirect 參數
+      const redirectUrl = currentPath 
+        ? `${window.location.origin}/?redirect=${encodeURIComponent(currentPath)}`
+        : `${window.location.origin}/`
+      
       // 由於 Supabase 不支援多 session，需要重新使用 Google OAuth 登入
       // 但可以提示用戶選擇特定的 Google 帳號
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
+          redirectTo: redirectUrl,
           queryParams: {
             prompt: 'select_account',
             login_hint: targetAccount.email // 提示要選擇的帳號

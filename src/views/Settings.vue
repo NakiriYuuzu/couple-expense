@@ -122,17 +122,11 @@ const handleSwitchToAccount = async (accountId: string) => {
             return
         }
         
-        const result = await accountManagerStore.switchToAccount(accountId)
+        const result = await accountManagerStore.switchToAccount(accountId, router.currentRoute.value.fullPath)
         
         if (result.success) {
-            // 重新載入資料
-            await Promise.all([
-                coupleStore.fetchUserProfile(),
-                expenseStore.fetchExpenses()
-            ])
-            
-            isAccountSwitchDrawerOpen.value = false
-            toast.success(t('settings.switchAccountSuccess'))
+            // OAuth 會自動重新導向，不需要在這裡做任何事
+            toast.info(t('settings.switchingAccount'))
         } else {
             toast.error(result.error || t('settings.switchAccountError'))
         }
@@ -145,10 +139,10 @@ const handleSwitchToAccount = async (accountId: string) => {
 // 新增帳號（使用 Google）
 const handleAddAccount = async () => {
     try {
-        const result = await accountManagerStore.addNewAccountWithGoogle()
+        const result = await accountManagerStore.addNewAccountWithGoogle(router.currentRoute.value.fullPath)
         
         if (result.success) {
-            // Google OAuth 會自動重新導向，所以這裡不需要做什麼
+            // OAuth 會自動重新導向，不需要在這裡做任何事
             toast.info(t('settings.addAccountInfo'))
         } else {
             toast.error(result.error || t('settings.addAccountError'))

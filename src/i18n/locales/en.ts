@@ -177,6 +177,7 @@ const en = {
     logoutError: 'Logout failed, please try again',
     switchAccountSuccess: 'Account switched successfully',
     switchAccountError: 'Account switch failed, please try again',
+    switchingAccount: 'Switching account...',
     manageAccounts: 'Manage Accounts',
     current: 'Current',
     addAccountWithGoogle: 'Add Account with Google',

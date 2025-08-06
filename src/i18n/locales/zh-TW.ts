@@ -177,6 +177,7 @@ const zhTW = {
     logoutError: '登出失敗，請稍後再試',
     switchAccountSuccess: '帳號切換成功',
     switchAccountError: '帳號切換失敗，請重試',
+    switchingAccount: '正在切換帳號...',
     manageAccounts: '管理帳號',
     current: '目前',
     addAccountWithGoogle: '使用 Google 新增帳號',
