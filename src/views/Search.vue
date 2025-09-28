@@ -106,29 +106,35 @@
                     <!-- 類別 -->
                     <div class="space-y-2">
                         <Label>{{ t('search.category') }}</Label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <div
+                        <div class="grid grid-cols-3 gap-3">
+                            <button
                                 v-for="category in categories"
                                 :key="category.id"
+                                type="button"
                                 @click="toggleCategory(category.id)"
                                 :class="[
-                                    'flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all',
+                                    'flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all duration-200',
                                     filters.categories.includes(category.id)
                                         ? 'border-brand-primary bg-brand-accent'
-                                        : 'border-border hover:border-brand-primary'
+                                        : 'border-border bg-background hover:border-brand-primary hover:bg-brand-accent'
                                 ]"
                             >
-                                <component :is="category.icon" class="h-6 w-6 mb-1" :class="[
-                                    filters.categories.includes(category.id)
-                                        ? 'text-brand-primary'
-                                        : 'text-muted-foreground'
-                                ]" />
-                                <span class="text-xs" :class="[
-                                    filters.categories.includes(category.id)
-                                        ? 'text-brand-primary font-medium'
-                                        : 'text-muted-foreground'
-                                ]">{{ category.label }}</span>
-                            </div>
+                                <div :class="[
+                                    'flex h-10 w-10 items-center justify-center rounded-lg',
+                                    filters.categories.includes(category.id) ? 'bg-brand-primary' : 'bg-brand-accent'
+                                ]">
+                                    <component
+                                        :is="category.icon"
+                                        :class="[
+                                            'h-5 w-5',
+                                            filters.categories.includes(category.id) ? 'text-brand-primary-foreground' : 'text-brand-primary'
+                                        ]"
+                                    />
+                                </div>
+                                <span class="text-xs font-medium text-foreground">
+                                    {{ category.label }}
+                                </span>
+                            </button>
                         </div>
                     </div>
 
@@ -213,29 +219,35 @@
                     <!-- 類別選擇 -->
                     <div class="space-y-2">
                         <Label>{{ t('search.category') }}</Label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <div
+                        <div class="grid grid-cols-3 gap-3">
+                            <button
                                 v-for="category in categories"
                                 :key="category.id"
+                                type="button"
                                 @click="editForm.category = category.id as 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 'other'"
                                 :class="[
-                                    'flex flex-col items-center justify-center p-3 rounded-lg border cursor-pointer transition-all',
+                                    'flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all duration-200',
                                     editForm.category === category.id
                                         ? 'border-brand-primary bg-brand-accent'
-                                        : 'border-border hover:border-brand-primary'
+                                        : 'border-border bg-background hover:border-brand-primary hover:bg-brand-accent'
                                 ]"
                             >
-                                <component :is="category.icon" class="h-6 w-6 mb-1" :class="[
-                                    editForm.category === category.id
-                                        ? 'text-brand-primary'
-                                        : 'text-muted-foreground'
-                                ]" />
-                                <span class="text-xs" :class="[
-                                    editForm.category === category.id
-                                        ? 'text-brand-primary font-medium'
-                                        : 'text-muted-foreground'
-                                ]">{{ category.label }}</span>
-                            </div>
+                                <div :class="[
+                                    'flex h-10 w-10 items-center justify-center rounded-lg',
+                                    editForm.category === category.id ? 'bg-brand-primary' : 'bg-brand-accent'
+                                ]">
+                                    <component
+                                        :is="category.icon"
+                                        :class="[
+                                            'h-5 w-5',
+                                            editForm.category === category.id ? 'text-brand-primary-foreground' : 'text-brand-primary'
+                                        ]"
+                                    />
+                                </div>
+                                <span class="text-xs font-medium text-foreground">
+                                    {{ category.label }}
+                                </span>
+                            </button>
                         </div>
                     </div>
 

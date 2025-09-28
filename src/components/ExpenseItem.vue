@@ -36,13 +36,13 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { 
-    ShoppingCart, 
-    Utensils, 
+import {
+    ShoppingBag,
+    Utensils,
     Car,
     Package,
     Home,
-    Heart
+    Cat
 } from 'lucide-vue-next'
 
 interface Props {
@@ -72,11 +72,11 @@ const handleClick = () => {
 // 圖標映射
 const iconMap = {
     restaurant: Utensils,  // food category
-    heart: Heart,          // pet category
-    shopping: ShoppingCart, // shopping category
+    heart: Cat,            // pet category
+    shopping: ShoppingBag, // shopping category
     transport: Car,        // transport category
-    home: Home,           // home category
-    package: Package      // other category
+    home: Home,            // home category
+    package: Package       // other category
 }
 
 // 圖標顏色配置 - 使用語義化顏色
@@ -109,7 +109,7 @@ const iconColorConfig = {
 
 // 計算屬性
 const iconComponent = computed(() => {
-    return iconMap[props.icon as keyof typeof iconMap] || ShoppingCart
+    return iconMap[props.icon as keyof typeof iconMap] || ShoppingBag
 })
 
 const iconBackgroundClass = computed(() => {
