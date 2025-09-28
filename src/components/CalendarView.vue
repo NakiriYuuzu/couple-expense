@@ -115,10 +115,12 @@
                                     :day="weekDate"
                                     :month="month.value"
                                     class="relative w-full h-20 p-2 flex flex-col items-center justify-start border border-border/20 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+                                    :class="{ 'cursor-pointer': getDayTotal(weekDate) }"
+                                    @click="getDayTotal(weekDate) && handleDayClick(weekDate)"
                                 >
                                     <span class="text-sm font-medium mb-auto">{{ weekDate.day }}</span>
-                                    <span 
-                                        v-if="getDayTotal(weekDate)" 
+                                    <span
+                                        v-if="getDayTotal(weekDate)"
                                         class="text-[8px] text-destructive font-bold leading-none px-1.5 py-0.5 bg-destructive/10 rounded-sm mt-auto"
                                     >
                                         ${{ getDayTotal(weekDate) }}
@@ -131,6 +133,32 @@
             </div>
         </CalendarRoot>
         </div>
+
+        <!-- 消費明細 Dialog -->
+        <Dialog v-model:open="isExpenseDialogOpen">
+            <DialogContent class="max-w-md max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>{{ formatDate(selectedDayDate) }}</DialogTitle>
+                    <DialogDescription>
+                        共 {{ selectedDayExpenses.length }} 筆消費，總計 NT$ {{ selectedDayExpenses.reduce((sum, e) => sum + e.amount, 0).toLocaleString() }}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div class="space-y-2 mt-4">
+                    <ExpenseItem
+                        v-for="expense in displayExpenses"
+                        :key="expense.id"
+                        :id="expense.id"
+                        :title="expense.title"
+                        :amount="expense.amount"
+                        :category="expense.category"
+                        :icon="expense.icon"
+                        :user="expense.user"
+                        :show-user="isInCouple"
+                    />
+                </div>
+            </DialogContent>
+        </Dialog>
     </div>
 </template>
 
@@ -157,13 +185,32 @@ import {
     SelectTrigger,
     SelectValue
 } from '@/components/ui/select'
-import { useExpenseStore } from '@/stores'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle
+} from '@/components/ui/dialog'
+import ExpenseItem from '@/components/ExpenseItem.vue'
+import { useExpenseStore, useCoupleStore } from '@/stores'
 import { getLocalTimeZone, today } from '@internationalized/date'
 import type { DateValue } from '@internationalized/date'
+import type { Expense } from '@/stores/expense'
+import {
+    Utensils,
+    ShoppingBag,
+    Bus,
+    Cat,
+    Home,
+    Package
+} from 'lucide-vue-next'
 
 const { t } = useI18n()
 const expenseStore = useExpenseStore()
-const { expenses } = expenseStore
+const coupleStore = useCoupleStore()
+const { expenses, categoryLabels, getExpensesByDate } = expenseStore
+const { isInCouple } = coupleStore
 
 // 當前日期
 const todayDate = new Date()
@@ -171,6 +218,39 @@ const todayDateStr = todayDate.toISOString().split('T')[0]
 
 // 選中的日期（用於日曆組件）
 const selectedDate = ref<DateValue>(today(getLocalTimeZone()))
+
+const isExpenseDialogOpen = ref(false)
+const selectedDayExpenses = ref<Expense[]>([])
+const selectedDayDate = ref('')
+
+const categories = computed(() => [
+    { id: 'food', label: t('expense.categories.food'), icon: Utensils },
+    { id: 'pet', label: t('expense.categories.pet'), icon: Cat },
+    { id: 'shopping', label: t('expense.categories.shopping'), icon: ShoppingBag },
+    { id: 'transport', label: t('expense.categories.transport'), icon: Bus },
+    { id: 'home', label: t('expense.categories.home'), icon: Home },
+    { id: 'other', label: t('expense.categories.other'), icon: Package }
+])
+
+const iconMap: Record<string, string> = {
+    food: 'restaurant',
+    pet: 'heart',
+    shopping: 'shopping',
+    transport: 'transport',
+    home: 'home',
+    other: 'package'
+}
+
+const convertStoreExpense = (storeExpense: Expense) => {
+    return {
+        id: storeExpense.id,
+        title: storeExpense.title,
+        amount: `NT ${Math.round(storeExpense.amount)}`,
+        category: storeExpense.category,
+        icon: iconMap[storeExpense.category],
+        user: storeExpense.user
+    }
+}
 
 // 月份名稱
 const monthNames = computed(() => [
@@ -234,6 +314,28 @@ const getDayTotal = (day: DateValue) => {
 
     return total > 0 ? total.toFixed(0) : 0
 }
+
+const handleDayClick = (day: DateValue) => {
+    if (!day) return
+
+    const dateStr = `${ day.year }-${ day.month.toString().padStart(2, '0') }-${ day.day.toString().padStart(2, '0') }`
+    const dayExpenses = getExpensesByDate(dateStr)
+
+    if (dayExpenses.length === 0) return
+
+    selectedDayExpenses.value = dayExpenses
+    selectedDayDate.value = dateStr
+    isExpenseDialogOpen.value = true
+}
+
+const formatDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-')
+    return `${year} 年 ${parseInt(month)} 月 ${parseInt(day)} 日`
+}
+
+const displayExpenses = computed(() => {
+    return selectedDayExpenses.value.map(convertStoreExpense)
+})
 </script>
 
 <style scoped>

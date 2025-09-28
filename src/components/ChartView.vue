@@ -196,26 +196,9 @@
             </CardHeader>
             <CardContent class="pt-0">
                 <!-- 調試信息 -->
-                <div v-if="!spendingRatio" class="text-center py-8">
-                    <p class="text-sm text-muted-foreground mb-2">調試信息</p>
-                    <p class="text-xs text-muted-foreground">isInCouple: {{ isInCouple }}</p>
-                    <p class="text-xs text-muted-foreground">couple: {{
-                            coupleStore.couple?.id
-                        }}</p>
-                    <p class="text-xs text-muted-foreground">expenses 數量: {{
-                            expenses.length
-                        }}</p>
-                    <p class="text-xs text-muted-foreground">expensesByUser keys:
-                        {{ Object.keys(expensesByUser) }}</p>
-                    <p class="text-xs text-muted-foreground">expensesByUser:
-                        {{ JSON.stringify(expensesByUser, null, 2) }}</p>
-                    <p class="text-xs text-muted-foreground">userProfile:
-                        {{ coupleStore.userProfile?.id }}</p>
-                    <p class="text-xs text-muted-foreground">partnerProfile:
-                        {{ coupleStore.partnerProfile?.id }}</p>
-                    <p class="text-xs text-muted-foreground">spendingRatio: {{ spendingRatio }}</p>
+                <div v-if="!currentPeriodSpendingRatio" class="text-center py-8">
                     <p class="text-muted-foreground">
-                        暫無消費比例資料，請確保有情侶設定且雙方都有消費記錄</p>
+                        {{ currentPeriodLabel }} 暫無消費比例資料</p>
                 </div>
 
                 <!-- 有資料時顯示圖表和分析 -->
@@ -223,7 +206,7 @@
                     <!-- 詳細資訊 -->
                     <div class="space-y-4">
                         <div
-                            v-for="(ratio, userId) in spendingRatio"
+                            v-for="(ratio, userId) in currentPeriodSpendingRatio"
                             :key="userId"
                             class="space-y-2"
                         >
@@ -236,9 +219,8 @@
                                     <span class="font-medium">{{
                                             ratio.user?.display_name || '未知使用者'
                                         }}</span>
-                                    <!-- 顯示是否為最高消費者 -->
                                     <span v-if="isHighestSpender(userId)"
-                                          class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">
+                                          class="text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-2 py-1 rounded-full">
                     花費最多
                   </span>
                                 </div>
@@ -251,7 +233,6 @@
                                     </p>
                                 </div>
                             </div>
-                            <!-- 進度條 -->
                             <div class="w-full bg-muted rounded-full h-2.5">
                                 <div
                                     class="h-2.5 rounded-full transition-all duration-300"
@@ -261,6 +242,48 @@
                   }"
                                 ></div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- 結算按鈕 -->
+                    <div class="mt-6 pt-4 border-t">
+                        <Button
+                            @click="toggleSettlement"
+                            variant="outline"
+                            class="w-full"
+                        >
+                            <span v-if="!showSettlement">查看結算金額</span>
+                            <span v-else>隱藏結算金額</span>
+                        </Button>
+                    </div>
+
+                    <!-- 結算信息 -->
+                    <div v-if="showSettlement && settlementInfo" class="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <div class="text-center space-y-3">
+                            <div class="flex items-center justify-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 dark:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd" />
+                                </svg>
+                                <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100">結算資訊</h3>
+                            </div>
+
+                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">消費差額</p>
+                                <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">NT$ {{ settlementInfo.difference.toLocaleString() }}</p>
+                            </div>
+
+                            <div class="flex items-center justify-center gap-3 text-base">
+                                <span class="font-medium text-gray-700 dark:text-gray-300">{{ settlementInfo.payer.user?.display_name }}</span>
+                                <span class="text-gray-500 dark:text-gray-400">需支付</span>
+                                <span class="font-bold text-2xl text-blue-600 dark:text-blue-400">NT$ {{ settlementInfo.halfDifference.toLocaleString() }}</span>
+                                <span class="text-gray-500 dark:text-gray-400">給</span>
+                                <span class="font-medium text-gray-700 dark:text-gray-300">{{ settlementInfo.receiver.user?.display_name }}</span>
+                            </div>
+
+                            <p class="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-blue-200 dark:border-blue-800">
+                                結算後雙方各自負擔 NT$ {{ (settlementInfo.difference / 2 + Math.min(settlementInfo.payer.amount, settlementInfo.receiver.amount)).toLocaleString() }}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -318,6 +341,8 @@ const {
     expensesByUser
 } = expenseStore
 const { isInCouple } = coupleStore
+
+const showSettlement = ref(false)
 
 // 時間範圍選擇
 const timeRange = ref<'month' | 'year'>('month')
@@ -672,10 +697,8 @@ const lineOptions = {
 
 // 獲取使用者顏色
 const getUserColor = (userId: string) => {
-    // 為不同使用者分配不同顏色
-    const colors = ['#3b82f6', '#ef4444'] // 藍色和紅色
-    // @ts-ignore
-    const ratioData = spendingRatio.value
+    const colors = ['#3b82f6', '#ef4444']
+    const ratioData = currentPeriodSpendingRatio.value
     if (!ratioData) return colors[0]
 
     const userIds = Object.keys(ratioData)
@@ -685,8 +708,7 @@ const getUserColor = (userId: string) => {
 
 // 情侶消費圓餅圖數據
 const coupleSpendingData = computed(() => {
-    // @ts-ignore
-    const ratioData = spendingRatio.value
+    const ratioData = currentPeriodSpendingRatio.value
     if (!ratioData) {
         return { labels: [], datasets: [{ data: [] }] }
     }
@@ -738,8 +760,7 @@ const coupleSpendingOptions = {
                 label: (context: any) => {
                     const label = context.label || ''
                     const value = context.raw || 0
-                    // @ts-ignore
-                    const ratioData = spendingRatio.value
+                    const ratioData = currentPeriodSpendingRatio.value
                     if (!ratioData) return `${ label }: NT$ ${ value.toLocaleString() }`
 
                     const userIds = Object.keys(ratioData)
@@ -757,8 +778,7 @@ const coupleSpendingOptions = {
 
 // 判斷是否為最高消費者
 const isHighestSpender = (userId: string) => {
-    // @ts-ignore
-    const ratioData = spendingRatio.value
+    const ratioData = currentPeriodSpendingRatio.value
     if (!ratioData) return false
 
     const currentRatio = ratioData[userId as keyof typeof ratioData]
@@ -768,6 +788,99 @@ const isHighestSpender = (userId: string) => {
     const maxAmount = Math.max(...allRatios.map(r => r.amount))
 
     return currentRatio.amount === maxAmount
+}
+
+const currentPeriodSpendingRatio = computed(() => {
+    if (!isInCouple) return null
+
+    const periodKey = timeRange.value === 'month'
+        ? currentPeriod.value.toISOString().slice(0, 7)
+        : currentPeriod.value.getFullYear().toString()
+
+    const periodExpenses = expenses.filter(expense => {
+        if (timeRange.value === 'month') {
+            return expense.date.startsWith(periodKey)
+        } else {
+            return expense.date.startsWith(periodKey)
+        }
+    })
+
+    const userStats: Record<string, {
+        total: number
+        count: number
+        user: any
+    }> = {}
+
+    periodExpenses.forEach(expense => {
+        const userId = expense.user_id
+        const userInfo = expense.user || {
+            id: userId,
+            display_name: null,
+            avatar_url: null
+        }
+
+        if (!userStats[userId]) {
+            userStats[userId] = {
+                total: 0,
+                count: 0,
+                user: userInfo
+            }
+        }
+
+        userStats[userId].total += expense.amount
+        userStats[userId].count += 1
+    })
+
+    const userIds = Object.keys(userStats)
+    if (userIds.length === 0) return null
+
+    const total = Object.values(userStats).reduce((sum, stat) => sum + stat.total, 0)
+    if (total === 0) return null
+
+    const ratios: Record<string, {
+        percentage: number
+        amount: number
+        user: any
+    }> = {}
+
+    userIds.forEach(userId => {
+        ratios[userId] = {
+            percentage: Math.round((userStats[userId].total / total) * 100),
+            amount: userStats[userId].total,
+            user: userStats[userId].user
+        }
+    })
+
+    return ratios
+})
+
+const settlementInfo = computed(() => {
+    const ratioData = currentPeriodSpendingRatio.value
+    if (!ratioData) return null
+
+    const userIds = Object.keys(ratioData)
+    if (userIds.length !== 2) return null
+
+    const [user1Id, user2Id] = userIds
+    const user1 = ratioData[user1Id]
+    const user2 = ratioData[user2Id]
+
+    const difference = Math.abs(user1.amount - user2.amount)
+    const halfDifference = Math.round(difference / 2)
+
+    const payer = user1.amount > user2.amount ? user2 : user1
+    const receiver = user1.amount > user2.amount ? user1 : user2
+
+    return {
+        difference,
+        halfDifference,
+        payer,
+        receiver
+    }
+})
+
+const toggleSettlement = () => {
+    showSettlement.value = !showSettlement.value
 }
 
 // 資料載入已在 App.vue 中統一處理

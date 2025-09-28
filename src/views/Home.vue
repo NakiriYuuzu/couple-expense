@@ -110,13 +110,14 @@ const editDateValue = ref<DateValue>()
 
 // 轉換 store 資料格式為組件需要的格式
 const convertStoreExpense = (storeExpense: any) => {
+    const category = categories.value.find(cat => cat.id === storeExpense.category)
     return {
         id: storeExpense.id,
         title: storeExpense.title,
-        amount: `NT ${Math.round(storeExpense.amount)}`, // store 中已經是數字類型
+        amount: `NT ${Math.round(storeExpense.amount)}`,
         category: storeExpense.category,
-        icon: storeExpense.icon,
-        user: storeExpense.user // 加入消費者資訊
+        icon: category?.icon,
+        user: storeExpense.user
     }
 }
 

@@ -39,6 +39,7 @@
                     :key="group.date"
                     :date="group.date"
                     :expenses="group.expenses"
+                    :show-user="isInCouple"
                     @expense-click="handleExpenseClick"
                 />
             </div>
@@ -287,7 +288,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Slider } from '@/components/ui/slider'
-import { useExpenseStore } from '@/stores'
+import { useExpenseStore, useCoupleStore } from '@/stores'
+import { storeToRefs } from 'pinia'
 import { toast } from 'vue-sonner'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
 import { 
@@ -304,7 +306,9 @@ import {
 
 const { t } = useI18n()
 const expenseStore = useExpenseStore()
+const coupleStore = useCoupleStore()
 const { expenses } = expenseStore
+const { isInCouple } = storeToRefs(coupleStore)
 
 // 搜尋查詢
 const searchQuery = ref('')
@@ -361,12 +365,14 @@ watch(() => [filters.value.minAmount, filters.value.maxAmount], ([min, max]) => 
 
 // 轉換 store 資料格式為組件需要的格式
 const convertStoreExpense = (storeExpense: any) => {
+    const category = categories.value.find(cat => cat.id === storeExpense.category)
     return {
         id: storeExpense.id,
         title: storeExpense.title,
-        amount: `NT ${Math.round(storeExpense.amount)}`, // store 中已經是數字類型
+        amount: `NT ${Math.round(storeExpense.amount)}`,
         category: storeExpense.category,
-        icon: storeExpense.icon
+        icon: category?.icon,
+        user: storeExpense.user
     }
 }
 
