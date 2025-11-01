@@ -200,7 +200,7 @@ import type { Expense } from '@/stores/expense'
 import {
     Utensils,
     ShoppingBag,
-    Bus,
+    Car,
     Cat,
     Home,
     Package
@@ -227,7 +227,7 @@ const categories = computed(() => [
     { id: 'food', label: t('expense.categories.food'), icon: Utensils },
     { id: 'pet', label: t('expense.categories.pet'), icon: Cat },
     { id: 'shopping', label: t('expense.categories.shopping'), icon: ShoppingBag },
-    { id: 'transport', label: t('expense.categories.transport'), icon: Bus },
+    { id: 'transport', label: t('expense.categories.transport'), icon: Car },
     { id: 'home', label: t('expense.categories.home'), icon: Home },
     { id: 'other', label: t('expense.categories.other'), icon: Package }
 ])
