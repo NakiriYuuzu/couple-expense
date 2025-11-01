@@ -281,9 +281,9 @@ const handleSubmit = () => {
         food: 'restaurant',
         pet: 'heart',
         shopping: 'shopping',
-        transport: 'car',
+        transport: 'transport',
         home: 'home',
-        other: 'more'
+        other: 'package'
     }
 
     const newExpense = {
@@ -291,7 +291,7 @@ const handleSubmit = () => {
         title: formData.value.title.trim(),
         amount: `-NT ${Math.round(parseFloat(formData.value.amount))}`,
         category: formData.value.category,
-        icon: categoryIconMap[formData.value.category] || 'more',
+        icon: categoryIconMap[formData.value.category] || 'package',
         date: formData.value.date
     }
 
