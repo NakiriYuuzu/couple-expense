@@ -30,7 +30,6 @@ export const useCoupleStore = defineStore('couple', () => {
   const userProfile = ref<UserProfileRow | null>(null)
   const partnerProfile = ref<UserProfileRow | null>(null)
   const coupleSettings = ref<CoupleSettingsRow | null>(null)
-  const userSettings = ref<UserSettingsRow | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
