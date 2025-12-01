@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useCoupleStore } from './couple'
 import { useNotificationStore } from './notification'
-import type { ExpenseRow, ExpenseInsert, ExpenseUpdate } from '@/lib/database.types'
+import type { ExpenseRow, ExpenseInsert, ExpenseUpdate, ExpenseScope } from '@/lib/database.types'
 
 export interface Expense {
   id: string  // UUID 類型
@@ -13,6 +13,7 @@ export interface Expense {
   category: 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 'other'
   icon: string
   date: string // 格式為 "2025-05-20"
+  scope: ExpenseScope // 'personal' 或 'family'
   created_at: string
   updated_at: string
   user?: { // 消費者資訊
@@ -29,6 +30,7 @@ export interface CreateExpenseData {
   category: 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 'other'
   icon: string
   date: string
+  scope?: ExpenseScope // 可選，預設根據 lastUsedScope
 }
 
 // 支出統計介面
@@ -51,7 +53,13 @@ export const useExpenseStore = defineStore('expense', () => {
   const expenses = ref<Expense[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
-  
+
+  // 記住上次選擇的 scope（用於新增支出時的預設值）
+  const lastUsedScope = ref<ExpenseScope>('personal')
+
+  // 當前使用者 ID（用於過濾個人支出）
+  const currentUserId = ref<string | null>(null)
+
   // 獲取相關 stores
   const coupleStore = useCoupleStore()
   const notificationStore = useNotificationStore()
@@ -80,6 +88,79 @@ export const useExpenseStore = defineStore('expense', () => {
         other: monthExpenses.filter(e => e.category === 'other').reduce((sum, e) => sum + e.amount, 0)
       }
     }
+  })
+
+  // 計算屬性：個人支出（只有自己的 personal scope）
+  const personalExpenses = computed(() =>
+    expenses.value.filter(e =>
+      e.scope === 'personal' && e.user_id === currentUserId.value
+    )
+  )
+
+  // 計算屬性：家庭支出（情侶所有成員的 family scope）
+  const familyExpenses = computed(() =>
+    expenses.value.filter(e => e.scope === 'family')
+  )
+
+  // 輔助函數：計算統計數據
+  const calculateStatsForExpenses = (expenseList: Expense[]): ExpenseStats => {
+    const now = new Date()
+    const today = now.toISOString().split('T')[0]
+    const weekStart = new Date(now)
+    weekStart.setDate(now.getDate() - now.getDay())
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    const todayExpenses = expenseList.filter(e => e.date === today)
+    const weekExpenses = expenseList.filter(e => new Date(e.date) >= weekStart)
+    const monthExpenses = expenseList.filter(e => new Date(e.date) >= monthStart)
+
+    return {
+      today: todayExpenses.reduce((sum, e) => sum + e.amount, 0),
+      week: weekExpenses.reduce((sum, e) => sum + e.amount, 0),
+      month: monthExpenses.reduce((sum, e) => sum + e.amount, 0),
+      byCategory: {
+        food: monthExpenses.filter(e => e.category === 'food').reduce((sum, e) => sum + e.amount, 0),
+        pet: monthExpenses.filter(e => e.category === 'pet').reduce((sum, e) => sum + e.amount, 0),
+        shopping: monthExpenses.filter(e => e.category === 'shopping').reduce((sum, e) => sum + e.amount, 0),
+        transport: monthExpenses.filter(e => e.category === 'transport').reduce((sum, e) => sum + e.amount, 0),
+        home: monthExpenses.filter(e => e.category === 'home').reduce((sum, e) => sum + e.amount, 0),
+        other: monthExpenses.filter(e => e.category === 'other').reduce((sum, e) => sum + e.amount, 0)
+      }
+    }
+  }
+
+  // 計算屬性：個人支出統計
+  const personalStats = computed<ExpenseStats>(() =>
+    calculateStatsForExpenses(personalExpenses.value)
+  )
+
+  // 計算屬性：家庭支出統計
+  const familyStats = computed<ExpenseStats>(() =>
+    calculateStatsForExpenses(familyExpenses.value)
+  )
+
+  // 計算屬性：按日期分組的個人支出
+  const personalExpensesByDate = computed(() => {
+    const grouped: Record<string, Expense[]> = {}
+    personalExpenses.value.forEach(expense => {
+      if (!grouped[expense.date]) {
+        grouped[expense.date] = []
+      }
+      grouped[expense.date].push(expense)
+    })
+    return grouped
+  })
+
+  // 計算屬性：按日期分組的家庭支出
+  const familyExpensesByDate = computed(() => {
+    const grouped: Record<string, Expense[]> = {}
+    familyExpenses.value.forEach(expense => {
+      if (!grouped[expense.date]) {
+        grouped[expense.date] = []
+      }
+      grouped[expense.date].push(expense)
+    })
+    return grouped
   })
 
   // 🔔 真正的通知觸發邏輯
@@ -113,9 +194,34 @@ export const useExpenseStore = defineStore('expense', () => {
         })
       }
 
-      // 2. 預算超支檢查
-      if (notificationStore.settings.budgetAlerts && coupleStore.coupleSettings) {
-        const currentStats = stats.value
+      // 2. 個人預算超支檢查（針對 personal scope 支出）
+      if (notificationStore.settings.budgetAlerts && expense.scope === 'personal') {
+        const personalBudget = coupleStore.personalBudget
+
+        if (personalBudget && personalBudget > 0) {
+          const personalMonthTotal = personalStats.value.month
+          const usagePercentage = (personalMonthTotal / personalBudget) * 100
+
+          if (usagePercentage >= 100) {
+            await notificationStore.showLocalNotification({
+              title: '⚠️ 個人月度預算超支！',
+              body: `個人支出 NT$${personalMonthTotal.toLocaleString()} 已超過預算 NT$${personalBudget.toLocaleString()}`,
+              requireInteraction: true,
+              data: { type: 'personal_budget_exceeded', period: 'monthly' }
+            })
+          } else if (usagePercentage >= 80) {
+            await notificationStore.showLocalNotification({
+              title: '💡 個人預算提醒',
+              body: `個人支出已使用 ${usagePercentage.toFixed(0)}% 預算 (NT$${personalMonthTotal.toLocaleString()}/${personalBudget.toLocaleString()})`,
+              data: { type: 'personal_budget_warning', period: 'monthly' }
+            })
+          }
+        }
+      }
+
+      // 3. 家庭預算超支檢查（針對 family scope 支出）
+      if (notificationStore.settings.budgetAlerts && expense.scope === 'family' && coupleStore.coupleSettings) {
+        const currentStats = familyStats.value
         const monthlyBudget = coupleStore.coupleSettings.monthly_budget || 0
         const categoryBudget = coupleStore.getCategoryBudget(expense.category)
 
@@ -127,15 +233,15 @@ export const useExpenseStore = defineStore('expense', () => {
 
           if (usagePercentage >= 100) {
             await notificationStore.showLocalNotification({
-              title: '⚠️ 月度預算超支！',
-              body: `本月支出 NT$${currentStats.month.toLocaleString()} 已超過預算 NT$${monthlyBudget.toLocaleString()}`,
+              title: '⚠️ 家庭月度預算超支！',
+              body: `家庭支出 NT$${currentStats.month.toLocaleString()} 已超過預算 NT$${monthlyBudget.toLocaleString()}`,
               requireInteraction: true,
               data: { type: 'budget_exceeded', period: 'monthly' }
             })
           } else if (usagePercentage >= warningPercentage) {
             await notificationStore.showLocalNotification({
-              title: '💡 月度預算提醒',
-              body: `本月已使用 ${usagePercentage.toFixed(0)}% 預算 (NT$${currentStats.month.toLocaleString()}/${monthlyBudget.toLocaleString()})`,
+              title: '💡 家庭預算提醒',
+              body: `家庭支出已使用 ${usagePercentage.toFixed(0)}% 預算 (NT$${currentStats.month.toLocaleString()}/${monthlyBudget.toLocaleString()})`,
               data: { type: 'budget_warning', period: 'monthly' }
             })
           }
@@ -162,7 +268,7 @@ export const useExpenseStore = defineStore('expense', () => {
           }
         }
 
-        // 3. 每日支出提醒 (如果今日支出較高)
+        // 4. 每日支出提醒 (如果今日支出較高)
         if (currentStats.today >= 1000) {
           await notificationStore.showLocalNotification({
             title: '📊 今日支出統計',
@@ -177,18 +283,21 @@ export const useExpenseStore = defineStore('expense', () => {
     }
   }
 
-  // 獲取當前用戶的所有支出（支援情侶共同消費）
+  // 獲取當前用戶的所有支出（支援個人/家庭分類）
   const fetchExpenses = async () => {
     try {
       loading.value = true
       error.value = null
-      
+
       const { data: userData } = await supabase.auth.getUser()
       if (!userData.user) {
         throw new Error('用戶未登入')
       }
 
-      let userIds = [userData.user.id]
+      const userId = userData.user.id
+      currentUserId.value = userId
+
+      let coupleUserIds: string[] = [userId]
 
       // 如果有情侶，獲取情侶中所有成員的 ID
       if (coupleStore.isInCouple && coupleStore.couple?.id) {
@@ -200,31 +309,52 @@ export const useExpenseStore = defineStore('expense', () => {
         if (membersError) {
           console.error('獲取情侶成員失敗:', membersError)
         } else if (coupleMembers) {
-          userIds = coupleMembers.map(member => member.id)
+          coupleUserIds = coupleMembers.map(member => member.id)
         }
       }
 
-      // 查詢所有相關用戶的消費記錄
-      const { data: expensesData, error: supabaseError } = await supabase
-        .from('expenses')
-        .select('*')
-        .in('user_id', userIds)
-        .order('date', { ascending: false })
+      // 查詢邏輯：
+      // 1. 自己的 personal 支出（只有自己可見）
+      // 2. 情侶所有成員的 family 支出（共享可見）
+      let expensesData: ExpenseRow[] = []
 
-      if (supabaseError) {
-        throw supabaseError
+      if (coupleStore.isInCouple) {
+        // 情侶模式：查詢自己的 personal + 所有成員的 family
+        const { data, error: supabaseError } = await supabase
+          .from('expenses')
+          .select('*')
+          .or(`and(user_id.eq.${userId},scope.eq.personal),and(user_id.in.(${coupleUserIds.join(',')}),scope.eq.family)`)
+          .order('date', { ascending: false })
+
+        if (supabaseError) {
+          throw supabaseError
+        }
+        expensesData = data || []
+      } else {
+        // 單人模式：只查詢自己的所有支出
+        const { data, error: supabaseError } = await supabase
+          .from('expenses')
+          .select('*')
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+
+        if (supabaseError) {
+          throw supabaseError
+        }
+        expensesData = data || []
       }
 
-      if (!expensesData || expensesData.length === 0) {
+      if (expensesData.length === 0) {
         expenses.value = []
         return
       }
 
       // 獲取所有相關的用戶資料
+      const allUserIds = [...new Set(expensesData.map(e => e.user_id))]
       const { data: usersData, error: usersError } = await supabase
         .from('user_profiles')
         .select('id, display_name, avatar_url')
-        .in('id', userIds)
+        .in('id', allUserIds)
 
       if (usersError) {
         console.error('獲取用戶資料失敗:', usersError)
@@ -237,6 +367,7 @@ export const useExpenseStore = defineStore('expense', () => {
 
       expenses.value = expensesData.map(expense => ({
         ...expense,
+        scope: expense.scope as ExpenseScope,
         user: usersMap.get(expense.user_id) || {
           id: expense.user_id,
           display_name: null,
@@ -262,8 +393,19 @@ export const useExpenseStore = defineStore('expense', () => {
         throw new Error('用戶未登入')
       }
 
+      // 決定 scope：使用傳入的值，或使用上次選擇的值，或預設為 'personal'
+      const scope = expenseData.scope || lastUsedScope.value || 'personal'
+
+      // 記住這次選擇
+      lastUsedScope.value = scope
+
       const newExpense: ExpenseInsert = {
-        ...expenseData,
+        title: expenseData.title,
+        amount: expenseData.amount,
+        category: expenseData.category,
+        icon: expenseData.icon,
+        date: expenseData.date,
+        scope: scope,
         user_id: userData.user.id
       }
 
@@ -285,8 +427,9 @@ export const useExpenseStore = defineStore('expense', () => {
           .eq('id', data.user_id)
           .single()
 
-        const expenseWithUser = {
+        const expenseWithUser: Expense = {
           ...data,
+          scope: data.scope as ExpenseScope,
           user: userProfile || {
             id: data.user_id,
             display_name: null,
@@ -295,10 +438,10 @@ export const useExpenseStore = defineStore('expense', () => {
         }
 
         expenses.value.unshift(expenseWithUser)
-        
+
         // 🔔 真正的通知邏輯！
         await triggerExpenseNotifications(expenseWithUser)
-        
+
         return expenseWithUser
       }
 
@@ -629,28 +772,54 @@ export const useExpenseStore = defineStore('expense', () => {
   // 資料載入由 App.vue 統一控制
 
   return {
+    // 基本狀態
     expenses,
     loading,
     error,
+    lastUsedScope,
+    currentUserId,
+
+    // 統計數據
     stats,
+    personalStats,
+    familyStats,
+
+    // 個人/家庭支出
+    personalExpenses,
+    familyExpenses,
+    personalExpensesByDate,
+    familyExpensesByDate,
+
+    // 方法
     fetchExpenses,
     addExpense,
     updateExpense,
     deleteExpense,
     deleteExpensesByDate,
+
+    // 按日期分組
     expensesByDate,
     dailyTotals,
+
+    // 按類別分組
     expensesByCategory,
     monthlyStats,
     yearlyStats,
+
+    // 情侶模式統計
     expensesByUser,
     spendingRatio,
     monthlyExpensesByUser,
+
+    // 工具
     categoryLabels,
     getExpensesByDate,
     getExpensesByDateRange,
     formatAmount
   }
 }, {
-  persist: false // 關閉本地持久化，因為數據現在來自 Supabase
+  persist: {
+    // 只持久化 lastUsedScope，其他資料來自 Supabase
+    pick: ['lastUsedScope']
+  }
 })

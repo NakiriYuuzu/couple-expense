@@ -273,76 +273,40 @@ export const useNotificationStore = defineStore('notification', () => {
   // Helper functions
   const saveTokenToBackend = async (token: string): Promise<void> => {
     try {
-      console.log('Saving FCM token to user_settings:', token)
-      
-      // 動態導入 couple store 以避免循環依賴
-      const { useCoupleStore } = await import('./couple')
-      const coupleStore = useCoupleStore()
-      
-      // 將 FCM token 存儲到 user_settings 表
-      await coupleStore.updateUserSettings({ fcm_token: token })
-      
+      console.log('Saving FCM token to localStorage:', token)
+
+      // 將 FCM token 存儲到 localStorage
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('fcm-token', token)
+      }
+
       console.log('FCM token saved successfully')
     } catch (error) {
       console.error('Failed to save FCM token:', error)
-      
-      // 檢查是否是因為 fcm_token 欄位不存在
-      if (error && typeof error === 'object' && 'code' in error) {
-        const dbError = error as { code: string; message: string }
-        if (dbError.code === '42703' || dbError.message?.includes('fcm_token')) {
-          console.warn('📋 fcm_token 欄位不存在')
-          console.info('🔧 請執行以下 SQL 來添加該欄位:')
-          console.info('   ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS fcm_token text;')
-          console.info('💡 或使用 migrations/add_fcm_token_to_user_settings.sql 遷移腳本')
-          // 不拋出錯誤，讓應用繼續運行
-          return
-        }
-      }
-      
       throw error
     }
   }
 
   const saveSettingsToBackend = async (settings: NotificationSettings): Promise<void> => {
     try {
-      console.log('Saving notification settings to user_settings:', settings)
-      
-      // 動態導入 couple store 以避免循環依賴
-      const { useCoupleStore } = await import('./couple')
-      const coupleStore = useCoupleStore()
-      
-      // 獲取當前用戶設定，然後更新通知設定部分
-      const currentSettings = coupleStore.userSettings
-      const updatedUserSettings = {
-        ...currentSettings,
-        // 可以考慮添加 notification_settings 欄位到資料庫，或使用現有欄位
-        push_notifications: settings.enabled
-      }
-      
-      // 暫時將設定保存到 localStorage 作為主要存儲
+      console.log('Saving notification settings to localStorage:', settings)
+
+      // 將設定保存到 localStorage
       if (typeof window !== 'undefined' && window.localStorage) {
         localStorage.setItem('notification-settings', JSON.stringify(settings))
       }
-      
+
       console.log('Notification settings saved successfully')
     } catch (error) {
       console.error('Failed to save notification settings:', error)
-      // 至少保存到 localStorage
-      if (typeof window !== 'undefined' && window.localStorage) {
-        try {
-          localStorage.setItem('notification-settings', JSON.stringify(settings))
-        } catch (localError) {
-          console.error('Failed to save to localStorage:', localError)
-        }
-      }
     }
   }
 
   const loadSettingsFromBackend = async (): Promise<void> => {
     try {
-      console.log('Loading notification settings from storage')
-      
-      // 先嘗試從 localStorage 載入設定
+      console.log('Loading notification settings from localStorage')
+
+      // 從 localStorage 載入設定
       if (typeof window !== 'undefined' && window.localStorage) {
         const savedSettings = localStorage.getItem('notification-settings')
         if (savedSettings) {
@@ -359,7 +323,6 @@ export const useNotificationStore = defineStore('notification', () => {
               vibrationEnabled: parsedSettings.vibrationEnabled ?? settings.value.vibrationEnabled
             }
             console.log('Notification settings loaded from localStorage:', settings.value)
-            return
           } catch (parseError) {
             console.error('Failed to parse saved settings:', parseError)
             // 移除損壞的資料
@@ -367,23 +330,6 @@ export const useNotificationStore = defineStore('notification', () => {
           }
         }
       }
-      
-      // 如果 localStorage 沒有資料，嘗試從資料庫載入
-      try {
-        const { useCoupleStore } = await import('./couple')
-        const coupleStore = useCoupleStore()
-        
-        if (coupleStore.userSettings) {
-          // 從 user_settings 的 push_notifications 欄位載入基本設定
-          if (coupleStore.userSettings.push_notifications !== undefined) {
-            settings.value.enabled = coupleStore.userSettings.push_notifications
-          }
-          console.log('Basic notification settings loaded from database')
-        }
-      } catch (dbError) {
-        console.warn('Failed to load settings from database:', dbError)
-      }
-      
     } catch (error) {
       console.error('Failed to load notification settings:', error)
     }
@@ -542,19 +488,15 @@ export const useNotificationStore = defineStore('notification', () => {
   const clearFcmToken = async (): Promise<void> => {
     try {
       console.log('Clearing invalid FCM token')
-      
+
       // Clear token is handled internally by messaging composable
       await messagingComposable.cleanup()
-      
-      // 嘗試清除資料庫中的 FCM token，但不因此失敗
-      try {
-        const { useCoupleStore } = await import('./couple')
-        const coupleStore = useCoupleStore()
-        await coupleStore.updateUserSettings({ fcm_token: null })
-      } catch (dbError) {
-        console.warn('無法從資料庫清除 FCM token，但本地清理已完成')
+
+      // 清除 localStorage 中的 FCM token
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('fcm-token')
       }
-      
+
       console.log('FCM token cleared successfully')
     } catch (error) {
       console.error('Failed to clear FCM token:', error)
@@ -584,7 +526,7 @@ export const useNotificationStore = defineStore('notification', () => {
           await saveTokenToBackend(currentToken)
           console.log('FCM token updated')
         } catch (error) {
-          console.warn('無法更新資料庫中的 FCM token，但本地已更新')
+          console.warn('無法更新 FCM token，但本地已更新')
         }
       }
 

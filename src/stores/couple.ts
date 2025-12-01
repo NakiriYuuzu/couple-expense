@@ -6,7 +6,6 @@ import type { Database } from '@/lib/database.types'
 type CoupleRow = Database['public']['Tables']['couples']['Row']
 type UserProfileRow = Database['public']['Tables']['user_profiles']['Row']
 type CoupleSettingsRow = Database['public']['Tables']['couple_settings']['Row']
-type UserSettingsRow = Database['public']['Tables']['user_settings']['Row']
 
 // 預算設定介面
 export interface CategoryBudgets {
@@ -39,6 +38,8 @@ export const useCoupleStore = defineStore('couple', () => {
   const isInCouple = computed(() => !!couple.value)
   const isOwner = computed(() => userProfile.value?.role === 'owner')
   const hasPartner = computed(() => !!partnerProfile.value)
+  // 個人月度預算
+  const personalBudget = computed(() => userProfile.value?.personal_monthly_budget ?? null)
 
   // 獲取用戶資料和情侶信息
   const fetchUserProfile = async () => {
@@ -72,9 +73,6 @@ export const useCoupleStore = defineStore('couple', () => {
           fetchCoupleSettings(profile.couple_id)
         ])
       }
-
-      // 獲取個人設定
-      await fetchUserSettings(userData.user.id)
 
     } catch (err) {
       console.error('獲取用戶資料失敗:', err)
@@ -128,21 +126,6 @@ export const useCoupleStore = defineStore('couple', () => {
     }
 
     coupleSettings.value = data
-  }
-
-  // 獲取個人設定
-  const fetchUserSettings = async (userId: string) => {
-    const { data, error: userSettingsError } = await supabase
-      .from('user_settings')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle()
-
-    if (userSettingsError && userSettingsError.code !== 'PGRST116') {
-      throw userSettingsError
-    }
-
-    userSettings.value = data
   }
 
   // 創建新的情侶
@@ -241,52 +224,6 @@ export const useCoupleStore = defineStore('couple', () => {
     }
   }
 
-  // 更新個人設定
-  const updateUserSettings = async (updates: Partial<{
-    language: 'zh-TW' | 'en'
-    theme: 'light' | 'dark' | 'system'
-    email_notifications: boolean
-    push_notifications: boolean
-    show_in_statistics: boolean
-    fcm_token: string | null
-  }>) => {
-    try {
-      loading.value = true
-      error.value = null
-
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) {
-        throw new Error('用戶未登入')
-      }
-
-      // 使用 upsert 與 onConflict 指定
-      const { data, error: upsertError } = await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: userData.user.id,
-          ...updates
-        }, {
-          onConflict: 'user_id'
-        })
-        .select()
-        .single()
-
-      if (upsertError) {
-        throw upsertError
-      }
-
-      userSettings.value = data
-      return data
-
-    } catch (err) {
-      console.error('更新個人設定失敗:', err)
-      error.value = err instanceof Error ? err.message : '更新個人設定失敗'
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-
   // 更新用戶資料
   const updateUserProfile = async (updates: Partial<{
     display_name: string
@@ -378,6 +315,40 @@ export const useCoupleStore = defineStore('couple', () => {
     }
   }
 
+  // 更新個人月度預算
+  const updatePersonalBudget = async (budget: number | null) => {
+    try {
+      loading.value = true
+      error.value = null
+
+      const { data: userData } = await supabase.auth.getUser()
+      if (!userData.user) {
+        throw new Error('用戶未登入')
+      }
+
+      const { data, error: updateError } = await supabase
+        .from('user_profiles')
+        .update({ personal_monthly_budget: budget })
+        .eq('id', userData.user.id)
+        .select()
+        .single()
+
+      if (updateError) {
+        throw updateError
+      }
+
+      userProfile.value = data
+      return data
+
+    } catch (err) {
+      console.error('更新個人預算失敗:', err)
+      error.value = err instanceof Error ? err.message : '更新個人預算失敗'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // 清除錯誤
   const clearError = () => {
     error.value = null
@@ -397,14 +368,15 @@ export const useCoupleStore = defineStore('couple', () => {
     isInCouple,
     isOwner,
     hasPartner,
+    personalBudget,
 
     // 方法
     fetchUserProfile,
     createCouple,
     joinCouple,
     updateCoupleSettings,
-    updateUserSettings,
     updateUserProfile,
+    updatePersonalBudget,
     leaveCouple,
     getCategoryBudget,
     clearError

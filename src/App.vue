@@ -21,14 +21,14 @@ const themeStore = useThemeStore()
 // 定義頁面索引來決定動畫方向
 const pageIndexMap: Record<string, number> = {
     '/': 0,               // Startup
-    '/home': 1,           // Home
-    '/search': 2,         // Search
+    '/dashboard': 1,      // Dashboard
+    '/expenses': 2,       // Expenses
     '/statistics': 3,     // Statistics
     '/settings': 4        // Settings
 }
 
 // 需要顯示底部導航的路由
-const routesWithBottomNav = ['/home', '/search', '/statistics', '/settings']
+const routesWithBottomNav = ['/dashboard', '/expenses', '/statistics', '/settings']
 
 // 是否顯示底部導航
 const showBottomNavigation = computed(() => {
@@ -38,16 +38,16 @@ const showBottomNavigation = computed(() => {
 // 當前活躍的標籤
 const activeTab = computed(() => {
     switch (route.path) {
-        case '/home':
-            return 'home'
-        case '/search':
-            return 'search'
+        case '/dashboard':
+            return 'dashboard'
+        case '/expenses':
+            return 'expenses'
         case '/statistics':
             return 'statistics'
         case '/settings':
             return 'settings'
         default:
-            return 'home'
+            return 'dashboard'
     }
 })
 
@@ -83,11 +83,11 @@ router.beforeEach((to, from) => {
 // 底部導航處理器
 const handleNavigation = (tab: string) => {
     switch (tab) {
-        case 'home':
-            router.push({ name: routes.index.name })
+        case 'dashboard':
+            router.push({ name: routes.dashboard.name })
             break
-        case 'search':
-            router.push({ name: routes.search.name })
+        case 'expenses':
+            router.push({ name: routes.expenses.name })
             break
         case 'statistics':
             router.push({ name: routes.statistics.name })
@@ -106,20 +106,21 @@ const handleAddNew = () => {
 
 const handleExpenseAdded = async (expense: any) => {
     console.log('New expense added:', expense)
-    
+
     try {
         // 從 "-NT 150" 格式中提取數字
         const amount = Math.abs(parseInt(expense.amount.replace(/[^\d]/g, '')))
-        
+
         // 轉換格式以符合 store 的期望 (CreateExpenseData)
         const storeExpense = {
             title: expense.title,
             amount: amount, // 數字類型，正數
             category: expense.category,
             icon: expense.icon,
-            date: expense.date // 已經是 "2025-08-03" 格式
+            date: expense.date, // 已經是 "2025-08-03" 格式
+            scope: expense.scope // 新增 scope
         }
-        
+
         // 添加到 store
         await expenseStore.addExpense(storeExpense)
     } catch (error) {
@@ -152,7 +153,6 @@ watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
         coupleStore.userProfile = null
         coupleStore.partnerProfile = null
         coupleStore.coupleSettings = null
-        coupleStore.userSettings = null
         expenseStore.expenses = []
     }
 }, { immediate: true })
@@ -186,15 +186,15 @@ onMounted(async () => {
         </div>
         
         <!-- 底部導航欄 - 固定不參與動畫 -->
-        <BottomNavigation 
+        <BottomNavigation
             v-if="showBottomNavigation"
             :active-tab="activeTab"
             @navigate="handleNavigation"
-            @add="handleAddNew"
+            @add-click="handleAddNew"
         />
-        
+
         <!-- 新增費用 Drawer - 全局 -->
-        <AddExpenseDrawer 
+        <AddExpenseDrawer
             v-model:open="isAddExpenseDrawerOpen"
             @expense-added="handleExpenseAdded"
         />

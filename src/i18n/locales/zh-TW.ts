@@ -13,15 +13,42 @@ const zhTW = {
     success: '成功',
     error: '錯誤',
     warning: '警告',
-    info: '資訊'
+    info: '資訊',
+    undo: '復原',
+    refreshed: '資料已更新',
+    refreshFailed: '刷新失敗，請稍後重試',
+    unknown: '未知'
   },
 
   // 導航
   nav: {
     home: '首頁',
-    statistics: '統計分析',
+    dashboard: '總覽',
+    expenses: '支出',
+    statistics: '統計',
     search: '搜尋',
     settings: '設定'
+  },
+
+  // Dashboard
+  dashboard: {
+    personal: '個人支出',
+    family: '家庭支出',
+    monthTotal: '本月總計',
+    todayTotal: '今日總計',
+    recentExpenses: '最近支出',
+    viewMore: '查看更多',
+    spendingRatio: '消費比例',
+    budgetProgress: '預算進度',
+    personalBudgetProgress: '個人預算進度',
+    noPersonalExpenses: '尚無個人支出記錄',
+    noFamilyExpenses: '尚無家庭支出記錄'
+  },
+
+  // 支出列表
+  expenses: {
+    noPersonalExpenses: '尚無個人支出記錄',
+    noFamilyExpenses: '尚無家庭支出記錄'
   },
 
   // 首頁
@@ -55,6 +82,8 @@ const zhTW = {
   // 統計分析
   stats: {
     title: '統計分析',
+    personalStats: '個人統計',
+    familyStats: '家庭統計',
     calendarView: '日曆檢視',
     chartAnalysis: '圖表分析',
     monthlyTotal: '月總消費',
@@ -107,11 +136,26 @@ const zhTW = {
     payer: '付款人',
     addExpense: '新增費用',
     addExpenseDesc: '填寫下方表單來新增一筆費用記錄',
+    edit: '編輯費用',
+    editDesc: '修改此筆交易的詳細資訊',
     editExpense: '編輯消費',
     deleteExpense: '刪除消費',
     expenseAdded: '消費記錄已新增',
     expenseUpdated: '消費記錄已更新',
     expenseDeleted: '消費記錄已刪除',
+    // Scope 相關
+    scope: '支出類型',
+    personal: '個人',
+    family: '家庭',
+    personalDesc: '此筆支出僅自己可見',
+    familyDesc: '此筆支出將與伴侶共享',
+    // 操作結果
+    updated: '費用已更新',
+    updateFailed: '更新失敗，請稍後重試',
+    deleted: '已刪除',
+    deleteFailed: '刪除失敗，請稍後重試',
+    restored: '已復原費用記錄',
+    restoreFailed: '復原失敗，請稍後重試',
     categories: {
       food: '餐飲',
       pet: '寵物',
@@ -167,6 +211,17 @@ const zhTW = {
       'en': 'English',
       'ja': '日本語'
     },
+    // 個人預算
+    personalBudget: '個人預算',
+    personalBudgetNotSet: '尚未設定',
+    personalBudgetTitle: '個人月度預算設定',
+    monthlyBudgetAmount: '月度預算金額',
+    enterBudgetAmount: '輸入預算金額',
+    personalBudgetDesc: '設定您的個人每月支出預算上限，超過 80% 時會收到警告通知',
+    currentUsage: '本月使用進度',
+    clearBudget: '清除預算',
+    personalBudgetSaved: '個人預算已儲存',
+    personalBudgetCleared: '已清除個人預算設定',
     // 帳戶管理
     logout: '登出',
     switchAccount: '切換帳號',

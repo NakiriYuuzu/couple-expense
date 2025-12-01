@@ -40,7 +40,7 @@ export const routerBeforeGuard = async (to: RouteLocationNormalized, from: Route
 
     // 如果已登入且要訪問啟動頁面，導向首頁
     if (authStore.isLoggedIn && to.name === routes.startup.name && !to.query.redirect) {
-        next({ name: routes.index.name })
+        next({ name: routes.dashboard.name })
         return
     }
 

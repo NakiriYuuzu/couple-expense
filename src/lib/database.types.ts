@@ -6,6 +6,9 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+// Expense scope type for personal/family classification
+export type ExpenseScope = 'personal' | 'family'
+
 export interface Database {
   public: {
     Tables: {
@@ -18,6 +21,7 @@ export interface Database {
           category: 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 'other'
           icon: string
           date: string
+          scope: ExpenseScope
           created_at: string
           updated_at: string
         }
@@ -29,6 +33,7 @@ export interface Database {
           category: 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 'other'
           icon: string
           date: string
+          scope?: ExpenseScope
           created_at?: string
           updated_at?: string
         }
@@ -40,6 +45,7 @@ export interface Database {
           category?: 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 'other'
           icon?: string
           date?: string
+          scope?: ExpenseScope
           created_at?: string
           updated_at?: string
         }
@@ -74,6 +80,7 @@ export interface Database {
           display_name: string | null
           avatar_url: string | null
           role: 'owner' | 'member'
+          personal_monthly_budget: number | null
           joined_at: string
           created_at: string
           updated_at: string
@@ -84,6 +91,7 @@ export interface Database {
           display_name?: string | null
           avatar_url?: string | null
           role?: 'owner' | 'member'
+          personal_monthly_budget?: number | null
           joined_at?: string
           created_at?: string
           updated_at?: string
@@ -94,6 +102,7 @@ export interface Database {
           display_name?: string | null
           avatar_url?: string | null
           role?: 'owner' | 'member'
+          personal_monthly_budget?: number | null
           joined_at?: string
           created_at?: string
           updated_at?: string
@@ -133,44 +142,6 @@ export interface Database {
           currency?: 'TWD' | 'USD' | 'EUR' | 'JPY' | 'CNY'
           custom_categories?: Json
           notifications?: Json
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      user_settings: {
-        Row: {
-          id: string
-          user_id: string
-          language: 'zh-TW' | 'en'
-          theme: 'light' | 'dark' | 'system'
-          email_notifications: boolean
-          push_notifications: boolean
-          show_in_statistics: boolean
-          fcm_token: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          language?: 'zh-TW' | 'en'
-          theme?: 'light' | 'dark' | 'system'
-          email_notifications?: boolean
-          push_notifications?: boolean
-          show_in_statistics?: boolean
-          fcm_token?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          language?: 'zh-TW' | 'en'
-          theme?: 'light' | 'dark' | 'system'
-          email_notifications?: boolean
-          push_notifications?: boolean
-          show_in_statistics?: boolean
-          fcm_token?: string | null
           created_at?: string
           updated_at?: string
         }

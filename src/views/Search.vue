@@ -132,7 +132,7 @@
                                     />
                                 </div>
                                 <span class="text-xs font-medium text-foreground">
-                                    {{ category.label }}
+                                    {{ category.name }}
                                 </span>
                             </button>
                         </div>
@@ -224,7 +224,7 @@
                                 v-for="category in categories"
                                 :key="category.id"
                                 type="button"
-                                @click="editForm.category = category.id as 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 'other'"
+                                @click="editForm.category = category.id as CategoryId"
                                 :class="[
                                     'flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all duration-200',
                                     editForm.category === category.id
@@ -245,7 +245,7 @@
                                     />
                                 </div>
                                 <span class="text-xs font-medium text-foreground">
-                                    {{ category.label }}
+                                    {{ category.name }}
                                 </span>
                             </button>
                         </div>
@@ -287,10 +287,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { 
-    parseDate,
-    type DateValue 
-} from '@internationalized/date'
+import { parseDate, type DateValue } from '@internationalized/date'
 import TopBar from '@/components/TopBar.vue'
 import ExpenseGroup from '@/components/ExpenseGroup.vue'
 import { Input } from '@/components/ui/input'
@@ -304,19 +301,11 @@ import { useExpenseStore, useCoupleStore } from '@/stores'
 import { storeToRefs } from 'pinia'
 import { toast } from 'vue-sonner'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
-import { 
-    Search, 
-    SlidersHorizontal, 
-    Calendar as CalendarIcon,
-    Utensils,
-    ShoppingBag,
-    Bus,
-    Cat,
-    Home,
-    Package
-} from 'lucide-vue-next'
+import { useCategories, CategoryUtils, type CategoryId } from '@/composables/useCategories'
+import { Search, SlidersHorizontal, Calendar as CalendarIcon } from 'lucide-vue-next'
 
 const { t } = useI18n()
+const { categories } = useCategories()
 const expenseStore = useExpenseStore()
 const coupleStore = useCoupleStore()
 const { expenses } = expenseStore
@@ -335,15 +324,6 @@ const endDateValue = ref<DateValue>()
 // 編輯日期選擇器的值
 const editDateValue = ref<DateValue>()
 
-// 類別選項
-const categories = computed(() => [
-    { id: 'food', label: t('expense.categories.food'), icon: Utensils },
-    { id: 'pet', label: t('expense.categories.pet'), icon: Cat },
-    { id: 'shopping', label: t('expense.categories.shopping'), icon: ShoppingBag },
-    { id: 'transport', label: t('expense.categories.transport'), icon: Bus },
-    { id: 'home', label: t('expense.categories.home'), icon: Home },
-    { id: 'other', label: t('expense.categories.other'), icon: Package }
-])
 
 // 篩選條件
 const filters = ref({
@@ -377,13 +357,12 @@ watch(() => [filters.value.minAmount, filters.value.maxAmount], ([min, max]) => 
 
 // 轉換 store 資料格式為組件需要的格式
 const convertStoreExpense = (storeExpense: any) => {
-    const category = categories.value.find(cat => cat.id === storeExpense.category)
     return {
         id: storeExpense.id,
         title: storeExpense.title,
         amount: `NT ${Math.round(storeExpense.amount)}`,
         category: storeExpense.category,
-        icon: category?.icon,
+        icon: CategoryUtils.getIconKey(storeExpense.category),
         user: storeExpense.user
     }
 }
@@ -512,7 +491,7 @@ const editingExpense = ref<any>(null)
 const editForm = ref({
     title: '',
     amount: 0,
-    category: 'food' as 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 'other',
+    category: 'food' as CategoryId,
     date: ''
 })
 

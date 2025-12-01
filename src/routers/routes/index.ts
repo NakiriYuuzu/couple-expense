@@ -19,25 +19,25 @@ export const routes = {
         },
         component: () => import('@/views/Startup.vue')
     } satisfies RouteRecordRaw,
-    index: {
-        name: 'Home',
-        path: '/home',
+    dashboard: {
+        name: 'Dashboard',
+        path: '/dashboard',
         meta: {
-            title: '首頁',
+            title: '總覽',
             roles: [],
             requiresAuth: true  // 需要登入才能訪問
         },
-        component: () => import('@/views/Home.vue')
+        component: () => import('@/views/Dashboard.vue')
     } satisfies RouteRecordRaw,
-    search: {
-        name: 'Search',
-        path: '/search',
+    expenses: {
+        name: 'Expenses',
+        path: '/expenses',
         meta: {
-            title: '搜尋',
+            title: '支出',
             roles: [],
             requiresAuth: true  // 需要登入才能訪問
         },
-        component: () => import('@/views/Search.vue')
+        component: () => import('@/views/Expenses.vue')
     } satisfies RouteRecordRaw,
     statistics: {
         name: 'Statistics',
@@ -68,6 +68,17 @@ export const routes = {
             requiresAuth: true  // 需要登入才能訪問
         },
         component: () => import('@/views/CoupleSettings.vue')
+    } satisfies RouteRecordRaw,
+    // 向後兼容：舊路由重定向
+    home: {
+        name: 'Home',
+        path: '/home',
+        redirect: { name: 'Dashboard' }
+    } satisfies RouteRecordRaw,
+    search: {
+        name: 'Search',
+        path: '/search',
+        redirect: { name: 'Expenses' }
     } satisfies RouteRecordRaw
 }
 

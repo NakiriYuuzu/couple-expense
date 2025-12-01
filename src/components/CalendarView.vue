@@ -197,20 +197,27 @@ import { useExpenseStore, useCoupleStore } from '@/stores'
 import { getLocalTimeZone, today } from '@internationalized/date'
 import type { DateValue } from '@internationalized/date'
 import type { Expense } from '@/stores/expense'
-import {
-    Utensils,
-    ShoppingBag,
-    Bus,
-    Cat,
-    Home,
-    Package
-} from 'lucide-vue-next'
+import { CategoryUtils } from '@/composables/useCategories'
+
+// Props
+const props = withDefaults(defineProps<{
+    scope: 'personal' | 'family'
+}>(), {
+    scope: 'personal'
+})
 
 const { t } = useI18n()
 const expenseStore = useExpenseStore()
 const coupleStore = useCoupleStore()
-const { expenses, categoryLabels, getExpensesByDate } = expenseStore
+const { categoryLabels } = expenseStore
 const { isInCouple } = coupleStore
+
+// 根據 scope 選擇對應的支出資料
+const scopedExpenses = computed(() => {
+    return props.scope === 'personal'
+        ? expenseStore.personalExpenses
+        : expenseStore.familyExpenses
+})
 
 // 當前日期
 const todayDate = new Date()
@@ -223,31 +230,13 @@ const isExpenseDialogOpen = ref(false)
 const selectedDayExpenses = ref<Expense[]>([])
 const selectedDayDate = ref('')
 
-const categories = computed(() => [
-    { id: 'food', label: t('expense.categories.food'), icon: Utensils },
-    { id: 'pet', label: t('expense.categories.pet'), icon: Cat },
-    { id: 'shopping', label: t('expense.categories.shopping'), icon: ShoppingBag },
-    { id: 'transport', label: t('expense.categories.transport'), icon: Bus },
-    { id: 'home', label: t('expense.categories.home'), icon: Home },
-    { id: 'other', label: t('expense.categories.other'), icon: Package }
-])
-
-const iconMap: Record<string, string> = {
-    food: 'restaurant',
-    pet: 'heart',
-    shopping: 'shopping',
-    transport: 'transport',
-    home: 'home',
-    other: 'package'
-}
-
 const convertStoreExpense = (storeExpense: Expense) => {
     return {
         id: storeExpense.id,
         title: storeExpense.title,
         amount: `NT ${Math.round(storeExpense.amount)}`,
         category: storeExpense.category,
-        icon: iconMap[storeExpense.category],
+        icon: CategoryUtils.getIconKey(storeExpense.category),
         user: storeExpense.user
     }
 }
@@ -263,7 +252,7 @@ const monthNames = computed(() => [
 // 可用的年份列表（根據數據動態生成）
 const availableYears = computed(() => {
     const years = new Set<number>()
-    expenses.forEach(expense => {
+    scopedExpenses.value.forEach(expense => {
         years.add(parseInt(expense.date.substring(0, 4)))
     })
     // 確保當前年份在列表中
@@ -280,7 +269,7 @@ const isCurrentMonth = computed(() => {
 // 當前選中月份的費用
 const currentMonthExpenses = computed(() => {
     const monthStr = `${selectedDate.value.year}-${selectedDate.value.month.toString().padStart(2, '0')}`
-    return expenses.filter(expense => expense.date.startsWith(monthStr))
+    return scopedExpenses.value.filter(expense => expense.date.startsWith(monthStr))
 })
 
 // 月度總消費
@@ -293,7 +282,7 @@ const monthlyTotal = computed(() => {
 
 // 今日總消費
 const todayTotal = computed(() => {
-    const todayExpenses = expenses.filter(expense => expense.date === todayDateStr)
+    const todayExpenses = scopedExpenses.value.filter(expense => expense.date === todayDateStr)
     return todayExpenses.reduce((sum, expense) => {
         return sum + expense.amount
     }, 0)
@@ -304,7 +293,7 @@ const todayTotal = computed(() => {
 const getDayTotal = (day: DateValue) => {
     if (!day) return 0
     const dateStr = `${ day.year }-${ day.month.toString().padStart(2, '0') }-${ day.day.toString().padStart(2, '0') }`
-    const dayExpenses = expenses.filter(expense => expense.date === dateStr)
+    const dayExpenses = scopedExpenses.value.filter(expense => expense.date === dateStr)
 
     if (dayExpenses.length === 0) return 0
 
@@ -319,7 +308,7 @@ const handleDayClick = (day: DateValue) => {
     if (!day) return
 
     const dateStr = `${ day.year }-${ day.month.toString().padStart(2, '0') }-${ day.day.toString().padStart(2, '0') }`
-    const dayExpenses = getExpensesByDate(dateStr)
+    const dayExpenses = scopedExpenses.value.filter(expense => expense.date === dateStr)
 
     if (dayExpenses.length === 0) return
 

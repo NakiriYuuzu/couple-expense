@@ -29,14 +29,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Card, CardContent } from '@/components/ui/card'
-import { 
-    ShoppingCart, 
-    Utensils, 
-    Car,
-    Package,
-    Home,
-    Heart
-} from 'lucide-vue-next'
+import { CategoryUtils, type IconKey } from '@/composables/useCategories'
 
 interface Props {
     icon: string
@@ -47,56 +40,28 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// 圖標映射
-const iconMap = {
-    restaurant: Utensils,  // food category
-    heart: Heart,          // pet category
-    shopping: ShoppingCart, // shopping category
-    transport: Car,        // transport category
-    home: Home,           // home category
-    package: Package      // other category
-}
-
-// 圖標顏色配置 - 使用語義化 CSS 變數
-const iconColorConfig = {
-    restaurant: {  // food category
-        background: 'bg-category-food-bg',
-        color: 'text-category-food'
-    },
-    heart: {       // pet category
-        background: 'bg-category-pet-bg',
-        color: 'text-category-pet'
-    },
-    shopping: {    // shopping category
-        background: 'bg-category-shopping-bg',
-        color: 'text-category-shopping'
-    },
-    transport: {   // transport category
-        background: 'bg-category-transport-bg',
-        color: 'text-category-transport'
-    },
-    home: {        // home category
-        background: 'bg-category-home-bg',
-        color: 'text-category-home'
-    },
-    package: {     // other category
-        background: 'bg-category-other-bg',
-        color: 'text-category-other'
-    }
-}
-
-// 計算屬性
+// 使用 CategoryUtils 取得 icon 元件
 const iconComponent = computed(() => {
-    return iconMap[props.icon as keyof typeof iconMap] || ShoppingCart
+    return CategoryUtils.getIconByKey(props.icon)
 })
 
+// 類別顏色配置
+const iconColorConfig: Record<IconKey, { background: string; color: string }> = {
+    restaurant: { background: 'bg-category-food-bg', color: 'text-category-food' },
+    heart: { background: 'bg-category-pet-bg', color: 'text-category-pet' },
+    shopping: { background: 'bg-category-shopping-bg', color: 'text-category-shopping' },
+    car: { background: 'bg-category-transport-bg', color: 'text-category-transport' },
+    home: { background: 'bg-category-home-bg', color: 'text-category-home' },
+    package: { background: 'bg-category-other-bg', color: 'text-category-other' }
+}
+
 const iconBackgroundClass = computed(() => {
-    const config = iconColorConfig[props.icon as keyof typeof iconColorConfig]
+    const config = iconColorConfig[props.icon as IconKey]
     return config?.background || 'bg-category-other-bg'
 })
 
 const iconColorClass = computed(() => {
-    const config = iconColorConfig[props.icon as keyof typeof iconColorConfig]
+    const config = iconColorConfig[props.icon as IconKey]
     return config?.color || 'text-category-other'
 })
 

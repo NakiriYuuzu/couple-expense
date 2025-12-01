@@ -21,13 +21,15 @@ import { useExpenseStore } from '@/stores'
 import { useAccountManagerStore } from '@/stores/accountManager'
 import { routes } from '@/routers/routes/index.ts'
 import { toast } from 'vue-sonner'
-import { 
-    Moon, 
-    Languages, 
+import { Progress } from '@/components/ui/progress'
+import {
+    Moon,
+    Languages,
     Bell,
     ChevronRight,
     LogOut,
-    UserCog
+    UserCog,
+    Wallet
 } from 'lucide-vue-next'
 
 const { t, locale } = useI18n()
@@ -42,6 +44,10 @@ const router = useRouter()
 // 通知設定 Drawer 狀態
 const isNotificationDrawerOpen = ref(false)
 
+// 個人預算設定 Drawer 狀態
+const isPersonalBudgetDrawerOpen = ref(false)
+const personalBudgetInput = ref<number | null>(null)
+
 // 登出確認 Dialog 狀態
 const isLogoutDialogOpen = ref(false)
 const isAccountSwitchDrawerOpen = ref(false)
@@ -53,6 +59,44 @@ const currentUser = computed(() => authStore.user)
 // 獲取所有儲存的帳號
 const storedAccounts = computed(() => accountManagerStore.storedAccounts)
 const currentAccountId = computed(() => accountManagerStore.currentAccountId)
+
+// 個人預算相關
+const personalBudgetUsage = computed(() => {
+    const budget = coupleStore.personalBudget
+    if (!budget || budget <= 0) return 0
+    return Math.min((expenseStore.personalStats.month / budget) * 100, 100)
+})
+
+// 打開個人預算設定 Drawer
+const openPersonalBudgetDrawer = () => {
+    personalBudgetInput.value = coupleStore.personalBudget
+    isPersonalBudgetDrawerOpen.value = true
+}
+
+// 儲存個人預算
+const savePersonalBudget = async () => {
+    try {
+        await coupleStore.updatePersonalBudget(personalBudgetInput.value)
+        toast.success(t('settings.personalBudgetSaved'))
+        isPersonalBudgetDrawerOpen.value = false
+    } catch (error) {
+        console.error('儲存個人預算失敗:', error)
+        toast.error(t('common.error'))
+    }
+}
+
+// 清除個人預算
+const clearPersonalBudget = async () => {
+    try {
+        await coupleStore.updatePersonalBudget(null)
+        personalBudgetInput.value = null
+        toast.success(t('settings.personalBudgetCleared'))
+        isPersonalBudgetDrawerOpen.value = false
+    } catch (error) {
+        console.error('清除個人預算失敗:', error)
+        toast.error(t('common.error'))
+    }
+}
 
 // 處理語言變更
 const handleLanguageChange = async (value: any) => {
@@ -92,7 +136,6 @@ const clearAllData = () => {
     coupleStore.userProfile = null
     coupleStore.partnerProfile = null
     coupleStore.coupleSettings = null
-    coupleStore.userSettings = null
     // 清除費用資料
     expenseStore.expenses = []
 }
@@ -245,6 +288,27 @@ const handleRemoveAccount = (accountId: string) => {
                     </div>
                 </Card>
 
+                <!-- 個人預算設定 -->
+                <Card class="p-4 cursor-pointer hover:bg-accent transition-colors" @click="openPersonalBudgetDrawer">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-accent">
+                                <Wallet class="h-5 w-5 text-brand-primary" />
+                            </div>
+                            <div>
+                                <h3 class="text-base font-medium text-foreground">{{ t('settings.personalBudget') }}</h3>
+                                <p class="text-sm text-muted-foreground">
+                                    {{ coupleStore.personalBudget
+                                        ? `NT$ ${coupleStore.personalBudget.toLocaleString()}`
+                                        : t('settings.personalBudgetNotSet')
+                                    }}
+                                </p>
+                            </div>
+                        </div>
+                        <ChevronRight class="h-5 w-5 text-muted-foreground" />
+                    </div>
+                </Card>
+
                 <!-- 更多設定項目 (未來擴展用) -->
                 <div class="mt-8">
                     <h2 class="mb-4 text-sm font-medium text-muted-foreground">{{ t('settings.moreSettings') }}</h2>
@@ -373,9 +437,9 @@ const handleRemoveAccount = (accountId: string) => {
                             <div class="flex items-center gap-3">
                                 <!-- 頭像或默認圖標 -->
                                 <div class="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                                    <img 
-                                        v-if="account.avatarUrl" 
-                                        :src="account.avatarUrl" 
+                                    <img
+                                        v-if="account.avatarUrl"
+                                        :src="account.avatarUrl"
                                         :alt="account.name"
                                         class="w-10 h-10 rounded-full"
                                     >
@@ -395,8 +459,8 @@ const handleRemoveAccount = (accountId: string) => {
                             </div>
                             <!-- 當前帳號標記 -->
                             <div class="flex items-center gap-2">
-                                <span 
-                                    v-if="account.id === currentAccountId" 
+                                <span
+                                    v-if="account.id === currentAccountId"
                                     class="text-xs bg-brand-primary text-primary-foreground px-2 py-1 rounded"
                                 >
                                     {{ t('settings.current') }}
@@ -415,10 +479,10 @@ const handleRemoveAccount = (accountId: string) => {
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- 新增帳號按鈕 -->
-                    <Button 
-                        variant="outline" 
+                    <Button
+                        variant="outline"
                         class="w-full"
                         @click="handleAddAccount"
                     >
@@ -442,6 +506,60 @@ const handleRemoveAccount = (accountId: string) => {
                         </svg>
                         {{ t('settings.addAccountWithGoogle') }}
                     </Button>
+                </div>
+            </DrawerContent>
+        </Drawer>
+
+        <!-- 個人預算設定 Drawer -->
+        <Drawer v-model:open="isPersonalBudgetDrawerOpen">
+            <DrawerContent class="max-h-[90vh]">
+                <DrawerHeader>
+                    <DrawerTitle>{{ t('settings.personalBudgetTitle') }}</DrawerTitle>
+                </DrawerHeader>
+                <div class="px-4 pb-6 space-y-4">
+                    <div class="space-y-2">
+                        <Label>{{ t('settings.monthlyBudgetAmount') }}</Label>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm text-muted-foreground">NT$</span>
+                            <Input
+                                v-model.number="personalBudgetInput"
+                                type="number"
+                                min="0"
+                                step="100"
+                                :placeholder="t('settings.enterBudgetAmount')"
+                            />
+                        </div>
+                        <p class="text-xs text-muted-foreground">
+                            {{ t('settings.personalBudgetDesc') }}
+                        </p>
+                    </div>
+
+                    <!-- 當前使用進度 (若已設定預算) -->
+                    <div v-if="coupleStore.personalBudget" class="space-y-2">
+                        <Label>{{ t('settings.currentUsage') }}</Label>
+                        <Progress :model-value="personalBudgetUsage" class="h-2" />
+                        <div class="flex justify-between text-xs text-muted-foreground">
+                            <span>NT$ {{ expenseStore.personalStats.month.toLocaleString() }}</span>
+                            <span>{{ personalBudgetUsage.toFixed(0) }}%</span>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 pt-4">
+                        <Button
+                            variant="outline"
+                            class="flex-1"
+                            @click="clearPersonalBudget"
+                        >
+                            {{ t('settings.clearBudget') }}
+                        </Button>
+                        <Button
+                            class="flex-1"
+                            @click="savePersonalBudget"
+                            :disabled="coupleStore.loading"
+                        >
+                            {{ t('common.save') }}
+                        </Button>
+                    </div>
                 </div>
             </DrawerContent>
         </Drawer>

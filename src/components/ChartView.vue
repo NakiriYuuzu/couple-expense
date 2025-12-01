@@ -75,69 +75,196 @@
             </Card>
         </div>
 
-        <!-- 圓餅圖 -->
+        <!-- 面積圖 - 類別消費分佈 -->
         <Card class="relative overflow-hidden border-0 shadow-lg mb-6 animate-fade-in-up">
-            <CardHeader class="pb-3">
+            <CardHeader>
                 <CardTitle class="text-lg">{{ t('stats.expenseDistribution') }}</CardTitle>
                 <CardDescription>
                     {{ currentPeriodLabel }} {{ t('stats.categoryPercentage') }}
                 </CardDescription>
             </CardHeader>
-            <CardContent class="pt-0">
-                <div class="relative h-[300px]">
-                    <Doughnut
-                        v-if="chartData.datasets[0].data.length > 0"
-                        :data="chartData"
-                        :options="doughnutOptions"
-                    />
-                    <div v-else class="h-full flex items-center justify-center">
-                        <p class="text-muted-foreground">{{ t('stats.noData') }}</p>
-                    </div>
+            <CardContent>
+                <template v-if="areaChartData.length > 0">
+                    <ChartContainer :config="areaChartConfig">
+                        <VisXYContainer :data="areaChartData" :svg-defs="areaChartSvgDefs">
+                            <VisArea
+                                :x="(d: AreaData) => d.index"
+                                :y="areaChartYAccessors"
+                                :color="(_d: AreaData, i: number) => areaChartFillColors[i]"
+                                :opacity="0.4"
+                            />
+                            <VisLine
+                                :x="(d: AreaData) => d.index"
+                                :y="areaChartYAccessors"
+                                :color="(_d: AreaData, i: number) => areaChartLineColors[i]"
+                                :line-width="1"
+                            />
+                            <VisAxis
+                                type="x"
+                                :tick-line="false"
+                                :domain-line="false"
+                                :grid-line="false"
+                                :num-ticks="Math.min(areaChartData.length, 6)"
+                                :tick-format="(i: number) => areaChartData[i]?.label || ''"
+                            />
+                            <VisAxis
+                                type="y"
+                                :num-ticks="3"
+                                :tick-line="false"
+                                :domain-line="false"
+                                :tick-format="() => ''"
+                            />
+                            <ChartTooltip />
+                            <ChartCrosshair
+                                :template="componentToString(areaChartConfig, ChartTooltipContent, { labelKey: 'label' })"
+                                :color="(_d: AreaData, i: number) => areaChartLineColors[i % areaChartLineColors.length]"
+                            />
+                        </VisXYContainer>
+                    </ChartContainer>
+                </template>
+                <div v-else class="h-[200px] flex items-center justify-center">
+                    <p class="text-muted-foreground">{{ t('stats.noData') }}</p>
                 </div>
             </CardContent>
+            <CardFooter>
+                <div class="flex w-full items-start gap-2 text-sm">
+                    <div class="grid gap-2">
+                        <div class="flex items-center gap-2 leading-none font-medium">
+                            {{ t('stats.totalExpense') }}: NT$ {{ totalAmount.toLocaleString() }}
+                            <TrendingUp class="h-4 w-4" />
+                        </div>
+                        <div class="text-muted-foreground flex items-center gap-2 leading-none">
+                            {{ currentPeriodLabel }}
+                        </div>
+                    </div>
+                </div>
+            </CardFooter>
         </Card>
 
-        <!-- 長條圖 -->
+        <!-- 長條圖 - 水平方向 -->
         <Card class="relative overflow-hidden border-0 shadow-lg mb-6 animate-fade-in-up">
-            <CardHeader class="pb-3">
+            <CardHeader>
                 <CardTitle class="text-lg">{{ t('stats.expenseRanking') }}</CardTitle>
                 <CardDescription>
                     {{ t('stats.categoryAmountComparison') }}
                 </CardDescription>
             </CardHeader>
-            <CardContent class="pt-0">
-                <div class="relative h-[300px]">
-                    <Bar
-                        v-if="barChartData.datasets[0].data.length > 0"
-                        :data="barChartData"
-                        :options="barOptions"
-                    />
-                    <div v-else class="h-full flex items-center justify-center">
-                        <p class="text-muted-foreground">{{ t('stats.noData') }}</p>
-                    </div>
+            <CardContent>
+                <template v-if="barChartData.length > 0">
+                    <ChartContainer :config="barChartConfig">
+                        <VisXYContainer :data="barChartData">
+                            <VisGroupedBar
+                                :x="(d: BarData) => d.index"
+                                :y="(d: BarData) => d.amount"
+                                :color="(d: BarData) => barChartConfig[d.category]?.color"
+                                :rounded-corners="5"
+                                :orientation="Orientation.Horizontal"
+                            />
+                            <VisAxis
+                                type="y"
+                                :tick-line="false"
+                                :domain-line="false"
+                                :grid-line="false"
+                                :num-ticks="barChartData.length"
+                                :tick-format="(i: number) => barChartData.find(d => d.index === i)?.label || ''"
+                                :tick-values="barChartData.map(d => d.index)"
+                            />
+                            <ChartTooltip />
+                            <ChartCrosshair
+                                :template="componentToString(barChartConfig, ChartTooltipContent, { hideLabel: true })"
+                                color="#0000"
+                            />
+                        </VisXYContainer>
+                    </ChartContainer>
+                </template>
+                <div v-else class="h-[200px] flex items-center justify-center">
+                    <p class="text-muted-foreground">{{ t('stats.noData') }}</p>
                 </div>
             </CardContent>
+            <CardFooter class="flex-col items-start gap-2 text-sm">
+                <div class="flex gap-2 font-medium leading-none">
+                    {{ t('stats.totalExpense') }}: NT$ {{ totalAmount.toLocaleString() }}
+                    <TrendingUp class="h-4 w-4" />
+                </div>
+                <div class="leading-none text-muted-foreground">
+                    {{ currentPeriodLabel }}
+                </div>
+            </CardFooter>
         </Card>
 
-        <!-- 趨勢折線圖 -->
-        <Card class="relative overflow-hidden border-0 shadow-lg mb-6 animate-fade-in-up"
+        <!-- 每日消費趨勢 - 互動式長條圖 -->
+        <Card class="relative overflow-hidden border-0 shadow-lg mb-6 animate-fade-in-up py-4 sm:py-0"
               v-if="timeRange === 'month'">
-            <CardHeader class="pb-3">
-                <CardTitle class="text-lg">{{ t('stats.dailyTrend') }}</CardTitle>
-                <CardDescription>
-                    {{ currentPeriodLabel }} {{ t('stats.dailyChangePattern') }}
-                </CardDescription>
+            <CardHeader class="flex flex-col items-stretch border-b !p-0 sm:flex-row">
+                <div class="flex flex-1 flex-col justify-center gap-1 px-6 py-5 sm:py-6">
+                    <CardTitle class="text-lg">{{ t('stats.dailyTrend') }}</CardTitle>
+                    <CardDescription>
+                        {{ currentPeriodLabel }} {{ t('stats.dailyChangePattern') }}
+                    </CardDescription>
+                </div>
+                <div class="flex" v-if="Object.keys(sortedCategoryStats).length > 0">
+                    <button
+                        v-for="category in trendChartCategories"
+                        :key="category"
+                        :data-active="activeTrendCategory === category"
+                        class="data-[active=true]:bg-muted/50 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l sm:border-t-0 sm:border-l sm:px-8 sm:py-6"
+                        @click="activeTrendCategory = category"
+                    >
+                        <span class="text-muted-foreground text-xs">
+                            {{ trendChartConfig[category]?.label }}
+                        </span>
+                        <span class="text-lg leading-none font-bold sm:text-3xl">
+                            {{ trendChartTotals[category]?.toLocaleString() || 0 }}
+                        </span>
+                    </button>
+                </div>
             </CardHeader>
-            <CardContent class="pt-0">
-                <div class="relative h-[300px]">
-                    <Line
-                        v-if="lineChartData.datasets[0].data.length > 0"
-                        :data="lineChartData"
-                        :options="lineOptions"
-                    />
-                    <div v-else class="h-full flex items-center justify-center">
-                        <p class="text-muted-foreground">{{ t('stats.noData') }}</p>
-                    </div>
+            <CardContent class="px-2 sm:p-6">
+                <template v-if="trendChartData.length > 0">
+                    <ChartContainer :config="trendChartConfig" class="aspect-auto h-[250px] w-full" cursor>
+                        <VisXYContainer
+                            :data="trendChartData"
+                            :margin="{ left: -24 }"
+                            :y-domain="[0, undefined]"
+                        >
+                            <VisGroupedBar
+                                :x="(d: TrendData) => d.date"
+                                :y="(d: TrendData) => d[activeTrendCategory] as number"
+                                :color="trendChartConfig[activeTrendCategory]?.color"
+                                :bar-padding="0.1"
+                                :rounded-corners="false"
+                            />
+                            <VisAxis
+                                type="x"
+                                :tick-line="false"
+                                :domain-line="false"
+                                :grid-line="false"
+                                :tick-format="(d: number) => {
+                                    const date = new Date(d)
+                                    return `${date.getMonth() + 1}/${date.getDate()}`
+                                }"
+                            />
+                            <VisAxis
+                                type="y"
+                                :num-ticks="3"
+                                :tick-line="false"
+                                :domain-line="false"
+                            />
+                            <ChartTooltip />
+                            <ChartCrosshair
+                                :template="componentToString(trendChartConfig, ChartTooltipContent, {
+                                    labelFormatter(d: number | Date) {
+                                        const date = new Date(d)
+                                        return `${date.getMonth() + 1}/${date.getDate()}`
+                                    },
+                                })"
+                                color="#0000"
+                            />
+                        </VisXYContainer>
+                    </ChartContainer>
+                </template>
+                <div v-else class="h-[250px] flex items-center justify-center">
+                    <p class="text-muted-foreground">{{ t('stats.noData') }}</p>
                 </div>
             </CardContent>
         </Card>
@@ -185,8 +312,8 @@
             </CardContent>
         </Card>
 
-        <!-- 情侶消費比例分析（僅在有情侶時顯示） -->
-        <Card v-if="isInCouple"
+        <!-- 情侶消費比例分析（僅在家庭統計且有情侶時顯示） -->
+        <Card v-if="isInCouple && scope === 'family'"
               class="relative overflow-hidden border-0 shadow-lg mt-6 animate-fade-in-up">
             <CardHeader class="pb-3">
                 <CardTitle class="text-lg">消費比例分析</CardTitle>
@@ -293,54 +420,69 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, TrendingUp } from 'lucide-vue-next'
 import { useExpenseStore, useCoupleStore } from '@/stores'
-import { Doughnut, Bar, Line } from 'vue-chartjs'
-import {
-    Chart as ChartJS,
-    ArcElement,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler
-} from 'chart.js'
 
-// 註冊 Chart.js 組件
-ChartJS.register(
-    ArcElement,
-    CategoryScale,
-    LinearScale,
-    PointElement,
-    LineElement,
-    BarElement,
-    Title,
-    Tooltip,
-    Legend,
-    Filler
-)
+// Unovis 導入
+import { Orientation } from '@unovis/ts'
+import {
+    VisGroupedBar,
+    VisXYContainer,
+    VisAxis,
+    VisLine,
+    VisArea
+} from '@unovis/vue'
+import {
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+    ChartCrosshair,
+    componentToString,
+    type ChartConfig
+} from '@/components/ui/chart'
+
+// Props
+const props = withDefaults(defineProps<{
+    scope: 'personal' | 'family'
+}>(), {
+    scope: 'personal'
+})
+
+// 資料類型定義
+interface AreaData {
+    index: number
+    label: string
+    [key: string]: string | number  // 動態 key 用於存放各類別金額
+}
+
+interface BarData {
+    index: number
+    category: string
+    label: string
+    amount: number
+}
+
+interface TrendData {
+    date: Date
+    [key: string]: Date | number  // 動態 key 用於存放各類別金額
+}
 
 const { t } = useI18n()
 const expenseStore = useExpenseStore()
 const coupleStore = useCoupleStore()
-const {
-    monthlyStats,
-    yearlyStats,
-    categoryLabels,
-    expenses,
-    monthlyExpensesByUser,
-    spendingRatio,
-    expensesByUser
-} = expenseStore
+const { categoryLabels } = expenseStore
 const { isInCouple } = coupleStore
+
+// 根據 scope 選擇對應的支出資料
+const scopedExpenses = computed(() => {
+    return props.scope === 'personal'
+        ? expenseStore.personalExpenses
+        : expenseStore.familyExpenses
+})
 
 const showSettlement = ref(false)
 
@@ -367,25 +509,13 @@ const currentPeriodLabel = computed(() => {
     }
 })
 
-// 當前時期的統計數據
-const currentPeriodStats = computed(() => {
-    if (timeRange.value === 'month') {
-        const monthKey = currentPeriod.value.toISOString().slice(0, 7)
-        return monthlyStats[monthKey] || {}
-    } else {
-        const yearKey = currentPeriod.value.getFullYear().toString()
-        return yearlyStats[yearKey] || {}
-    }
-})
-
 // 排序後的類別統計
 const sortedCategoryStats = computed(() => {
-    const stats = currentPeriodStats.value
     const periodKey = timeRange.value === 'month'
         ? currentPeriod.value.toISOString().slice(0, 7)
         : currentPeriod.value.getFullYear().toString()
 
-    const periodExpenses = expenses.filter(expense => {
+    const periodExpenses = scopedExpenses.value.filter(expense => {
         if (timeRange.value === 'month') {
             return expense.date.startsWith(periodKey)
         } else {
@@ -402,8 +532,8 @@ const sortedCategoryStats = computed(() => {
             categoryStats[expense.category] = { total: 0, count: 0 }
         }
 
-        categoryStats[expense.category].total += amount
-        categoryStats[expense.category].count += 1
+        categoryStats[expense.category]!.total += amount
+        categoryStats[expense.category]!.count += 1
     })
 
     return Object.fromEntries(
@@ -413,7 +543,7 @@ const sortedCategoryStats = computed(() => {
 
 // 總金額
 const totalAmount = computed(() => {
-    return Object.values(currentPeriodStats.value).reduce((sum, amount) => sum + amount, 0)
+    return Object.values(sortedCategoryStats.value).reduce((sum, stats) => sum + stats.total, 0)
 })
 
 // 總次數
@@ -422,7 +552,7 @@ const totalCount = computed(() => {
         ? currentPeriod.value.toISOString().slice(0, 7)
         : currentPeriod.value.getFullYear().toString()
 
-    return expenses.filter(expense => {
+    return scopedExpenses.value.filter(expense => {
         if (timeRange.value === 'month') {
             return expense.date.startsWith(periodKey)
         } else {
@@ -447,253 +577,264 @@ const getPercentage = (amount: number) => {
     return totalAmount.value > 0 ? Math.round((amount / totalAmount.value) * 100) : 0
 }
 
-// 獲取類別顏色
-const getCategoryColor = (category: string) => {
-    const colorMap: Record<string, string> = {
-        food: '#ef4444',     // 餐飲 - 紅色
-        pet: '#f59e0b',      // 寵物 - 橙色
-        shopping: '#3b82f6', // 購物 - 藍色
-        transport: '#10b981', // 交通 - 綠色
-        home: '#8b5cf6',     // 居家 - 紫色
-        other: '#6b7280'     // 其他 - 灰色
+// ChartConfig - 用於 tooltip、圖例和顏色配置
+// 按照 shadcn-vue 官方範例：chartConfig 定義顏色，資料中使用 var(--color-KEY) 引用
+const chartConfig = computed<ChartConfig>(() => {
+    const config: ChartConfig = {
+        // 預設類別顏色配置 - 使用 chart CSS 變數
+        food: {
+            label: categoryLabels.food || '餐飲',
+            color: 'var(--chart-1)',
+        },
+        pet: {
+            label: categoryLabels.pet || '寵物',
+            color: 'var(--chart-2)',
+        },
+        shopping: {
+            label: categoryLabels.shopping || '購物',
+            color: 'var(--chart-3)',
+        },
+        transport: {
+            label: categoryLabels.transport || '交通',
+            color: 'var(--chart-4)',
+        },
+        home: {
+            label: categoryLabels.home || '居家',
+            color: 'var(--chart-5)',
+        },
+        other: {
+            label: categoryLabels.other || '其他',
+            color: 'var(--muted-foreground)',
+        },
     }
-    return colorMap[category] || '#6b7280'
+    return config
+})
+
+// 獲取類別顏色 - 用於非圖表區域（如進度條、圖例指示器）
+const getCategoryColor = (category: string) => {
+    return chartConfig.value[category]?.color || 'var(--muted-foreground)'
 }
 
-// 圓餅圖數據
-const chartData = computed(() => {
-    const labels = Object.keys(sortedCategoryStats.value).map(cat => categoryLabels[cat])
-    const data = Object.values(sortedCategoryStats.value).map(stats => stats.total)
-    const colors = Object.keys(sortedCategoryStats.value).map(cat => getCategoryColor(cat))
+// 面積圖設定
+const areaChartConfig = computed<ChartConfig>(() => {
+    const categories = Object.keys(sortedCategoryStats.value)
+    const config: ChartConfig = {}
+    categories.forEach((category, index) => {
+        config[category] = {
+            label: categoryLabels[category] || category,
+            color: `var(--chart-${index + 1})`,
+        }
+    })
+    return config
+})
 
-    return {
-        labels,
-        datasets: [{
-            data,
-            backgroundColor: colors,
-            borderColor: '#ffffff',
-            borderWidth: 2
-        }]
+// 面積圖 SVG 漸層定義
+const areaChartSvgDefs = computed(() => {
+    const categories = Object.keys(sortedCategoryStats.value)
+    return categories.map((category, index) => `
+        <linearGradient id="fill${category}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stop-color="var(--chart-${index + 1})" stop-opacity="0.8"/>
+            <stop offset="95%" stop-color="var(--chart-${index + 1})" stop-opacity="0.1"/>
+        </linearGradient>
+    `).join('')
+})
+
+// 面積圖填充顏色
+const areaChartFillColors = computed(() => {
+    const categories = Object.keys(sortedCategoryStats.value)
+    return categories.map(category => `url(#fill${category})`)
+})
+
+// 面積圖線條顏色
+const areaChartLineColors = computed(() => {
+    const categories = Object.keys(sortedCategoryStats.value)
+    return categories.map((_, index) => `var(--chart-${index + 1})`)
+})
+
+// 面積圖 Y 軸存取器（堆疊）
+const areaChartYAccessors = computed(() => {
+    const categories = Object.keys(sortedCategoryStats.value)
+    return categories.map(category => (d: AreaData) => d[category] as number)
+})
+
+// 面積圖資料 - 按時間顯示各類別消費
+const areaChartData = computed<AreaData[]>(() => {
+    const periodKey = timeRange.value === 'month'
+        ? currentPeriod.value.toISOString().slice(0, 7)
+        : currentPeriod.value.getFullYear().toString()
+
+    const categories = Object.keys(sortedCategoryStats.value)
+    if (categories.length === 0) return []
+
+    // 按月份視圖：顯示每週資料；按年份視圖：顯示每月資料
+    if (timeRange.value === 'month') {
+        // 將當月按週分組
+        const weeksData: AreaData[] = []
+        const year = currentPeriod.value.getFullYear()
+        const month = currentPeriod.value.getMonth()
+        const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+        for (let week = 0; week < Math.ceil(daysInMonth / 7); week++) {
+            const weekStart = week * 7 + 1
+            const weekEnd = Math.min((week + 1) * 7, daysInMonth)
+            const weekData: AreaData = {
+                index: week,
+                label: `${weekStart}-${weekEnd}${t('stats.day')}`,
+            }
+
+            categories.forEach(category => {
+                weekData[category] = 0
+            })
+
+            scopedExpenses.value.forEach(expense => {
+                if (expense.date.startsWith(periodKey)) {
+                    const dayPart = expense.date.split('-')[2]
+                    if (dayPart) {
+                        const day = parseInt(dayPart)
+                        if (day >= weekStart && day <= weekEnd && categories.includes(expense.category)) {
+                            weekData[expense.category] = (weekData[expense.category] as number || 0) + expense.amount
+                        }
+                    }
+                }
+            })
+
+            weeksData.push(weekData)
+        }
+
+        return weeksData
+    } else {
+        // 年份視圖：顯示每月資料
+        const monthsData: AreaData[] = []
+        const year = currentPeriod.value.getFullYear()
+
+        for (let month = 0; month < 12; month++) {
+            const monthKey = `${year}-${String(month + 1).padStart(2, '0')}`
+            const monthData: AreaData = {
+                index: month,
+                label: `${month + 1}月`,
+            }
+
+            categories.forEach(category => {
+                monthData[category] = 0
+            })
+
+            scopedExpenses.value.forEach(expense => {
+                if (expense.date.startsWith(monthKey) && categories.includes(expense.category)) {
+                    monthData[expense.category] = (monthData[expense.category] as number || 0) + expense.amount
+                }
+            })
+
+            monthsData.push(monthData)
+        }
+
+        return monthsData
     }
 })
 
-// 長條圖數據
-const barChartData = computed(() => {
-    const labels = Object.keys(sortedCategoryStats.value).map(cat => categoryLabels[cat])
-    const data = Object.values(sortedCategoryStats.value).map(stats => stats.total)
-    const colors = Object.keys(sortedCategoryStats.value).map(cat => getCategoryColor(cat))
-
-    return {
-        labels,
-        datasets: [{
-            label: t('stats.expenseAmount'),
-            data,
-            backgroundColor: colors.map(color => color + '80'), // 添加透明度
-            borderColor: colors,
-            borderWidth: 2,
-            borderRadius: 8
-        }]
-    }
+// 長條圖設定
+const barChartConfig = computed<ChartConfig>(() => {
+    const entries = Object.entries(sortedCategoryStats.value)
+    const config: ChartConfig = {}
+    entries.forEach(([category], index) => {
+        config[category] = {
+            label: categoryLabels[category] || category,
+            color: `var(--chart-${index + 1})`,
+        }
+    })
+    return config
 })
 
-// 折線圖數據（每日消費趨勢）
-const lineChartData = computed(() => {
+// 長條圖資料
+const barChartData = computed<BarData[]>(() => {
+    return Object.entries(sortedCategoryStats.value).map(([category, stats], index) => ({
+        index,
+        category,
+        label: categoryLabels[category] || category,
+        amount: stats.total,
+    }))
+})
+
+// 趨勢圖 - 當前選中的類別
+const activeTrendCategory = ref<string>('')
+
+// 趨勢圖顯示的類別（取前兩個消費最高的類別）
+const trendChartCategories = computed(() => {
+    const categories = Object.keys(sortedCategoryStats.value)
+    return categories.slice(0, 2)
+})
+
+// 趨勢圖設定
+const trendChartConfig = computed<ChartConfig>(() => {
+    const categories = trendChartCategories.value
+    const config: ChartConfig = {}
+    categories.forEach((category, index) => {
+        config[category] = {
+            label: categoryLabels[category] || category,
+            color: `var(--chart-${index + 1})`,
+        }
+    })
+    return config
+})
+
+// 趨勢圖各類別總計
+const trendChartTotals = computed<Record<string, number>>(() => {
+    const totals: Record<string, number> = {}
+    trendChartCategories.value.forEach(category => {
+        totals[category] = sortedCategoryStats.value[category]?.total || 0
+    })
+    return totals
+})
+
+// 監聽趨勢圖類別變化，自動初始化選中類別
+watch(trendChartCategories, (categories) => {
+    if (!activeTrendCategory.value || !categories.includes(activeTrendCategory.value)) {
+        activeTrendCategory.value = categories[0] || ''
+    }
+}, { immediate: true })
+
+// 趨勢圖資料（每日各類別消費）
+const trendChartData = computed<TrendData[]>(() => {
     if (timeRange.value !== 'month') {
-        return { labels: [], datasets: [] }
+        return []
     }
 
-    const monthKey = currentPeriod.value.toISOString().slice(0, 7)
-    const daysInMonth = new Date(currentPeriod.value.getFullYear(), currentPeriod.value.getMonth() + 1, 0).getDate()
+    const categories = trendChartCategories.value
+    if (categories.length === 0) return []
 
-    const dailyData: Record<string, number> = {}
+    const year = currentPeriod.value.getFullYear()
+    const month = currentPeriod.value.getMonth()
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const monthKey = currentPeriod.value.toISOString().slice(0, 7)
+
+    const dailyData: TrendData[] = []
 
     // 初始化每天的數據
-    for (let i = 1; i <= daysInMonth; i++) {
-        const dayStr = `${ monthKey }-${ i.toString().padStart(2, '0') }`
-        dailyData[dayStr] = 0
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateObj = new Date(year, month, day)
+        const dayData: TrendData = { date: dateObj }
+        categories.forEach(category => {
+            dayData[category] = 0
+        })
+        dailyData.push(dayData)
     }
 
-    // 計算每天的消費
-    expenses.forEach(expense => {
-        if (expense.date.startsWith(monthKey)) {
-            const amount = expense.amount
-            dailyData[expense.date] = (dailyData[expense.date] || 0) + amount
+    // 計算每天各類別的消費
+    scopedExpenses.value.forEach(expense => {
+        if (expense.date.startsWith(monthKey) && categories.includes(expense.category)) {
+            const dayPart = expense.date.split('-')[2]
+            if (dayPart) {
+                const day = parseInt(dayPart)
+                const dayIndex = day - 1
+                if (dailyData[dayIndex]) {
+                    dailyData[dayIndex][expense.category] =
+                        (dailyData[dayIndex][expense.category] as number || 0) + expense.amount
+                }
+            }
         }
     })
 
-    const labels = Object.keys(dailyData).map(date => {
-        const day = parseInt(date.split('-')[2])
-        return `${ day }${ t('stats.day') }`
-    })
-
-    const data = Object.values(dailyData)
-
-    return {
-        labels,
-        datasets: [{
-            label: t('stats.dailyExpense'),
-            data,
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            borderWidth: 3,
-            pointBackgroundColor: '#3b82f6',
-            pointBorderColor: '#ffffff',
-            pointBorderWidth: 2,
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            tension: 0.4,
-            fill: true
-        }]
-    }
+    return dailyData
 })
-
-// 圓餅圖選項
-const doughnutOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            position: 'bottom' as const,
-            labels: {
-                padding: 15,
-                font: {
-                    size: 12
-                },
-                usePointStyle: true,
-                pointStyle: 'circle'
-            }
-        },
-        tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            padding: 12,
-            cornerRadius: 8,
-            titleFont: {
-                size: 14
-            },
-            bodyFont: {
-                size: 13
-            },
-            callbacks: {
-                label: (context: any) => {
-                    const label = context.label || ''
-                    const value = context.raw || 0
-                    const percentage = getPercentage(value)
-                    return `${ label }: NT$ ${ value.toLocaleString() } (${ percentage }%)`
-                }
-            }
-        }
-    },
-    cutout: '65%'
-}
-
-// 長條圖選項
-const barOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            display: false
-        },
-        tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            padding: 12,
-            cornerRadius: 8,
-            titleFont: {
-                size: 14
-            },
-            bodyFont: {
-                size: 13
-            },
-            callbacks: {
-                label: (context: any) => {
-                    const value = context.raw || 0
-                    const percentage = getPercentage(value)
-                    return `NT$ ${ value.toLocaleString() } (${ percentage }%)`
-                }
-            }
-        }
-    },
-    scales: {
-        x: {
-            grid: {
-                display: false
-            },
-            ticks: {
-                font: {
-                    size: 12
-                }
-            }
-        },
-        y: {
-            beginAtZero: true,
-            grid: {
-                color: 'rgba(0, 0, 0, 0.05)'
-            },
-            ticks: {
-                font: {
-                    size: 12
-                },
-                callback: (value: any) => {
-                    return `NT$ ${ value.toLocaleString() }`
-                }
-            }
-        }
-    }
-}
-
-// 折線圖選項
-const lineOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            display: false
-        },
-        tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            padding: 12,
-            cornerRadius: 8,
-            titleFont: {
-                size: 14
-            },
-            bodyFont: {
-                size: 13
-            },
-            callbacks: {
-                label: (context: any) => {
-                    const value = context.raw || 0
-                    return `NT$ ${ value.toLocaleString() }`
-                }
-            }
-        }
-    },
-    scales: {
-        x: {
-            grid: {
-                display: false
-            },
-            ticks: {
-                font: {
-                    size: 11
-                }
-            }
-        },
-        y: {
-            beginAtZero: true,
-            grid: {
-                color: 'rgba(0, 0, 0, 0.05)'
-            },
-            ticks: {
-                font: {
-                    size: 12
-                },
-                callback: (value: any) => {
-                    return `NT$ ${ value.toLocaleString() }`
-                }
-            }
-        }
-    }
-}
 
 // 獲取使用者顏色
 const getUserColor = (userId: string) => {
@@ -705,76 +846,6 @@ const getUserColor = (userId: string) => {
     const index = userIds.indexOf(userId)
     return colors[index] || colors[0]
 }
-
-// 情侶消費圓餅圖數據
-const coupleSpendingData = computed(() => {
-    const ratioData = currentPeriodSpendingRatio.value
-    if (!ratioData) {
-        return { labels: [], datasets: [{ data: [] }] }
-    }
-
-    const labels = Object.values(ratioData).map(ratio =>
-        ratio.user?.display_name || '未知使用者'
-    )
-    const data = Object.values(ratioData).map(ratio => ratio.amount)
-    const colors = Object.keys(ratioData).map(userId => getUserColor(userId))
-
-    return {
-        labels,
-        datasets: [{
-            data,
-            backgroundColor: colors,
-            borderColor: '#ffffff',
-            borderWidth: 2
-        }]
-    }
-})
-
-// 情侶消費圓餅圖選項
-const coupleSpendingOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-        legend: {
-            position: 'bottom' as const,
-            labels: {
-                padding: 15,
-                font: {
-                    size: 12
-                },
-                usePointStyle: true,
-                pointStyle: 'circle'
-            }
-        },
-        tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            padding: 12,
-            cornerRadius: 8,
-            titleFont: {
-                size: 14
-            },
-            bodyFont: {
-                size: 13
-            },
-            callbacks: {
-                label: (context: any) => {
-                    const label = context.label || ''
-                    const value = context.raw || 0
-                    const ratioData = currentPeriodSpendingRatio.value
-                    if (!ratioData) return `${ label }: NT$ ${ value.toLocaleString() }`
-
-                    const userIds = Object.keys(ratioData)
-                    const userId = userIds[context.dataIndex]
-                    const userRatio = ratioData[userId as keyof typeof ratioData]
-                    const percentage = userRatio?.percentage || 0
-                    return `${ label }: NT$ ${ value.toLocaleString() } (${ percentage }%)`
-                }
-            }
-        }
-    },
-    cutout: '65%'
-}
-
 
 // 判斷是否為最高消費者
 const isHighestSpender = (userId: string) => {
@@ -791,13 +862,14 @@ const isHighestSpender = (userId: string) => {
 }
 
 const currentPeriodSpendingRatio = computed(() => {
-    if (!isInCouple) return null
+    // 情侶消費比例分析只在家庭統計時顯示
+    if (!isInCouple || props.scope !== 'family') return null
 
     const periodKey = timeRange.value === 'month'
         ? currentPeriod.value.toISOString().slice(0, 7)
         : currentPeriod.value.getFullYear().toString()
 
-    const periodExpenses = expenses.filter(expense => {
+    const periodExpenses = scopedExpenses.value.filter(expense => {
         if (timeRange.value === 'month') {
             return expense.date.startsWith(periodKey)
         } else {
@@ -844,10 +916,13 @@ const currentPeriodSpendingRatio = computed(() => {
     }> = {}
 
     userIds.forEach(userId => {
-        ratios[userId] = {
-            percentage: Math.round((userStats[userId].total / total) * 100),
-            amount: userStats[userId].total,
-            user: userStats[userId].user
+        const stat = userStats[userId]
+        if (stat) {
+            ratios[userId] = {
+                percentage: Math.round((stat.total / total) * 100),
+                amount: stat.total,
+                user: stat.user
+            }
         }
     })
 
@@ -862,8 +937,11 @@ const settlementInfo = computed(() => {
     if (userIds.length !== 2) return null
 
     const [user1Id, user2Id] = userIds
+    if (!user1Id || !user2Id) return null
+
     const user1 = ratioData[user1Id]
     const user2 = ratioData[user2Id]
+    if (!user1 || !user2) return null
 
     const difference = Math.abs(user1.amount - user2.amount)
     const halfDifference = Math.round(difference / 2)
@@ -882,8 +960,6 @@ const settlementInfo = computed(() => {
 const toggleSettlement = () => {
     showSettlement.value = !showSettlement.value
 }
-
-// 資料載入已在 App.vue 中統一處理
 </script>
 
 <style scoped>

@@ -36,17 +36,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import {
-    ShoppingBag,
-    Utensils,
-    Car,
-    Package,
-    Home,
-    Cat
-} from 'lucide-vue-next'
+import { CategoryUtils } from '@/composables/useCategories'
 
 interface Props {
-    id?: string  // UUID 類型
+    id?: string
     title: string
     amount: string
     category: string
@@ -69,58 +62,14 @@ const handleClick = () => {
     emit('click', props)
 }
 
-// 圖標映射
-const iconMap = {
-    restaurant: Utensils,  // food category
-    heart: Cat,            // pet category
-    shopping: ShoppingBag, // shopping category
-    transport: Car,        // transport category
-    home: Home,            // home category
-    package: Package       // other category
-}
-
-// 圖標顏色配置 - 使用語義化顏色
-const iconColorConfig = {
-    restaurant: {  // food category
-        background: 'bg-brand-accent',
-        color: 'text-brand-primary'
-    },
-    heart: {       // pet category
-        background: 'bg-brand-accent',
-        color: 'text-brand-primary'
-    },
-    shopping: {    // shopping category
-        background: 'bg-brand-accent',
-        color: 'text-brand-primary'
-    },
-    transport: {   // transport category
-        background: 'bg-brand-accent',
-        color: 'text-brand-primary'
-    },
-    home: {        // home category
-        background: 'bg-brand-accent',
-        color: 'text-brand-primary'
-    },
-    package: {     // other category
-        background: 'bg-brand-accent',
-        color: 'text-brand-primary'
-    }
-}
-
-// 計算屬性
+// 使用 CategoryUtils 取得 icon 元件
 const iconComponent = computed(() => {
-    return iconMap[props.icon as keyof typeof iconMap] || ShoppingBag
+    return CategoryUtils.getIconByKey(props.icon)
 })
 
-const iconBackgroundClass = computed(() => {
-    const config = iconColorConfig[props.icon as keyof typeof iconColorConfig]
-    return config?.background || 'bg-brand-accent'
-})
-
-const iconColorClass = computed(() => {
-    const config = iconColorConfig[props.icon as keyof typeof iconColorConfig]
-    return config?.color || 'text-brand-primary'
-})
+// 統一使用 brand 顏色
+const iconBackgroundClass = 'bg-brand-accent'
+const iconColorClass = 'text-brand-primary'
 </script>
 
 <style scoped>

@@ -98,13 +98,51 @@
                                 </Button>
                             </PopoverTrigger>
                             <PopoverContent class="w-auto p-0" align="start">
-                                <Calendar 
+                                <Calendar
                                     :model-value="selectedDate as any"
                                     @update:model-value="handleDateSelect"
                                     initial-focus
                                 />
                             </PopoverContent>
                         </Popover>
+                    </div>
+
+                    <!-- Scope Toggle（僅在已加入家庭時顯示） -->
+                    <div v-if="coupleStore.isInCouple" class="space-y-2">
+                        <label class="text-sm font-medium text-foreground">
+                            {{ t('expense.scope') }}
+                        </label>
+                        <div class="flex gap-2 p-1 rounded-lg border border-border bg-muted/30">
+                            <button
+                                type="button"
+                                @click="formData.scope = 'personal'"
+                                :class="[
+                                    'flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all duration-200',
+                                    formData.scope === 'personal'
+                                        ? 'bg-brand-primary text-brand-primary-foreground shadow-sm'
+                                        : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-accent'
+                                ]"
+                            >
+                                <User class="h-4 w-4" />
+                                {{ t('expense.personal') }}
+                            </button>
+                            <button
+                                type="button"
+                                @click="formData.scope = 'family'"
+                                :class="[
+                                    'flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all duration-200',
+                                    formData.scope === 'family'
+                                        ? 'bg-brand-primary text-brand-primary-foreground shadow-sm'
+                                        : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-accent'
+                                ]"
+                            >
+                                <Home class="h-4 w-4" />
+                                {{ t('expense.family') }}
+                            </button>
+                        </div>
+                        <p class="text-xs text-muted-foreground">
+                            {{ formData.scope === 'personal' ? t('expense.personalDesc') : t('expense.familyDesc') }}
+                        </p>
                     </div>
 
                 </form>
@@ -140,43 +178,36 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { 
-    Drawer, 
-    DrawerContent, 
-    DrawerHeader, 
-    DrawerTitle, 
+import {
+    Drawer,
+    DrawerContent,
+    DrawerHeader,
+    DrawerTitle,
     DrawerDescription,
-    DrawerClose 
+    DrawerClose
 } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { 
-    ShoppingBag, 
-    Utensils, 
-    Car, 
-    Cat, 
-    Home,
-    Package,
-    Plus,
-    CalendarIcon
-} from 'lucide-vue-next'
+import { Plus, Calendar as CalendarIcon, User, Home } from 'lucide-vue-next'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
-import { CalendarDate, getLocalTimeZone, today, parseDate, type DateValue } from '@internationalized/date'
+import { getLocalTimeZone, today, type DateValue, type CalendarDate } from '@internationalized/date'
+import { useCategories } from '@/composables/useCategories'
+import { useCoupleStore } from '@/stores/couple'
+import { useExpenseStore } from '@/stores/expense'
+import type { ExpenseScope } from '@/lib/database.types'
 
 const { t } = useI18n()
-
-interface ExpenseCategory {
-    id: string
-    name: string
-    icon: any
-}
+const { categories, getIconKey } = useCategories()
+const coupleStore = useCoupleStore()
+const expenseStore = useExpenseStore()
 
 interface ExpenseFormData {
     title: string
     amount: string
     category: string
     date: string
+    scope: ExpenseScope
 }
 
 interface Props {
@@ -203,7 +234,8 @@ const formData = ref<ExpenseFormData>({
     title: '',
     amount: '',
     category: '',
-    date: new Date().toISOString().split('T')[0] // 預設今天
+    date: new Date().toISOString().split('T')[0], // 預設今天
+    scope: expenseStore.lastUsedScope || 'personal' // 使用上次選擇的 scope
 })
 
 // 日期選擇器狀態
@@ -230,15 +262,6 @@ const handleDateSelect = (date: DateValue | DateValue[] | undefined) => {
     }
 }
 
-// 費用類別
-const categories = computed(() => [
-    { id: 'food', name: t('expense.categories.food'), icon: Utensils },
-    { id: 'pet', name: t('expense.categories.pet'), icon: Cat },
-    { id: 'shopping', name: t('expense.categories.shopping'), icon: ShoppingBag },
-    { id: 'transport', name: t('expense.categories.transport'), icon: Car },
-    { id: 'home', name: t('expense.categories.home'), icon: Home },
-    { id: 'other', name: t('expense.categories.other'), icon: Package },
-])
 
 // 表單驗證
 const isFormValid = computed(() => {
@@ -256,7 +279,8 @@ const resetForm = () => {
         title: '',
         amount: '',
         category: '',
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split('T')[0],
+        scope: expenseStore.lastUsedScope || 'personal'
     }
     selectedDate.value = todayDate
 }
@@ -276,23 +300,14 @@ watch(isOpen, (newValue) => {
 const handleSubmit = () => {
     if (!isFormValid.value) return
 
-    // 建立類別到圖標的映射
-    const categoryIconMap: Record<string, string> = {
-        food: 'restaurant',
-        pet: 'heart',
-        shopping: 'shopping',
-        transport: 'car',
-        home: 'home',
-        other: 'more'
-    }
-
     const newExpense = {
-        id: Date.now(), // 簡單的 ID 生成
+        id: Date.now(),
         title: formData.value.title.trim(),
         amount: `-NT ${Math.round(parseFloat(formData.value.amount))}`,
         category: formData.value.category,
-        icon: categoryIconMap[formData.value.category] || 'more',
-        date: formData.value.date
+        icon: getIconKey(formData.value.category),
+        date: formData.value.date,
+        scope: formData.value.scope
     }
 
     emit('expense-added', newExpense)

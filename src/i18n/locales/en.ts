@@ -13,15 +13,42 @@ const en = {
     success: 'Success',
     error: 'Error',
     warning: 'Warning',
-    info: 'Info'
+    info: 'Info',
+    undo: 'Undo',
+    refreshed: 'Data refreshed',
+    refreshFailed: 'Refresh failed, please try again',
+    unknown: 'Unknown'
   },
 
   // Navigation
   nav: {
     home: 'Home',
+    dashboard: 'Dashboard',
+    expenses: 'Expenses',
     statistics: 'Statistics',
     search: 'Search',
     settings: 'Settings'
+  },
+
+  // Dashboard
+  dashboard: {
+    personal: 'Personal Expenses',
+    family: 'Family Expenses',
+    monthTotal: 'This Month',
+    todayTotal: 'Today',
+    recentExpenses: 'Recent Expenses',
+    viewMore: 'View More',
+    spendingRatio: 'Spending Ratio',
+    budgetProgress: 'Budget Progress',
+    personalBudgetProgress: 'Personal Budget Progress',
+    noPersonalExpenses: 'No personal expenses yet',
+    noFamilyExpenses: 'No family expenses yet'
+  },
+
+  // Expenses List
+  expenses: {
+    noPersonalExpenses: 'No personal expenses yet',
+    noFamilyExpenses: 'No family expenses yet'
   },
 
   // Home
@@ -55,6 +82,8 @@ const en = {
   // Statistics
   stats: {
     title: 'Statistics',
+    personalStats: 'Personal Stats',
+    familyStats: 'Family Stats',
     calendarView: 'Calendar View',
     chartAnalysis: 'Chart Analysis',
     monthlyTotal: 'Monthly Total',
@@ -107,11 +136,26 @@ const en = {
     payer: 'Payer',
     addExpense: 'Add Expense',
     addExpenseDesc: 'Fill out the form below to add a new expense record',
+    edit: 'Edit Expense',
+    editDesc: 'Edit the details of this transaction',
     editExpense: 'Edit Expense',
     deleteExpense: 'Delete Expense',
     expenseAdded: 'Expense record added',
     expenseUpdated: 'Expense record updated',
     expenseDeleted: 'Expense record deleted',
+    // Scope related
+    scope: 'Expense Type',
+    personal: 'Personal',
+    family: 'Family',
+    personalDesc: 'Only visible to you',
+    familyDesc: 'Shared with your partner',
+    // Operation results
+    updated: 'Expense updated',
+    updateFailed: 'Update failed, please try again',
+    deleted: 'Deleted',
+    deleteFailed: 'Delete failed, please try again',
+    restored: 'Expense restored',
+    restoreFailed: 'Restore failed, please try again',
     categories: {
       food: 'Food & Dining',
       pet: 'Pet',
@@ -167,6 +211,17 @@ const en = {
       'en': 'English',
       'ja': '日本語'
     },
+    // Personal budget
+    personalBudget: 'Personal Budget',
+    personalBudgetNotSet: 'Not set',
+    personalBudgetTitle: 'Personal Monthly Budget',
+    monthlyBudgetAmount: 'Monthly Budget Amount',
+    enterBudgetAmount: 'Enter budget amount',
+    personalBudgetDesc: 'Set your personal monthly spending limit. You will receive a warning when usage exceeds 80%',
+    currentUsage: 'Current Usage',
+    clearBudget: 'Clear Budget',
+    personalBudgetSaved: 'Personal budget saved',
+    personalBudgetCleared: 'Personal budget cleared',
     // Account management
     logout: 'Logout',
     switchAccount: 'Switch Account',

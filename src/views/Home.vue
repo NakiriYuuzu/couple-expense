@@ -16,18 +16,11 @@ import ExpenseGroup from '@/components/ExpenseGroup.vue'
 import { useExpenseStore, useCoupleStore } from '@/stores'
 import { toast } from 'vue-sonner'
 import { usePullToRefresh } from '@/composables/usePullToRefresh'
-import { 
-    Utensils,
-    ShoppingBag,
-    Bus,
-    Cat,
-    Home,
-    Package,
-    Calendar as CalendarIcon,
-    Lock
-} from 'lucide-vue-next'
+import { useCategories, CategoryUtils, type CategoryId } from '@/composables/useCategories'
+import { Calendar as CalendarIcon, Lock } from 'lucide-vue-next'
 
 const { t } = useI18n()
+const { categories } = useCategories()
 const router = useRouter()
 const expenseStore = useExpenseStore()
 const coupleStore = useCoupleStore()
@@ -87,21 +80,11 @@ const cancelBalanceUpdate = () => {
 const isEditDialogOpen = ref(false)
 const editingExpense = ref<any>(null)
 
-// 類別選項
-const categories = computed(() => [
-    { id: 'food', label: t('expense.categories.food'), icon: Utensils },
-    { id: 'pet', label: t('expense.categories.pet'), icon: Cat },
-    { id: 'shopping', label: t('expense.categories.shopping'), icon: ShoppingBag },
-    { id: 'transport', label: t('expense.categories.transport'), icon: Bus },
-    { id: 'home', label: t('expense.categories.home'), icon: Home },
-    { id: 'other', label: t('expense.categories.other'), icon: Package }
-])
-
 // 編輯表單數據
 const editForm = ref({
     title: '',
     amount: 0,
-    category: 'food' as 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 'other',
+    category: 'food' as CategoryId,
     date: ''
 })
 
@@ -110,13 +93,12 @@ const editDateValue = ref<DateValue>()
 
 // 轉換 store 資料格式為組件需要的格式
 const convertStoreExpense = (storeExpense: any) => {
-    const category = categories.value.find(cat => cat.id === storeExpense.category)
     return {
         id: storeExpense.id,
         title: storeExpense.title,
         amount: `NT ${Math.round(storeExpense.amount)}`,
         category: storeExpense.category,
-        icon: category?.icon,
+        icon: CategoryUtils.getIconKey(storeExpense.category),
         user: storeExpense.user
     }
 }
@@ -475,7 +457,7 @@ usePullToRefresh({
                                 v-for="category in categories"
                                 :key="category.id"
                                 type="button"
-                                @click="editForm.category = category.id as 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 'other'"
+                                @click="editForm.category = category.id"
                                 :class="[
                                     'flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all duration-200',
                                     editForm.category === category.id
@@ -496,7 +478,7 @@ usePullToRefresh({
                                     />
                                 </div>
                                 <span class="text-xs font-medium text-foreground">
-                                    {{ category.label }}
+                                    {{ category.name }}
                                 </span>
                             </button>
                         </div>
