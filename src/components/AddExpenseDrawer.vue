@@ -97,11 +97,11 @@
                                     {{ formData.date ? formatDate(formData.date) : t('home.selectDate') }}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent class="w-auto p-0" align="start">
+                            <PopoverContent class="w-auto p-0" align="start" to="[data-vaul-drawer]">
                                 <Calendar
-                                    :model-value="selectedDate as any"
-                                    @update:model-value="handleDateSelect"
+                                    v-model="selectedDate"
                                     initial-focus
+                                    @update:model-value="handleDateSelect"
                                 />
                             </PopoverContent>
                         </Popover>
