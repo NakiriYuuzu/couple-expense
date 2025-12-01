@@ -359,7 +359,6 @@ export const useCoupleStore = defineStore('couple', () => {
     userProfile,
     partnerProfile,
     coupleSettings,
-    userSettings,
     loading,
     error,
 

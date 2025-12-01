@@ -8,6 +8,7 @@
     },
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "target": "ES2024",
+    "skipLibCheck": true,
 
     /* Linting */
     "strict": true,
