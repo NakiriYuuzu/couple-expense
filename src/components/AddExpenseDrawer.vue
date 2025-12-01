@@ -84,27 +84,36 @@
                         <label class="text-sm font-medium text-foreground">
                             {{ t('expense.date') }}
                         </label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    :class="[
-                                        'w-full h-12 justify-start text-left font-normal',
-                                        !formData.date && 'text-muted-foreground'
-                                    ]"
-                                >
-                                    <CalendarIcon class="mr-2 h-4 w-4" />
-                                    {{ formData.date ? formatDate(formData.date) : t('home.selectDate') }}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent class="w-auto p-0" align="start" to="[data-vaul-drawer]">
-                                <Calendar
-                                    v-model="selectedDate"
-                                    initial-focus
-                                    @update:model-value="handleDateSelect"
-                                />
-                            </PopoverContent>
-                        </Popover>
+                        <Button
+                            variant="outline"
+                            type="button"
+                            @click="showCalendar = !showCalendar"
+                            :class="[
+                                'w-full h-12 justify-start text-left font-normal',
+                                !formData.date && 'text-muted-foreground'
+                            ]"
+                        >
+                            <CalendarIcon class="mr-2 h-4 w-4" />
+                            {{ formData.date ? formatDate(formData.date) : t('home.selectDate') }}
+                            <ChevronDown
+                                :class="[
+                                    'ml-auto h-4 w-4 transition-transform duration-200',
+                                    showCalendar && 'rotate-180'
+                                ]"
+                            />
+                        </Button>
+                        <div
+                            v-show="showCalendar"
+                            class="rounded-lg border border-border bg-background p-1 animate-in fade-in-0 zoom-in-95"
+                        >
+                            <Calendar
+                                v-model="selectedDate"
+                                :default-placeholder="defaultPlaceholder"
+                                weekday-format="short"
+                                class="**:data-[slot=calendar-cell-trigger]:size-12!"
+                                @update:model-value="(val) => { handleDateSelect(val); showCalendar = false }"
+                            />
+                        </div>
                     </div>
 
                     <!-- Scope Toggle（僅在已加入家庭時顯示） -->
@@ -188,8 +197,7 @@ import {
 } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Plus, Calendar as CalendarIcon, User, Home } from 'lucide-vue-next'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Plus, Calendar as CalendarIcon, User, Home, ChevronDown } from 'lucide-vue-next'
 import { Calendar } from '@/components/ui/calendar'
 import { getLocalTimeZone, today, type DateValue, type CalendarDate } from '@internationalized/date'
 import { useCategories } from '@/composables/useCategories'
@@ -240,6 +248,8 @@ const formData = ref<ExpenseFormData>({
 
 // 日期選擇器狀態
 const selectedDate = ref<DateValue>(today(getLocalTimeZone()))
+const defaultPlaceholder = today(getLocalTimeZone())
+const showCalendar = ref(false)
 
 // 日期格式化函數
 const formatDate = (dateStr: string) => {
@@ -283,6 +293,7 @@ const resetForm = () => {
         scope: expenseStore.lastUsedScope || 'personal'
     }
     selectedDate.value = todayDate
+    showCalendar.value = false
 }
 
 // 當 drawer 開啟時，預設選擇第一個類別
