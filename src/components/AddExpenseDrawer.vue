@@ -42,6 +42,44 @@
                         />
                     </div>
 
+                    <!-- Scope Toggle（僅在已加入家庭時顯示） -->
+                    <div v-if="coupleStore.isInCouple" class="space-y-2">
+                        <label class="text-sm font-medium text-foreground">
+                            {{ t('expense.scope') }}
+                        </label>
+                        <div class="flex gap-2 p-1 rounded-lg border border-border bg-muted/30">
+                            <button
+                                type="button"
+                                @click="formData.scope = 'personal'"
+                                :class="[
+                                    'flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all duration-200',
+                                    formData.scope === 'personal'
+                                        ? 'bg-brand-primary text-brand-primary-foreground shadow-sm'
+                                        : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-accent'
+                                ]"
+                            >
+                                <User class="h-4 w-4" />
+                                {{ t('expense.personal') }}
+                            </button>
+                            <button
+                                type="button"
+                                @click="formData.scope = 'family'"
+                                :class="[
+                                    'flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all duration-200',
+                                    formData.scope === 'family'
+                                        ? 'bg-brand-primary text-brand-primary-foreground shadow-sm'
+                                        : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-accent'
+                                ]"
+                            >
+                                <Home class="h-4 w-4" />
+                                {{ t('expense.family') }}
+                            </button>
+                        </div>
+                        <p class="text-xs text-muted-foreground">
+                            {{ formData.scope === 'personal' ? t('expense.personalDesc') : t('expense.familyDesc') }}
+                        </p>
+                    </div>
+
                     <!-- 類別選擇 -->
                     <div class="space-y-2">
                         <label class="text-sm font-medium text-foreground">
@@ -114,44 +152,6 @@
                                 @update:model-value="(val) => { handleDateSelect(val); showCalendar = false }"
                             />
                         </div>
-                    </div>
-
-                    <!-- Scope Toggle（僅在已加入家庭時顯示） -->
-                    <div v-if="coupleStore.isInCouple" class="space-y-2">
-                        <label class="text-sm font-medium text-foreground">
-                            {{ t('expense.scope') }}
-                        </label>
-                        <div class="flex gap-2 p-1 rounded-lg border border-border bg-muted/30">
-                            <button
-                                type="button"
-                                @click="formData.scope = 'personal'"
-                                :class="[
-                                    'flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all duration-200',
-                                    formData.scope === 'personal'
-                                        ? 'bg-brand-primary text-brand-primary-foreground shadow-sm'
-                                        : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-accent'
-                                ]"
-                            >
-                                <User class="h-4 w-4" />
-                                {{ t('expense.personal') }}
-                            </button>
-                            <button
-                                type="button"
-                                @click="formData.scope = 'family'"
-                                :class="[
-                                    'flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-md text-sm font-medium transition-all duration-200',
-                                    formData.scope === 'family'
-                                        ? 'bg-brand-primary text-brand-primary-foreground shadow-sm'
-                                        : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-accent'
-                                ]"
-                            >
-                                <Home class="h-4 w-4" />
-                                {{ t('expense.family') }}
-                            </button>
-                        </div>
-                        <p class="text-xs text-muted-foreground">
-                            {{ formData.scope === 'personal' ? t('expense.personalDesc') : t('expense.familyDesc') }}
-                        </p>
                     </div>
 
                 </form>
