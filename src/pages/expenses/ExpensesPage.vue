@@ -11,13 +11,13 @@ import { Label } from '@/shared/components/ui/label'
 import { Calendar } from '@/shared/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover'
 import { Slider } from '@/shared/components/ui/slider'
-import { parseDate, type DateValue } from '@internationalized/date'
+import { type DateValue } from '@internationalized/date'
 import TopBar from '@/shared/components/TopBar.vue'
 import ExpenseGroup from '@/features/expense/components/ExpenseGroup.vue'
 import { useExpenseStore } from '@/shared/stores'
 import { useGroupStore } from '@/features/group/stores/group'
 import { usePullToRefresh } from '@/shared/composables/usePullToRefresh'
-import { useCategories, CategoryUtils, type CategoryId } from '@/features/expense/composables/useCategories'
+import { useCategories, CategoryUtils } from '@/features/expense/composables/useCategories'
 import type { Expense } from '@/features/expense/stores/expense'
 import type { DisplayExpense } from '@/entities/expense/types'
 import { toast } from 'vue-sonner'
@@ -96,7 +96,10 @@ const convertStoreExpense = (storeExpense: Expense): DisplayExpense => {
         amount: `NT ${Math.round(storeExpense.amount)}`,
         category: storeExpense.category,
         icon: CategoryUtils.getIconKey(storeExpense.category),
-        user: storeExpense.user
+        user: storeExpense.user,
+        groupId: storeExpense.group_id,
+        splitMethod: storeExpense.split_method,
+        isSettled: storeExpense.is_settled
     }
 }
 
@@ -230,123 +233,10 @@ const handleApplyFilters = () => {
     isFilterDialogOpen.value = false
 }
 
-// 編輯 Dialog 狀態
-const isEditDialogOpen = ref(false)
-const editingExpense = ref<Expense | null>(null)
-
-// 編輯表單數據
-const editForm = ref({
-    title: '',
-    amount: 0,
-    category: 'food' as CategoryId,
-    date: ''
-})
-
-// 日期選擇器的值
-const editDateValue = ref<DateValue>()
-
-// 處理費用項目點擊
+// 處理費用項目點擊 → 導航到詳情頁
 const handleExpenseClick = (expense: DisplayExpense) => {
-    // 找到原始資料
-    const allExpenses = [...expenseStore.personalExpenses, ...expenseStore.groupExpenses]
-    const originalExpense = allExpenses.find(e => e.id === expense.id)
-    if (originalExpense) {
-        editForm.value = {
-            title: originalExpense.title,
-            amount: originalExpense.amount,
-            category: originalExpense.category,
-            date: originalExpense.date.replace(/-/g, '/')
-        }
-        // 設置日期選擇器的值
-        const dateParts = originalExpense.date.split('-')
-        editDateValue.value = parseDate(`${dateParts[0]}-${dateParts[1]}-${dateParts[2]}`)
-        editingExpense.value = originalExpense
-        isEditDialogOpen.value = true
-    }
-}
-
-// 處理日期選擇
-const handleEditDateSelect = (date: DateValue | undefined) => {
-    if (date) {
-        editForm.value.date = `${date.year}/${String(date.month).padStart(2, '0')}/${String(date.day).padStart(2, '0')}`
-    }
-}
-
-// 格式化日期顯示
-const formatEditDate = (dateStr: string) => {
-    if (!dateStr) return t('home.selectDate')
-    return dateStr
-}
-
-// 儲存編輯
-const saveEditExpense = async () => {
-    if (editingExpense.value) {
-        try {
-            // 轉換日期格式從 "2025/08/03" 到 "2025-08-03"
-            const storeDate = editForm.value.date.replace(/\//g, '-')
-
-            await expenseStore.updateExpense(editingExpense.value.id, {
-                title: editForm.value.title,
-                amount: Math.round(editForm.value.amount),
-                category: editForm.value.category,
-                date: storeDate
-            })
-
-            isEditDialogOpen.value = false
-            editingExpense.value = null
-            toast.success(t('expense.updated'))
-        } catch (error) {
-            console.error('更新費用失敗:', error)
-            toast.error(t('expense.updateFailed'))
-        }
-    }
-}
-
-// 取消編輯
-const cancelEditExpense = () => {
-    isEditDialogOpen.value = false
-    editingExpense.value = null
-}
-
-// 刪除費用
-const handleDeleteExpense = async () => {
-    if (editingExpense.value) {
-        const deletedExpense = { ...editingExpense.value }
-        const expenseTitle = deletedExpense.title
-
-        try {
-            isEditDialogOpen.value = false
-            editingExpense.value = null
-
-            await expenseStore.deleteExpense(deletedExpense.id)
-
-            toast.success(`${t('expense.deleted')}「${expenseTitle}」`, {
-                action: {
-                    label: t('common.undo'),
-                    onClick: async () => {
-                        try {
-                            await expenseStore.addExpense({
-                                title: deletedExpense.title,
-                                amount: deletedExpense.amount,
-                                category: deletedExpense.category,
-                                icon: deletedExpense.icon,
-                                date: deletedExpense.date,
-                                group_id: deletedExpense.group_id
-                            })
-                            toast.success(t('expense.restored'))
-                            await expenseStore.fetchExpenses()
-                        } catch (error) {
-                            console.error('復原失敗:', error)
-                            toast.error(t('expense.restoreFailed'))
-                        }
-                    }
-                },
-                duration: 5000
-            })
-        } catch (error) {
-            console.error('刪除費用失敗:', error)
-            toast.error(t('expense.deleteFailed'))
-        }
+    if (expense.id) {
+        router.push({ name: 'ExpenseDetail', params: { id: expense.id } })
     }
 }
 
@@ -579,105 +469,5 @@ usePullToRefresh({
             </DialogContent>
         </Dialog>
 
-        <!-- 編輯費用 Dialog -->
-        <Dialog v-model:open="isEditDialogOpen">
-            <DialogContent class="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>{{ t('expense.edit') }}</DialogTitle>
-                    <DialogDescription>{{ t('expense.editDesc') }}</DialogDescription>
-                </DialogHeader>
-
-                <div class="space-y-4 py-4">
-                    <!-- 費用標題 -->
-                    <div class="space-y-2">
-                        <Label for="edit-title">{{ t('expense.title') }}</Label>
-                        <Input
-                            id="edit-title"
-                            v-model="editForm.title"
-                            :placeholder="t('expense.titlePlaceholder')"
-                        />
-                    </div>
-
-                    <!-- 金額 -->
-                    <div class="space-y-2">
-                        <Label for="edit-amount">{{ t('expense.amount') }} (NT$)</Label>
-                        <Input
-                            id="edit-amount"
-                            v-model="editForm.amount"
-                            type="number"
-                            min="0"
-                            step="1"
-                        />
-                    </div>
-
-                    <!-- 類別選擇 -->
-                    <div class="space-y-2">
-                        <Label>{{ t('expense.category') }}</Label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <button
-                                v-for="category in categories"
-                                :key="category.id"
-                                type="button"
-                                @click="editForm.category = category.id"
-                                :class="[
-                                    'flex flex-col items-center gap-1.5 p-2 rounded-lg border-2 transition-all duration-200',
-                                    editForm.category === category.id
-                                        ? 'border-brand-primary bg-brand-accent'
-                                        : 'border-border bg-background hover:border-brand-primary/50'
-                                ]"
-                            >
-                                <div :class="[
-                                    'flex h-8 w-8 items-center justify-center rounded-lg',
-                                    editForm.category === category.id ? 'bg-brand-primary' : 'bg-brand-accent'
-                                ]">
-                                    <component
-                                        :is="category.icon"
-                                        :class="[
-                                            'h-4 w-4',
-                                            editForm.category === category.id ? 'text-brand-primary-foreground' : 'text-brand-primary'
-                                        ]"
-                                    />
-                                </div>
-                                <span class="text-xs font-medium">{{ category.name }}</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- 日期選擇 -->
-                    <div class="space-y-2">
-                        <Label>{{ t('expense.date') }}</Label>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="outline" class="w-full justify-start text-left font-normal">
-                                    <CalendarIcon class="mr-2 h-4 w-4" />
-                                    {{ formatEditDate(editForm.date) }}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent class="w-auto p-0" align="start">
-                                <Calendar
-                                    :model-value="editDateValue as any"
-                                    @update:model-value="handleEditDateSelect"
-                                    initial-focus
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                </div>
-
-                <DialogFooter class="flex-col sm:flex-row gap-2">
-                    <Button variant="destructive" @click="handleDeleteExpense" class="w-full sm:w-auto">
-                        {{ t('common.delete') }}
-                    </Button>
-                    <div class="flex gap-2 w-full sm:w-auto">
-                        <Button variant="outline" @click="cancelEditExpense" class="flex-1">
-                            {{ t('common.cancel') }}
-                        </Button>
-                        <Button @click="saveEditExpense" class="flex-1 bg-brand-primary hover:bg-brand-primary/90">
-                            {{ t('common.save') }}
-                        </Button>
-                    </div>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
     </div>
 </template>

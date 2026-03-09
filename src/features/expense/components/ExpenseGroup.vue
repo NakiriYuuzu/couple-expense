@@ -43,6 +43,8 @@
                 :icon="expense.icon"
                 :user="expense.user"
                 :show-user="showUser"
+                :split-method="expense.splitMethod"
+                :is-settled="expense.isSettled"
                 @click="handleExpenseClick"
             />
         </div>
@@ -103,8 +105,12 @@ const { loading } = expenseStore
 // 確認刪除對話框狀態
 const showDeleteDialog = ref(false)
 
-const handleExpenseClick = (expense: DisplayExpense) => {
-    emit('expense-click', expense)
+const handleExpenseClick = (expenseProps: { id?: string; title: string; amount: string; category: string; icon: string }) => {
+    // 找到對應的 DisplayExpense（含 split 資訊）
+    const found = props.expenses.find(e => e.id === expenseProps.id)
+    if (found) {
+        emit('expense-click', found)
+    }
 }
 
 // 處理全部刪除按鈕點擊
