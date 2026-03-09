@@ -8,7 +8,9 @@
     "build": "vite build",
     "typecheck": "vue-tsc -b",
     "preview": "vite preview",
-    "clean": "rm -rf dist node_modules"
+    "clean": "rm -rf dist node_modules",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@internationalized/date": "^3.12.0",
