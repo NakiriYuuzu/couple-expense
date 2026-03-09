@@ -66,7 +66,7 @@ export default defineConfig(({mode}) =>{
                 manifest: {
                     name: '記帳App',
                     short_name: '記帳App',
-                    description: '紀錄情侶的共同開支，讓愛情更甜蜜',
+                    description: '紀錄家庭的共同開支，讓生活更美好',
                     theme_color: '#8790DC',
                     background_color: '#e1e3ed',
                     orientation: 'portrait',
