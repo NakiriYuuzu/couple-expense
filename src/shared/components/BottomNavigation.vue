@@ -9,7 +9,7 @@
             <Plus class="h-7 w-7 text-primary-foreground" />
         </Button>
 
-        <div class="grid grid-cols-4 items-center px-2 py-2">
+        <div class="grid grid-cols-5 items-center px-2 py-2">
             <!-- Dashboard -->
             <div class="flex flex-col items-center">
                 <Button
@@ -40,18 +40,24 @@
                 </span>
             </div>
 
-            <!-- Statistics -->
+            <!-- Center spacer for FAB -->
+            <div class="flex flex-col items-center">
+                <div class="h-12 w-12" />
+                <span class="text-xs mt-0.5 invisible">+</span>
+            </div>
+
+            <!-- Balances -->
             <div class="flex flex-col items-center">
                 <Button
                     variant="ghost"
                     size="icon"
                     class="h-12 w-12 rounded-xl hover:bg-accent"
-                    @click="handleNavigation('statistics')"
+                    @click="handleNavigation('balances')"
                 >
-                    <BarChart3 :class="['h-6 w-6', activeTab === 'statistics' ? 'text-brand-primary' : 'text-muted-foreground']" />
+                    <Wallet :class="['h-6 w-6', activeTab === 'balances' ? 'text-brand-primary' : 'text-muted-foreground']" />
                 </Button>
-                <span :class="['text-xs mt-0.5', activeTab === 'statistics' ? 'text-brand-primary font-medium' : 'text-muted-foreground']">
-                    {{ t('nav.statistics') }}
+                <span :class="['text-xs mt-0.5', activeTab === 'balances' ? 'text-brand-primary font-medium' : 'text-muted-foreground']">
+                    {{ t('nav.balances') }}
                 </span>
             </div>
 
@@ -79,7 +85,7 @@ import { Button } from '@/shared/components/ui/button'
 import {
     LayoutDashboard,
     Receipt,
-    BarChart3,
+    Wallet,
     Settings,
     Plus
 } from 'lucide-vue-next'

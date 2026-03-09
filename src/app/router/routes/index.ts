@@ -1,4 +1,4 @@
-import {type RouteRecordRaw} from 'vue-router'
+import { type RouteRecordRaw } from 'vue-router'
 
 /**
  * 這邊是提供給大家使用的，方便知道如何使用這些路由
@@ -12,62 +12,62 @@ export const routes = {
     startup: {
         name: 'Startup',
         path: '/',
-        meta: {
-            title: '啟動頁面',
-            roles: [],
-            requiresAuth: false  // 登入頁不需要認證
-        },
+        meta: { title: '啟動頁面', roles: [], requiresAuth: false },
         component: () => import('@/pages/startup/StartupPage.vue')
     } satisfies RouteRecordRaw,
     dashboard: {
         name: 'Dashboard',
         path: '/dashboard',
-        meta: {
-            title: '總覽',
-            roles: [],
-            requiresAuth: true  // 需要登入才能訪問
-        },
+        meta: { title: '總覽', roles: [], requiresAuth: true },
         component: () => import('@/pages/dashboard/DashboardPage.vue')
     } satisfies RouteRecordRaw,
     expenses: {
         name: 'Expenses',
         path: '/expenses',
-        meta: {
-            title: '支出',
-            roles: [],
-            requiresAuth: true  // 需要登入才能訪問
-        },
+        meta: { title: '支出', roles: [], requiresAuth: true },
         component: () => import('@/pages/expenses/ExpensesPage.vue')
+    } satisfies RouteRecordRaw,
+    expenseDetail: {
+        name: 'ExpenseDetail',
+        path: '/expenses/:id',
+        meta: { title: '支出詳情', roles: [], requiresAuth: true },
+        component: () => import('@/pages/expense-detail/ExpenseDetailPage.vue')
+    } satisfies RouteRecordRaw,
+    balances: {
+        name: 'Balances',
+        path: '/balances',
+        meta: { title: '帳務', roles: [], requiresAuth: true },
+        component: () => import('@/pages/balances/BalancesPage.vue')
     } satisfies RouteRecordRaw,
     statistics: {
         name: 'Statistics',
         path: '/statistics',
-        meta: {
-            title: '統計分析',
-            roles: [],
-            requiresAuth: true  // 需要登入才能訪問
-        },
+        meta: { title: '統計分析', roles: [], requiresAuth: true },
         component: () => import('@/pages/statistics/StatisticsPage.vue')
     } satisfies RouteRecordRaw,
     settings: {
         name: 'Settings',
         path: '/settings',
-        meta: {
-            title: '設定',
-            roles: [],
-            requiresAuth: true  // 需要登入才能訪問
-        },
+        meta: { title: '設定', roles: [], requiresAuth: true },
         component: () => import('@/pages/settings/SettingsPage.vue')
     } satisfies RouteRecordRaw,
-    familySettings: {
-        name: 'FamilySettings',
-        path: '/family',
-        meta: {
-            title: '家庭設定',
-            roles: [],
-            requiresAuth: true  // 需要登入才能訪問
-        },
-        component: () => import('@/pages/family/FamilySettingsPage.vue')
+    groupList: {
+        name: 'GroupList',
+        path: '/groups',
+        meta: { title: '群組列表', roles: [], requiresAuth: true },
+        component: () => import('@/pages/group-list/GroupListPage.vue')
+    } satisfies RouteRecordRaw,
+    groupCreate: {
+        name: 'GroupCreate',
+        path: '/groups/new',
+        meta: { title: '建立群組', roles: [], requiresAuth: true },
+        component: () => import('@/pages/group-create/GroupCreatePage.vue')
+    } satisfies RouteRecordRaw,
+    groupSettings: {
+        name: 'GroupSettings',
+        path: '/groups/:id',
+        meta: { title: '群組設定', roles: [], requiresAuth: true },
+        component: () => import('@/pages/group/GroupSettingsPage.vue')
     } satisfies RouteRecordRaw
 }
 
@@ -77,7 +77,6 @@ export const routes = {
 const objectRoutes = Object.values(routes)
 const routerRoutes: RouteRecordRaw[] = [
     ...objectRoutes,
-    // 404 fallback route - 必須放在最後，導向 startup
     {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
