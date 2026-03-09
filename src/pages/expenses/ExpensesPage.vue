@@ -14,27 +14,28 @@ import { Slider } from '@/shared/components/ui/slider'
 import { parseDate, type DateValue } from '@internationalized/date'
 import TopBar from '@/shared/components/TopBar.vue'
 import ExpenseGroup from '@/features/expense/components/ExpenseGroup.vue'
-import { useExpenseStore, useFamilyStore } from '@/shared/stores'
+import { useExpenseStore } from '@/shared/stores'
+import { useGroupStore } from '@/features/group/stores/group'
 import { usePullToRefresh } from '@/shared/composables/usePullToRefresh'
 import { useCategories, CategoryUtils, type CategoryId } from '@/features/expense/composables/useCategories'
 import type { Expense } from '@/features/expense/stores/expense'
 import type { DisplayExpense } from '@/entities/expense/types'
 import { toast } from 'vue-sonner'
-import { User, Home, Calendar as CalendarIcon, Search, SlidersHorizontal } from 'lucide-vue-next'
+import { User, Users, Calendar as CalendarIcon, Search, SlidersHorizontal } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const { categories } = useCategories()
 const expenseStore = useExpenseStore()
-const familyStore = useFamilyStore()
+const groupStore = useGroupStore()
 
 const {
     personalExpenses,
-    familyExpenses
+    groupExpenses
 } = storeToRefs(expenseStore)
 
-const { isInFamily } = storeToRefs(familyStore)
+const isInGroup = computed(() => groupStore.isInAnyGroup)
 
 // 當前選中的 Tab（從 URL query 讀取或預設為 'personal'）
 const activeTab = ref<string>((route.query.tab as string) || 'personal')
@@ -77,7 +78,7 @@ watch(() => [filters.value.minAmount, filters.value.maxAmount], ([min, max]) => 
 
 // 監聽 route query 變化
 watch(() => route.query.tab, (newTab) => {
-    if (newTab && (newTab === 'personal' || newTab === 'family')) {
+    if (newTab && (newTab === 'personal' || newTab === 'group')) {
         activeTab.value = newTab
     }
 })
@@ -144,8 +145,8 @@ const applyFilters = (expenses: Expense[]) => {
 // 篩選後的個人支出
 const filteredPersonalExpenses = computed(() => applyFilters(personalExpenses.value))
 
-// 篩選後的家庭支出
-const filteredFamilyExpenses = computed(() => applyFilters(familyExpenses.value))
+// 篩選後的群組支出
+const filteredGroupExpenses = computed(() => applyFilters(groupExpenses.value))
 
 // 個人支出分組
 const personalExpenseGroups = computed(() => {
@@ -164,11 +165,11 @@ const personalExpenseGroups = computed(() => {
         .sort((a, b) => b.date.localeCompare(a.date))
 })
 
-// 家庭支出分組
-const familyExpenseGroups = computed(() => {
+// 群組支出分組
+const groupExpenseGroups = computed(() => {
     const groups: Record<string, DisplayExpense[]> = {}
 
-    filteredFamilyExpenses.value.forEach(expense => {
+    filteredGroupExpenses.value.forEach(expense => {
         const displayDate = expense.date.replace(/-/g, '/')
         if (!groups[displayDate]) {
             groups[displayDate] = []
@@ -247,7 +248,7 @@ const editDateValue = ref<DateValue>()
 // 處理費用項目點擊
 const handleExpenseClick = (expense: DisplayExpense) => {
     // 找到原始資料
-    const allExpenses = [...expenseStore.personalExpenses, ...expenseStore.familyExpenses]
+    const allExpenses = [...expenseStore.personalExpenses, ...expenseStore.groupExpenses]
     const originalExpense = allExpenses.find(e => e.id === expense.id)
     if (originalExpense) {
         editForm.value = {
@@ -330,7 +331,7 @@ const handleDeleteExpense = async () => {
                                 category: deletedExpense.category,
                                 icon: deletedExpense.icon,
                                 date: deletedExpense.date,
-                                scope: deletedExpense.scope
+                                group_id: deletedExpense.group_id
                             })
                             toast.success(t('expense.restored'))
                             await expenseStore.fetchExpenses()
@@ -401,9 +402,9 @@ usePullToRefresh({
                         <User class="h-4 w-4" />
                         {{ t('expense.personal') }}
                     </TabsTrigger>
-                    <TabsTrigger value="family" :disabled="!isInFamily" class="flex items-center gap-2">
-                        <Home class="h-4 w-4" />
-                        {{ t('expense.family') }}
+                    <TabsTrigger value="group" :disabled="!isInGroup" class="flex items-center gap-2">
+                        <Users class="h-4 w-4" />
+                        {{ t('expense.group') }}
                     </TabsTrigger>
                 </TabsList>
 
@@ -427,11 +428,11 @@ usePullToRefresh({
                     </div>
                 </TabsContent>
 
-                <!-- 家庭支出列表 -->
-                <TabsContent value="family" class="mt-4">
-                    <div v-if="familyExpenseGroups.length > 0" class="space-y-4">
+                <!-- 群組支出列表 -->
+                <TabsContent value="group" class="mt-4">
+                    <div v-if="groupExpenseGroups.length > 0" class="space-y-4">
                         <ExpenseGroup
-                            v-for="group in familyExpenseGroups"
+                            v-for="group in groupExpenseGroups"
                             :key="group.date"
                             :date="group.date"
                             :expenses="group.expenses"
@@ -440,9 +441,9 @@ usePullToRefresh({
                         />
                     </div>
                     <div v-else class="text-center py-12">
-                        <Home class="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                        <Users class="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
                         <p class="text-muted-foreground">
-                            {{ searchQuery || filters.categories.length > 0 ? t('search.noResultsFound') : t('expenses.noFamilyExpenses') }}
+                            {{ searchQuery || filters.categories.length > 0 ? t('search.noResultsFound') : t('expenses.noGroupExpenses') }}
                         </p>
                     </div>
                 </TabsContent>

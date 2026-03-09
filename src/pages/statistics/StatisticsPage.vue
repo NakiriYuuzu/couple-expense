@@ -14,13 +14,13 @@
                             {{ t('stats.personalStats') }}
                         </TabsTrigger>
                         <TabsTrigger
-                            value="family"
-                            :disabled="!isInFamily"
+                            value="group"
+                            :disabled="!isInGroup"
                             class="flex items-center gap-2"
-                            :class="{ 'opacity-50 cursor-not-allowed': !isInFamily }"
+                            :class="{ 'opacity-50 cursor-not-allowed': !isInGroup }"
                         >
-                            <Home class="h-4 w-4" />
-                            {{ t('stats.familyStats') }}
+                            <Users class="h-4 w-4" />
+                            {{ t('stats.groupStats') }}
                         </TabsTrigger>
                     </TabsList>
                 </Tabs>
@@ -54,26 +54,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { storeToRefs } from 'pinia'
 import TopBar from '@/shared/components/TopBar.vue'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs'
 import CalendarView from '@/features/statistics/components/CalendarView.vue'
 import ChartView from '@/features/statistics/components/ChartView.vue'
-import { useExpenseStore, useFamilyStore } from '@/shared/stores'
+import { useExpenseStore } from '@/shared/stores'
+import { useGroupStore } from '@/features/group/stores/group'
 import { toast } from 'vue-sonner'
 import { usePullToRefresh } from '@/shared/composables/usePullToRefresh'
-import { User, Home } from 'lucide-vue-next'
+import { User, Users } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const expenseStore = useExpenseStore()
-const familyStore = useFamilyStore()
+const groupStore = useGroupStore()
 
-const { isInFamily } = storeToRefs(familyStore)
+const isInGroup = computed(() => groupStore.isInAnyGroup)
 
 // 統計範圍選擇
-const expenseScope = ref<'personal' | 'family'>('personal')
+const expenseScope = ref<'personal' | 'group'>('personal')
 
 // 使用下拉刷新
 usePullToRefresh({
@@ -81,7 +81,7 @@ usePullToRefresh({
         try {
             await Promise.all([
                 expenseStore.fetchExpenses(),
-                familyStore.fetchUserProfile()
+                groupStore.fetchUserProfile()
             ])
             toast.success('資料已更新')
         } catch (error) {

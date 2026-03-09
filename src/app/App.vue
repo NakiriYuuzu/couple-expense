@@ -9,14 +9,14 @@ import AddExpenseDrawer from '@/features/expense/components/AddExpenseDrawer.vue
 import { routes } from '@/app/router/routes/index.ts'
 import { useExpenseStore, useThemeStore } from '@/shared/stores'
 import { useAuthStore } from '@/features/auth/stores/auth'
-import { useFamilyStore } from '@/features/family/stores/family'
+import { useGroupStore } from '@/features/group/stores/group'
 import type { AddExpenseEvent } from '@/entities/expense/types'
 
 const router = useRouter()
 const route = useRoute()
 const expenseStore = useExpenseStore()
 const authStore = useAuthStore()
-const familyStore = useFamilyStore()
+const groupStore = useGroupStore()
 const themeStore = useThemeStore()
 
 // 定義頁面索引來決定動畫方向
@@ -24,12 +24,12 @@ const pageIndexMap: Record<string, number> = {
     '/': 0,               // Startup
     '/dashboard': 1,      // Dashboard
     '/expenses': 2,       // Expenses
-    '/statistics': 3,     // Statistics
+    '/balances': 3,       // Balances
     '/settings': 4        // Settings
 }
 
 // 需要顯示底部導航的路由
-const routesWithBottomNav = ['/dashboard', '/expenses', '/statistics', '/settings']
+const routesWithBottomNav = ['/dashboard', '/expenses', '/balances', '/settings']
 
 // 是否顯示底部導航
 const showBottomNavigation = computed(() => {
@@ -43,8 +43,8 @@ const activeTab = computed(() => {
             return 'dashboard'
         case '/expenses':
             return 'expenses'
-        case '/statistics':
-            return 'statistics'
+        case '/balances':
+            return 'balances'
         case '/settings':
             return 'settings'
         default:
@@ -62,10 +62,10 @@ const previousPageIndex = ref(0)
 const getTransitionName = (route: RouteLocationNormalized) => {
     const currentIndex = pageIndexMap[route.path] ?? 0
     const prevIndex = previousPageIndex.value
-    
+
     // 更新前一個頁面索引
     previousPageIndex.value = currentIndex
-    
+
     if (currentIndex > prevIndex) {
         return 'slide-left'  // 向左滑動（前進）
     } else if (currentIndex < prevIndex) {
@@ -90,8 +90,8 @@ const handleNavigation = (tab: string) => {
         case 'expenses':
             router.push({ name: routes.expenses.name })
             break
-        case 'statistics':
-            router.push({ name: routes.statistics.name })
+        case 'balances':
+            router.push({ name: routes.balances.name })
             break
         case 'settings':
             router.push({ name: routes.settings.name })
@@ -106,8 +106,6 @@ const handleAddNew = () => {
 }
 
 const handleExpenseAdded = async (expense: AddExpenseEvent) => {
-    console.log('New expense added:', expense)
-
     try {
         // 從 "-NT 150" 格式中提取數字
         const amount = Math.abs(parseInt(expense.amount.replace(/[^\d]/g, '')))
@@ -115,14 +113,14 @@ const handleExpenseAdded = async (expense: AddExpenseEvent) => {
         // 轉換格式以符合 store 的期望 (CreateExpenseData)
         const storeExpense = {
             title: expense.title,
-            amount: amount, // 數字類型，正數
+            amount: amount,
             category: expense.category,
             icon: expense.icon,
-            date: expense.date, // 已經是 "2025-08-03" 格式
-            scope: expense.scope // 新增 scope
+            date: expense.date,
+            group_id: expense.groupId,
+            split_method: expense.splitMethod
         }
 
-        // 添加到 store
         await expenseStore.addExpense(storeExpense)
     } catch (error) {
         console.error('新增費用失敗:', error)
@@ -132,12 +130,15 @@ const handleExpenseAdded = async (expense: AddExpenseEvent) => {
 // 載入所有需要的資料
 const loadAllData = async () => {
     if (!authStore.isLoggedIn) return
-    
-    try {
-        // 1. 先載入家庭資料
-        await familyStore.fetchUserProfile()
 
-        // 2. 再載入 expense 資料（會根據家庭狀態載入共同消費）
+    try {
+        // 1. 先載入用戶資料和群組資料
+        await Promise.all([
+            groupStore.fetchUserProfile(),
+            groupStore.fetchUserGroups()
+        ])
+
+        // 2. 再載入 expense 資料（會根據群組狀態載入）
         await expenseStore.fetchExpenses()
     } catch (error) {
         console.error('載入資料失敗:', error)
@@ -150,19 +151,22 @@ watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
         await loadAllData()
     } else {
         // 用戶登出時清空所有資料
-        familyStore.family = null
-        familyStore.userProfile = null
-        familyStore.memberProfiles = null
-        familyStore.familySettings = null
         expenseStore.expenses = []
     }
 }, { immediate: true })
+
+// 監聽群組切換，自動重新載入支出資料
+watch(() => groupStore.activeGroupId, async () => {
+    if (authStore.isLoggedIn) {
+        await expenseStore.fetchExpenses()
+    }
+})
 
 // 應用初始化
 onMounted(async () => {
     // 初始化主題
     themeStore.initializeTheme()
-    
+
     // 如果用戶已經登入，載入所有資料
     if (authStore.isLoggedIn) {
         await loadAllData()

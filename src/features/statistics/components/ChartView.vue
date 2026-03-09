@@ -313,7 +313,7 @@
         </Card>
 
         <!-- 成員消費比例分析（僅在家庭統計時顯示） -->
-        <Card v-if="isInFamily && scope === 'family'"
+        <Card v-if="isInGroup && scope === 'group'"
               class="relative overflow-hidden border-0 shadow-lg mt-6 animate-fade-in-up">
             <CardHeader class="pb-3">
                 <CardTitle class="text-lg">消費比例分析</CardTitle>
@@ -425,7 +425,8 @@ import { useI18n } from 'vue-i18n'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
 import { ChevronLeft, ChevronRight, TrendingUp } from 'lucide-vue-next'
-import { useExpenseStore, useFamilyStore } from '@/shared/stores'
+import { useExpenseStore } from '@/shared/stores'
+import { useGroupStore } from '@/features/group/stores/group'
 import type { ExpenseUser } from '@/entities/expense/types'
 
 // Unovis 導入
@@ -448,7 +449,7 @@ import {
 
 // Props
 const props = withDefaults(defineProps<{
-    scope: 'personal' | 'family'
+    scope: 'personal' | 'group'
 }>(), {
     scope: 'personal'
 })
@@ -474,15 +475,15 @@ interface TrendData {
 
 const { t } = useI18n()
 const expenseStore = useExpenseStore()
-const familyStore = useFamilyStore()
+const groupStore = useGroupStore()
 const { categoryLabels } = expenseStore
-const { isInFamily } = familyStore
+const isInGroup = groupStore.isInAnyGroup
 
 // 根據 scope 選擇對應的支出資料
 const scopedExpenses = computed(() => {
     return props.scope === 'personal'
         ? expenseStore.personalExpenses
-        : expenseStore.familyExpenses
+        : expenseStore.groupExpenses
 })
 
 const showSettlement = ref(false)
@@ -864,7 +865,7 @@ const isHighestSpender = (userId: string) => {
 
 const currentPeriodSpendingRatio = computed(() => {
     // 成員消費比例分析只在家庭統計時顯示
-    if (!isInFamily || props.scope !== 'family') return null
+    if (!isInGroup || props.scope !== 'group') return null
 
     const periodKey = timeRange.value === 'month'
         ? currentPeriod.value.toISOString().slice(0, 7)

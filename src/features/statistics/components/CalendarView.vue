@@ -154,7 +154,7 @@
                         :category="expense.category"
                         :icon="expense.icon"
                         :user="expense.user"
-                        :show-user="isInFamily"
+                        :show-user="isInGroup"
                     />
                 </div>
             </DialogContent>
@@ -193,7 +193,8 @@ import {
     DialogTitle
 } from '@/shared/components/ui/dialog'
 import ExpenseItem from '@/features/expense/components/ExpenseItem.vue'
-import { useExpenseStore, useFamilyStore } from '@/shared/stores'
+import { useExpenseStore } from '@/shared/stores'
+import { useGroupStore } from '@/features/group/stores/group'
 import { getLocalTimeZone, today } from '@internationalized/date'
 import type { DateValue } from '@internationalized/date'
 import type { Expense } from '@/features/expense/stores/expense'
@@ -201,22 +202,22 @@ import { CategoryUtils } from '@/features/expense/composables/useCategories'
 
 // Props
 const props = withDefaults(defineProps<{
-    scope: 'personal' | 'family'
+    scope: 'personal' | 'group'
 }>(), {
     scope: 'personal'
 })
 
 const { t } = useI18n()
 const expenseStore = useExpenseStore()
-const familyStore = useFamilyStore()
+const groupStore = useGroupStore()
 const { categoryLabels } = expenseStore
-const { isInFamily } = familyStore
+const isInGroup = groupStore.isInAnyGroup
 
 // 根據 scope 選擇對應的支出資料
 const scopedExpenses = computed(() => {
     return props.scope === 'personal'
         ? expenseStore.personalExpenses
-        : expenseStore.familyExpenses
+        : expenseStore.groupExpenses
 })
 
 // 當前日期

@@ -14,7 +14,7 @@ import TopBar from '@/shared/components/TopBar.vue'
 import ThemeToggle from '@/shared/components/ThemeToggle.vue'
 import { useLocaleStore } from '@/shared/stores'
 import { useAuthStore } from '@/features/auth/stores/auth'
-import { useFamilyStore } from '@/features/family/stores/family'
+import { useGroupStore } from '@/features/group/stores/group'
 import { useExpenseStore } from '@/shared/stores'
 import { useAccountManagerStore } from '@/features/auth/stores/accountManager'
 import { routes } from '@/app/router/routes/index.ts'
@@ -26,13 +26,14 @@ import {
     ChevronRight,
     LogOut,
     UserCog,
+    Users,
     Wallet
 } from 'lucide-vue-next'
 
 const { t, locale } = useI18n()
 const localeStore = useLocaleStore()
 const authStore = useAuthStore()
-const familyStore = useFamilyStore()
+const groupStore = useGroupStore()
 const expenseStore = useExpenseStore()
 const accountManagerStore = useAccountManagerStore()
 const router = useRouter()
@@ -55,21 +56,21 @@ const currentAccountId = computed(() => accountManagerStore.currentAccountId)
 
 // 個人預算相關
 const personalBudgetUsage = computed(() => {
-    const budget = familyStore.personalBudget
+    const budget = groupStore.personalBudget
     if (!budget || budget <= 0) return 0
     return Math.min((expenseStore.personalStats.month / budget) * 100, 100)
 })
 
 // 打開個人預算設定 Drawer
 const openPersonalBudgetDrawer = () => {
-    personalBudgetInput.value = familyStore.personalBudget
+    personalBudgetInput.value = groupStore.personalBudget
     isPersonalBudgetDrawerOpen.value = true
 }
 
 // 儲存個人預算
 const savePersonalBudget = async () => {
     try {
-        await familyStore.updatePersonalBudget(personalBudgetInput.value)
+        await groupStore.updatePersonalBudget(personalBudgetInput.value)
         toast.success(t('settings.personalBudgetSaved'))
         isPersonalBudgetDrawerOpen.value = false
     } catch (error) {
@@ -81,7 +82,7 @@ const savePersonalBudget = async () => {
 // 清除個人預算
 const clearPersonalBudget = async () => {
     try {
-        await familyStore.updatePersonalBudget(null)
+        await groupStore.updatePersonalBudget(null)
         personalBudgetInput.value = null
         toast.success(t('settings.personalBudgetCleared'))
         isPersonalBudgetDrawerOpen.value = false
@@ -108,19 +109,13 @@ const handleLanguageChange = async (value: string) => {
     }
 }
 
-// 跳轉到家庭設定頁面
-const goToFamilySettings = () => {
-    router.push({ name: routes.familySettings.name })
+// 跳轉到群組列表頁面
+const goToGroupList = () => {
+    router.push({ name: 'GroupList' })
 }
 
 // 清除所有資料
 const clearAllData = () => {
-    // 清除家庭資料
-    familyStore.family = null
-    familyStore.userProfile = null
-    familyStore.memberProfiles = null
-    familyStore.familySettings = null
-    // 清除費用資料
     expenseStore.expenses = []
 }
 
@@ -259,8 +254,8 @@ const handleRemoveAccount = (accountId: string) => {
                             <div>
                                 <h3 class="text-base font-medium text-foreground">{{ t('settings.personalBudget') }}</h3>
                                 <p class="text-sm text-muted-foreground">
-                                    {{ familyStore.personalBudget
-                                        ? `NT$ ${familyStore.personalBudget.toLocaleString()}`
+                                    {{ groupStore.personalBudget
+                                        ? `NT$ ${groupStore.personalBudget.toLocaleString()}`
                                         : t('settings.personalBudgetNotSet')
                                     }}
                                 </p>
@@ -274,16 +269,16 @@ const handleRemoveAccount = (accountId: string) => {
                 <div class="mt-8">
                     <h2 class="mb-4 text-sm font-medium text-muted-foreground">{{ t('settings.moreSettings') }}</h2>
                     
-                    <!-- 家庭設定 -->
-                    <Card class="p-4 mb-3 cursor-pointer hover:bg-accent transition-colors" @click="goToFamilySettings">
+                    <!-- 群組設定 -->
+                    <Card class="p-4 mb-3 cursor-pointer hover:bg-accent transition-colors" @click="goToGroupList">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
                                 <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-accent">
-                                    <span class="text-lg">👨‍👩‍👧‍👦</span>
+                                    <Users class="h-5 w-5 text-brand-primary" />
                                 </div>
                                 <div>
-                                    <h3 class="text-base font-medium text-foreground">{{ t('family.title') }}</h3>
-                                    <p class="text-sm text-muted-foreground">{{ t('family.manageSharedExpenses') }}</p>
+                                    <h3 class="text-base font-medium text-foreground">{{ t('group.title') }}</h3>
+                                    <p class="text-sm text-muted-foreground">{{ t('group.manageGroups') }}</p>
                                 </div>
                             </div>
                             <ChevronRight class="h-5 w-5 text-muted-foreground" />
@@ -484,7 +479,7 @@ const handleRemoveAccount = (accountId: string) => {
                     </div>
 
                     <!-- 當前使用進度 (若已設定預算) -->
-                    <div v-if="familyStore.personalBudget" class="space-y-2">
+                    <div v-if="groupStore.personalBudget" class="space-y-2">
                         <Label>{{ t('settings.currentUsage') }}</Label>
                         <Progress :model-value="personalBudgetUsage" class="h-2" />
                         <div class="flex justify-between text-xs text-muted-foreground">
@@ -504,7 +499,7 @@ const handleRemoveAccount = (accountId: string) => {
                         <Button
                             class="flex-1"
                             @click="savePersonalBudget"
-                            :disabled="familyStore.loading"
+                            :disabled="groupStore.loading"
                         >
                             {{ t('common.save') }}
                         </Button>

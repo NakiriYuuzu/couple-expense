@@ -5,32 +5,32 @@ import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { Card, CardContent } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import { Progress } from '@/shared/components/ui/progress'
 import TopBar from '@/shared/components/TopBar.vue'
 import ExpenseItem from '@/features/expense/components/ExpenseItem.vue'
-import { useExpenseStore, useFamilyStore } from '@/shared/stores'
+import { useExpenseStore } from '@/shared/stores'
+import { useGroupStore } from '@/features/group/stores/group'
 import { usePullToRefresh } from '@/shared/composables/usePullToRefresh'
 import { CategoryUtils } from '@/features/expense/composables/useCategories'
 import type { Expense } from '@/features/expense/stores/expense'
 import type { DisplayExpense } from '@/entities/expense/types'
 import { toast } from 'vue-sonner'
-import { User, Home, ChevronRight, TrendingUp, TrendingDown } from 'lucide-vue-next'
+import { User, Users, ChevronRight, TrendingUp, TrendingDown } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const router = useRouter()
 const expenseStore = useExpenseStore()
-const familyStore = useFamilyStore()
+const groupStore = useGroupStore()
 
 const {
     personalExpenses,
-    familyExpenses,
+    groupExpenses,
     personalStats,
-    familyStats,
-    spendingRatio
+    groupStats
 } = storeToRefs(expenseStore)
 
-const { isInFamily, personalBudget } = storeToRefs(familyStore)
+const isInGroup = computed(() => groupStore.isInAnyGroup)
+const personalBudget = computed(() => groupStore.personalBudget)
 
 // 個人最近 3 筆支出
 const recentPersonalExpenses = computed(() => {
@@ -39,9 +39,9 @@ const recentPersonalExpenses = computed(() => {
         .slice(0, 3)
 })
 
-// 家庭最近 3 筆支出
-const recentFamilyExpenses = computed(() => {
-    return [...familyExpenses.value]
+// 群組最近 3 筆支出
+const recentGroupExpenses = computed(() => {
+    return [...groupExpenses.value]
         .sort((a, b) => b.date.localeCompare(a.date))
         .slice(0, 3)
 })
@@ -68,7 +68,7 @@ const convertExpense = (expense: Expense): DisplayExpense => ({
 })
 
 // 導航到支出列表
-const goToExpenses = (tab: 'personal' | 'family') => {
+const goToExpenses = (tab: 'personal' | 'group') => {
     router.push({ name: 'Expenses', query: { tab } })
 }
 
@@ -78,7 +78,7 @@ usePullToRefresh({
         try {
             await Promise.all([
                 expenseStore.fetchExpenses(),
-                familyStore.fetchUserProfile()
+                groupStore.fetchUserProfile()
             ])
             toast.success(t('common.refreshed'))
         } catch (error) {
@@ -183,13 +183,13 @@ usePullToRefresh({
                 </Card>
             </section>
 
-            <!-- 家庭支出區塊（僅在已加入家庭時顯示） -->
-            <section v-if="isInFamily" class="mt-6 animate-slide-in-right">
+            <!-- 群組支出區塊（僅在已加入群組時顯示） -->
+            <section v-if="isInGroup" class="mt-6 animate-slide-in-right">
                 <div class="flex items-center gap-2 mb-4">
                     <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-accent">
-                        <Home class="h-4 w-4 text-brand-primary" />
+                        <Users class="h-4 w-4 text-brand-primary" />
                     </div>
-                    <h2 class="text-lg font-semibold text-foreground">{{ t('dashboard.family') }}</h2>
+                    <h2 class="text-lg font-semibold text-foreground">{{ t('dashboard.group') }}</h2>
                 </div>
 
                 <Card class="border-0 shadow-md py-0 pt-2">
@@ -198,44 +198,20 @@ usePullToRefresh({
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <p class="text-sm text-muted-foreground">{{ t('dashboard.monthTotal') }}</p>
-                                <p class="text-2xl font-bold text-foreground">{{ formatAmount(familyStats.month) }}</p>
+                                <p class="text-2xl font-bold text-foreground">{{ formatAmount(groupStats.month) }}</p>
                             </div>
                             <div>
                                 <p class="text-sm text-muted-foreground">{{ t('dashboard.todayTotal') }}</p>
-                                <p class="text-xl font-semibold text-foreground">{{ formatAmount(familyStats.today) }}</p>
-                            </div>
-                        </div>
-
-                        <!-- 消費比例（雙方頭像 + 進度條） -->
-                        <div v-if="spendingRatio && Object.keys(spendingRatio).length === 2" class="mt-4 pt-4 border-t border-border">
-                            <p class="text-sm font-medium text-muted-foreground mb-3">{{ t('dashboard.spendingRatio') }}</p>
-                            <div class="space-y-3">
-                                <template v-for="(ratio, userId) in spendingRatio" :key="userId">
-                                    <div class="flex items-center gap-3">
-                                        <Avatar class="h-8 w-8">
-                                            <AvatarImage :src="ratio.user?.avatar_url || ''" />
-                                            <AvatarFallback class="bg-brand-accent text-brand-primary text-xs">
-                                                {{ ratio.user?.display_name?.charAt(0) || '?' }}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div class="flex-1">
-                                            <div class="flex items-center justify-between mb-1">
-                                                <span class="text-sm font-medium">{{ ratio.user?.display_name || t('common.unknown') }}</span>
-                                                <span class="text-sm text-muted-foreground">{{ ratio.percentage }}%</span>
-                                            </div>
-                                            <Progress :model-value="ratio.percentage" class="h-2" />
-                                        </div>
-                                    </div>
-                                </template>
+                                <p class="text-xl font-semibold text-foreground">{{ formatAmount(groupStats.today) }}</p>
                             </div>
                         </div>
 
                         <!-- 最近支出 -->
-                        <div v-if="recentFamilyExpenses.length > 0" class="mt-4 pt-4 border-t border-border">
+                        <div v-if="recentGroupExpenses.length > 0" class="mt-4 pt-4 border-t border-border">
                             <p class="text-sm font-medium text-muted-foreground mb-3">{{ t('dashboard.recentExpenses') }}</p>
                             <div class="space-y-2">
                                 <ExpenseItem
-                                    v-for="expense in recentFamilyExpenses"
+                                    v-for="expense in recentGroupExpenses"
                                     :key="expense.id"
                                     v-bind="convertExpense(expense)"
                                     :show-user="true"
@@ -246,7 +222,7 @@ usePullToRefresh({
 
                         <!-- 空狀態 -->
                         <div v-else class="mt-4 pt-4 border-t border-border text-center py-6">
-                            <p class="text-sm text-muted-foreground">{{ t('dashboard.noFamilyExpenses') }}</p>
+                            <p class="text-sm text-muted-foreground">{{ t('dashboard.noGroupExpenses') }}</p>
                         </div>
 
                         <!-- 查看更多按鈕 -->
@@ -254,7 +230,7 @@ usePullToRefresh({
                             type="button"
                             variant="ghost"
                             class="w-full mt-4 text-brand-primary hover:text-brand-primary hover:bg-brand-accent"
-                            @click.stop="goToExpenses('family')"
+                            @click.stop="goToExpenses('group')"
                         >
                             {{ t('dashboard.viewMore') }}
                             <ChevronRight class="h-4 w-4 ml-1" />

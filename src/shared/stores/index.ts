@@ -5,6 +5,8 @@ import persist from 'pinia-plugin-persistedstate'
 export * from '@/features/expense/stores/expense'
 export * from '@/features/auth/stores/auth'
 export * from '@/features/group/stores/group'
+export * from '@/features/split/stores/split'
+export * from '@/features/settlement/stores/settlement'
 
 // Shared stores
 export * from '@/shared/stores/locale'
