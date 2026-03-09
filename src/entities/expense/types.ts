@@ -1,4 +1,4 @@
-import type { ExpenseScope } from '@/shared/lib/database.types'
+import type { SplitMethod } from '@/shared/lib/database.types'
 
 // Category ID type (canonical definition)
 export type CategoryId = 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 'other'
@@ -18,6 +18,9 @@ export interface DisplayExpense {
     category: string
     icon: string
     user?: ExpenseUser
+    groupId?: string | null
+    splitMethod?: SplitMethod | null
+    isSettled?: boolean
 }
 
 // Shape emitted by AddExpenseDrawer's expense-added event
@@ -28,7 +31,12 @@ export interface AddExpenseEvent {
     category: string
     icon: string
     date: string
-    scope: ExpenseScope
+    groupId: string | null
+    splitMethod?: SplitMethod
+    splits?: Array<{
+        userId: string
+        amount: number
+        percentage?: number
+        shares?: number
+    }>
 }
-
-export type { ExpenseScope }
