@@ -32,6 +32,7 @@ import {
     SelectValue
 } from '@/shared/components/ui/select'
 import { useGroupStore } from '@/features/group/stores/group'
+import { usePullToRefresh } from '@/shared/composables/usePullToRefresh'
 import { supabase } from '@/shared/lib/supabase'
 import { routes } from '@/app/router/routes/index.ts'
 import type { UserProfileRow, GroupMemberRow } from '@/shared/lib/database.types'
@@ -221,15 +222,31 @@ const handleLeaveGroup = async () => {
     }
 }
 
+const refreshPageData = async () => {
+    await Promise.all([
+        groupStore.fetchUserProfile(),
+        groupStore.fetchUserGroups()
+    ])
+    await fetchMemberProfiles()
+    syncBudgetForm()
+}
+
+usePullToRefresh({
+    onRefresh: async () => {
+        try {
+            await refreshPageData()
+            toast.success(t('common.refreshed'))
+        } catch (error) {
+            console.error('刷新失敗:', error)
+            toast.error(t('common.refreshFailed'))
+        }
+    }
+})
+
 onMounted(async () => {
     pageLoading.value = true
     try {
-        await Promise.all([
-            groupStore.fetchUserProfile(),
-            groupStore.fetchUserGroups()
-        ])
-        await fetchMemberProfiles()
-        syncBudgetForm()
+        await refreshPageData()
     } catch {
         toast.error(t('group.fetchError'))
     } finally {

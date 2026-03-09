@@ -9,6 +9,7 @@ import { Badge } from '@/shared/components/ui/badge'
 import { Card } from '@/shared/components/ui/card'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import { useGroupStore } from '@/features/group/stores/group'
+import { usePullToRefresh } from '@/shared/composables/usePullToRefresh'
 import { routes } from '@/app/router/routes/index.ts'
 import {
     Users,
@@ -79,7 +80,7 @@ const navigateToCreate = () => {
     router.push({ name: routes.groupCreate.name })
 }
 
-onMounted(async () => {
+const fetchGroups = async () => {
     loading.value = true
     try {
         await Promise.all([
@@ -91,7 +92,24 @@ onMounted(async () => {
     } finally {
         loading.value = false
     }
+}
+
+usePullToRefresh({
+    onRefresh: async () => {
+        try {
+            await Promise.all([
+                groupStore.fetchUserProfile(),
+                groupStore.fetchUserGroups()
+            ])
+            toast.success(t('common.refreshed'))
+        } catch (error) {
+            console.error('刷新失敗:', error)
+            toast.error(t('common.refreshFailed'))
+        }
+    }
 })
+
+onMounted(fetchGroups)
 </script>
 
 <template>

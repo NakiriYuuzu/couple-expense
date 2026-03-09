@@ -2,7 +2,7 @@
 import { computed, onMounted, shallowRef } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Pencil, Trash2, User, Calendar, DollarSign } from 'lucide-vue-next'
+import { Pencil, Trash2, User, Calendar, DollarSign, Loader2 } from 'lucide-vue-next'
 import TopBar from '@/shared/components/TopBar.vue'
 import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
@@ -208,8 +208,14 @@ onMounted(async () => {
         </TopBar>
 
         <main class="px-4 pb-24 pt-6 space-y-4">
-            <!-- 載入中或找不到 -->
-            <div v-if="!expense" class="text-center py-12">
+            <!-- 載入中 -->
+            <div v-if="!expense && expenseStore.loading" class="flex flex-col items-center justify-center py-20 gap-4">
+                <Loader2 class="h-8 w-8 animate-spin text-brand-primary" />
+                <p class="text-sm text-muted-foreground">{{ t('common.loading', '載入中...') }}</p>
+            </div>
+
+            <!-- 找不到 -->
+            <div v-else-if="!expense" class="text-center py-12">
                 <p class="text-muted-foreground">{{ t('expense.notFound', '找不到此支出記錄') }}</p>
             </div>
 

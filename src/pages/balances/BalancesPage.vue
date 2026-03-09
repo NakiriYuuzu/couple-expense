@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
+import { toast } from 'vue-sonner'
 import { Wallet, Users, TrendingUp, TrendingDown, Minus } from 'lucide-vue-next'
 import TopBar from '@/shared/components/TopBar.vue'
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
@@ -15,6 +16,7 @@ import { useSettlementStore } from '@/features/settlement/stores/settlement'
 import { useGroupStore } from '@/features/group/stores/group'
 import { useGroupContext } from '@/features/group/composables/useGroupContext'
 import { useNetBalances } from '@/features/settlement/composables/useNetBalances'
+import { usePullToRefresh } from '@/shared/composables/usePullToRefresh'
 import type { SimplifiedDebt } from '@/entities/settlement/types'
 
 const { t } = useI18n()
@@ -85,6 +87,20 @@ watch(
         }
     }
 )
+
+usePullToRefresh({
+    onRefresh: async () => {
+        try {
+            if (activeGroupId.value) {
+                await loadBalanceData(activeGroupId.value)
+            }
+            toast.success(t('common.refreshed'))
+        } catch (error) {
+            console.error('刷新失敗:', error)
+            toast.error(t('common.refreshFailed'))
+        }
+    }
+})
 
 onMounted(async () => {
     if (activeGroupId.value) {
