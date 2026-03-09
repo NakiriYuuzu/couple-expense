@@ -488,10 +488,11 @@ export const useExpenseStore = defineStore('expense', () => {
                 }
             }
 
+            const current = categoryStats[expense.category]!
             categoryStats[expense.category] = {
-                total: categoryStats[expense.category].total + expense.amount,
-                count: categoryStats[expense.category].count + 1,
-                expenses: [...categoryStats[expense.category].expenses, expense]
+                total: current.total + expense.amount,
+                count: current.count + 1,
+                expenses: [...current.expenses, expense]
             }
         })
 

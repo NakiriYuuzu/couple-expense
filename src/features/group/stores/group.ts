@@ -295,10 +295,10 @@ export const useGroupStore = defineStore('group', () => {
     }
 
     // 更新用戶資料（顯示名稱、頭像）
-    const updateUserProfile = async (updates: Partial<{
-        display_name: string
-        avatar_url: string
-    }>) => {
+    const updateUserProfile = async (updates: {
+        display_name?: string
+        avatar_url?: string
+    }) => {
         try {
             loading.value = true
             error.value = null
