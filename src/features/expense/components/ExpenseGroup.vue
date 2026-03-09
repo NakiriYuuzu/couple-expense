@@ -25,7 +25,7 @@
                         class="text-destructive focus:text-destructive hover:text-destructive cursor-pointer"
                     >
                         <Trash2 class="mr-2 h-4 w-4" />
-                        全部刪除
+                        {{ t('expense.deleteAll') }}
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -54,17 +54,17 @@
     <Dialog v-model:open="showDeleteDialog">
         <DialogContent class="sm:max-w-md">
             <DialogHeader>
-                <DialogTitle>確認刪除</DialogTitle>
+                <DialogTitle>{{ t('expense.confirmDeleteTitle') }}</DialogTitle>
                 <DialogDescription>
-                    確定要刪除 {{ date }} 的所有費用記錄嗎？此操作無法撤銷。
+                    {{ t('expense.confirmDeleteDateDesc', { date }) }}
                 </DialogDescription>
             </DialogHeader>
             <DialogFooter>
                 <Button variant="outline" @click="showDeleteDialog = false">
-                    取消
+                    {{ t('common.cancel') }}
                 </Button>
                 <Button variant="destructive" @click="confirmDeleteAll" :disabled="loading">
-                    {{ loading ? '刪除中...' : '確認刪除' }}
+                    {{ loading ? t('expense.deleting') : t('expense.confirmDeleteBtn') }}
                 </Button>
             </DialogFooter>
         </DialogContent>
@@ -73,9 +73,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Button } from '@/shared/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
-import { 
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
@@ -86,6 +87,8 @@ import { useExpenseStore } from '@/shared/stores'
 import { toast } from 'vue-sonner'
 import ExpenseItem from '@/features/expense/components/ExpenseItem.vue'
 import type { DisplayExpense } from '@/entities/expense/types'
+
+const { t } = useI18n()
 
 interface Props {
     date: string
@@ -127,10 +130,10 @@ const confirmDeleteAll = async () => {
         await expenseStore.deleteExpensesByDate(storeDate)
         
         showDeleteDialog.value = false
-        toast.success('已成功刪除該日期的所有費用記錄')
+        toast.success(t('expense.deleteAllSuccess'))
     } catch (error) {
         console.error('刪除費用失敗:', error)
-        toast.error('刪除失敗，請稍後再試')
+        toast.error(t('expense.deleteAllFailed'))
     }
 }
 </script>

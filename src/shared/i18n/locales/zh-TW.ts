@@ -123,6 +123,17 @@ const zhTW = {
         expenseAmount: '消費金額',
         day: '日',
         dailyExpense: '每日消費',
+        spendingRatioAnalysis: '消費比例分析',
+        spendingDistribution: '成員間的消費分配情況',
+        noSpendingRatioData: '暫無消費比例資料',
+        highestSpender: '花費最多',
+        viewSettlement: '查看結算金額',
+        hideSettlement: '隱藏結算金額',
+        settlementInfo: '結算資訊',
+        spendingDifference: '消費差額',
+        shouldPay: '需支付',
+        toWord: '給',
+        afterSettlement: '結算後雙方各自負擔',
         selectMonth: '選擇月份',
         selectYear: '選擇年份',
         months: {
@@ -195,7 +206,15 @@ const zhTW = {
             transport: '交通',
             home: '居家',
             other: '其他'
-        }
+        },
+        // ExpenseGroup 相關
+        deleteAll: '全部刪除',
+        confirmDeleteTitle: '確認刪除',
+        confirmDeleteDateDesc: '確定要刪除 {date} 的所有費用記錄嗎？此操作無法撤銷。',
+        deleting: '刪除中...',
+        confirmDeleteBtn: '確認刪除',
+        deleteAllSuccess: '已成功刪除該日期的所有費用記錄',
+        deleteAllFailed: '刪除失敗，請稍後再試'
     },
 
     // 分帳相關

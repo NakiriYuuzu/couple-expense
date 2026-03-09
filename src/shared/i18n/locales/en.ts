@@ -123,6 +123,17 @@ const en = {
         expenseAmount: 'Expense Amount',
         day: 'Day',
         dailyExpense: 'Daily Expense',
+        spendingRatioAnalysis: 'Spending Ratio Analysis',
+        spendingDistribution: 'Spending distribution among members',
+        noSpendingRatioData: 'No spending ratio data',
+        highestSpender: 'Highest spender',
+        viewSettlement: 'View Settlement',
+        hideSettlement: 'Hide Settlement',
+        settlementInfo: 'Settlement Info',
+        spendingDifference: 'Spending Difference',
+        shouldPay: 'should pay',
+        toWord: 'to',
+        afterSettlement: 'After settlement each bears',
         selectMonth: 'Select Month',
         selectYear: 'Select Year',
         months: {
@@ -195,7 +206,15 @@ const en = {
             transport: 'Transportation',
             home: 'Home',
             other: 'Other'
-        }
+        },
+        // ExpenseGroup related
+        deleteAll: 'Delete All',
+        confirmDeleteTitle: 'Confirm Delete',
+        confirmDeleteDateDesc: 'Are you sure you want to delete all expenses on {date}? This action cannot be undone.',
+        deleting: 'Deleting...',
+        confirmDeleteBtn: 'Confirm Delete',
+        deleteAllSuccess: 'Successfully deleted all expenses for this date',
+        deleteAllFailed: 'Delete failed, please try again'
     },
 
     // Split related

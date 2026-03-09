@@ -525,7 +525,7 @@ const submitExpense = () => {
     const calculated = splitConfiguratorRef.value?.calculatedSplits ?? []
 
     const newExpense: AddExpenseEvent = {
-        id: Date.now(),
+        id: crypto.randomUUID(),
         title: formData.value.title.trim(),
         amount: `-NT ${Math.round(parseFloat(formData.value.amount))}`,
         category: formData.value.category,

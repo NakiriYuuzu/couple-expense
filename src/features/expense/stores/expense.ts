@@ -562,7 +562,8 @@ export const useExpenseStore = defineStore('expense', () => {
         return userStats
     })
 
-    // 類別顯示名稱對應
+    // 類別顯示名稱對應（靜態中文 fallback，主要由 ChartView 圖表 config 使用）
+    // 建議未來改用 i18n t('expense.categories.*') 取代
     const categoryLabels: Record<string, string> = {
         food: '餐飲',
         pet: '寵物',

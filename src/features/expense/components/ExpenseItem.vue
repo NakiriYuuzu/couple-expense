@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Check } from 'lucide-vue-next'
 import { CategoryUtils } from '@/features/expense/composables/useCategories'
 import SplitBadge from '@/features/split/components/SplitBadge.vue'
 import type { ExpenseUser } from '@/entities/expense/types'
 import type { SplitMethod } from '@/shared/lib/database.types'
+
+const { t } = useI18n()
 
 interface Props {
     id?: string
@@ -61,7 +64,7 @@ const iconColorClass = 'text-brand-primary'
                     </p>
                     <!-- 使用者名稱 -->
                     <p v-if="showUser && user" class="text-[11px] text-muted-foreground mt-0.5">
-                        {{ user.display_name || '未知使用者' }}
+                        {{ user.display_name || t('expense.unknownUser') }}
                     </p>
                 </div>
             </div>

@@ -11,7 +11,8 @@ export const useSettlementStore = defineStore('settlement', () => {
     const netBalances = ref<NetBalance[]>([])
     const simplifiedDebts = ref<SimplifiedDebt[]>([])
     const settlements = ref<SettlementRow[]>([])
-    const loading = ref(false)
+    const loadingCount = ref(0)
+    const loading = computed(() => loadingCount.value > 0)
     const error = ref<string | null>(null)
 
     // Computed
@@ -50,11 +51,11 @@ export const useSettlementStore = defineStore('settlement', () => {
     // Action: fetch net balances for a group
     const fetchNetBalances = async (groupId: string): Promise<void> => {
         try {
-            loading.value = true
+            loadingCount.value++
             error.value = null
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data, error: rpcError } = await (supabase as any)
+            // @ts-expect-error RPC function types not in generated types yet
+            const { data, error: rpcError } = await supabase
                 .rpc('get_group_balances', { p_group_id: groupId })
 
             if (rpcError) throw rpcError
@@ -76,18 +77,18 @@ export const useSettlementStore = defineStore('settlement', () => {
             console.error('獲取群組餘額失敗:', err)
             error.value = err instanceof Error ? err.message : '獲取群組餘額失敗'
         } finally {
-            loading.value = false
+            loadingCount.value--
         }
     }
 
     // Action: fetch simplified debts for a group
     const fetchSimplifiedDebts = async (groupId: string): Promise<void> => {
         try {
-            loading.value = true
+            loadingCount.value++
             error.value = null
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data, error: rpcError } = await (supabase as any)
+            // @ts-expect-error RPC function types not in generated types yet
+            const { data, error: rpcError } = await supabase
                 .rpc('get_simplified_debts', { p_group_id: groupId })
 
             if (rpcError) throw rpcError
@@ -120,14 +121,14 @@ export const useSettlementStore = defineStore('settlement', () => {
             console.error('獲取簡化債務失敗:', err)
             error.value = err instanceof Error ? err.message : '獲取簡化債務失敗'
         } finally {
-            loading.value = false
+            loadingCount.value--
         }
     }
 
     // Action: fetch settlement history for a group
     const fetchSettlementHistory = async (groupId: string): Promise<void> => {
         try {
-            loading.value = true
+            loadingCount.value++
             error.value = null
 
             const { data, error: queryError } = await supabase
@@ -143,7 +144,7 @@ export const useSettlementStore = defineStore('settlement', () => {
             console.error('獲取結算歷史失敗:', err)
             error.value = err instanceof Error ? err.message : '獲取結算歷史失敗'
         } finally {
-            loading.value = false
+            loadingCount.value--
         }
     }
 
@@ -185,11 +186,11 @@ export const useSettlementStore = defineStore('settlement', () => {
         notes?: string
     ): Promise<void> => {
         try {
-            loading.value = true
+            loadingCount.value++
             error.value = null
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { error: rpcError } = await (supabase as any)
+            // @ts-expect-error RPC function types not in generated types yet
+            const { error: rpcError } = await supabase
                 .rpc('settle_debt', {
                     p_group_id: groupId,
                     p_paid_to: paidTo,
@@ -209,7 +210,7 @@ export const useSettlementStore = defineStore('settlement', () => {
             error.value = err instanceof Error ? err.message : '建立結算記錄失敗'
             throw err
         } finally {
-            loading.value = false
+            loadingCount.value--
         }
     }
 

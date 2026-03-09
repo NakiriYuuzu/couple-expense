@@ -16,7 +16,8 @@ export const useGroupStore = defineStore('group', () => {
     const membersByGroup = ref<Record<string, GroupMemberRow[]>>({})
     const settingsByGroup = ref<Record<string, GroupSettingsRow>>({})
     const userProfile = ref<UserProfileRow | null>(null)
-    const loading = ref(false)
+    const loadingCount = ref(0)
+    const loading = computed(() => loadingCount.value > 0)
     const error = ref<string | null>(null)
 
     // 計算屬性
@@ -51,7 +52,7 @@ export const useGroupStore = defineStore('group', () => {
     // 獲取用戶資料
     const fetchUserProfile = async () => {
         try {
-            loading.value = true
+            loadingCount.value++
             error.value = null
 
             const { data: userData } = await supabase.auth.getUser()
@@ -75,14 +76,14 @@ export const useGroupStore = defineStore('group', () => {
             console.error('獲取用戶資料失敗:', err)
             error.value = err instanceof Error ? err.message : '獲取用戶資料失敗'
         } finally {
-            loading.value = false
+            loadingCount.value--
         }
     }
 
     // 獲取用戶所屬的所有群組（含成員和設定）
     const fetchUserGroups = async () => {
         try {
-            loading.value = true
+            loadingCount.value++
             error.value = null
 
             const { data: userData } = await supabase.auth.getUser()
@@ -160,7 +161,7 @@ export const useGroupStore = defineStore('group', () => {
             console.error('獲取群組資料失敗:', err)
             error.value = err instanceof Error ? err.message : '獲取群組資料失敗'
         } finally {
-            loading.value = false
+            loadingCount.value--
         }
     }
 
@@ -172,7 +173,7 @@ export const useGroupStore = defineStore('group', () => {
     // 建立新群組
     const createGroup = async (name: string, description?: string) => {
         try {
-            loading.value = true
+            loadingCount.value++
             error.value = null
 
             const { data, error: createError } = await supabase
@@ -192,14 +193,14 @@ export const useGroupStore = defineStore('group', () => {
             error.value = err instanceof Error ? err.message : '建立群組失敗'
             throw err
         } finally {
-            loading.value = false
+            loadingCount.value--
         }
     }
 
     // 透過邀請碼加入群組
     const joinGroupWithCode = async (code: string) => {
         try {
-            loading.value = true
+            loadingCount.value++
             error.value = null
 
             const { data, error: joinError } = await supabase
@@ -223,14 +224,14 @@ export const useGroupStore = defineStore('group', () => {
             error.value = err instanceof Error ? err.message : '加入群組失敗'
             throw err
         } finally {
-            loading.value = false
+            loadingCount.value--
         }
     }
 
     // 離開群組
     const leaveGroup = async (groupId: string) => {
         try {
-            loading.value = true
+            loadingCount.value++
             error.value = null
 
             const { error: leaveError } = await supabase
@@ -253,14 +254,14 @@ export const useGroupStore = defineStore('group', () => {
             error.value = err instanceof Error ? err.message : '離開群組失敗'
             throw err
         } finally {
-            loading.value = false
+            loadingCount.value--
         }
     }
 
     // 更新作用中群組的設定
     const updateGroupSettings = async (updates: GroupSettingsUpdate) => {
         try {
-            loading.value = true
+            loadingCount.value++
             error.value = null
 
             if (!activeGroupId.value) {
@@ -290,7 +291,7 @@ export const useGroupStore = defineStore('group', () => {
             error.value = err instanceof Error ? err.message : '更新群組設定失敗'
             throw err
         } finally {
-            loading.value = false
+            loadingCount.value--
         }
     }
 
@@ -300,7 +301,7 @@ export const useGroupStore = defineStore('group', () => {
         avatar_url?: string
     }) => {
         try {
-            loading.value = true
+            loadingCount.value++
             error.value = null
 
             const { data: userData } = await supabase.auth.getUser()
@@ -327,14 +328,14 @@ export const useGroupStore = defineStore('group', () => {
             error.value = err instanceof Error ? err.message : '更新用戶資料失敗'
             throw err
         } finally {
-            loading.value = false
+            loadingCount.value--
         }
     }
 
     // 更新個人月度預算
     const updatePersonalBudget = async (budget: number | null) => {
         try {
-            loading.value = true
+            loadingCount.value++
             error.value = null
 
             const { data: userData } = await supabase.auth.getUser()
@@ -361,7 +362,7 @@ export const useGroupStore = defineStore('group', () => {
             error.value = err instanceof Error ? err.message : '更新個人預算失敗'
             throw err
         } finally {
-            loading.value = false
+            loadingCount.value--
         }
     }
 

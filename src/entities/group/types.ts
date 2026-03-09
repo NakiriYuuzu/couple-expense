@@ -1,4 +1,7 @@
-import type { Database } from '@/shared/lib/database.types'
+import type { Database, SplitMethod } from '@/shared/lib/database.types'
+
+// Re-export SplitMethod from canonical source
+export type { SplitMethod }
 
 // Row type aliases
 export type GroupRow = Database['public']['Tables']['groups']['Row']
@@ -7,9 +10,6 @@ export type GroupSettingsRow = Database['public']['Tables']['group_settings']['R
 
 // Group member role
 export type GroupMemberRole = 'owner' | 'admin' | 'member'
-
-// Split method options
-export type SplitMethod = 'equal' | 'exact' | 'percentage' | 'shares'
 
 // Per-category budget amounts
 export interface CategoryBudgets {

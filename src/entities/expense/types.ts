@@ -25,7 +25,7 @@ export interface DisplayExpense {
 
 // Shape emitted by AddExpenseDrawer's expense-added event
 export interface AddExpenseEvent {
-    id: number
+    id?: string
     title: string
     amount: string
     category: string

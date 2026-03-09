@@ -83,10 +83,10 @@ usePullToRefresh({
                 expenseStore.fetchExpenses(),
                 groupStore.fetchUserProfile()
             ])
-            toast.success('資料已更新')
+            toast.success(t('common.refreshed'))
         } catch (error) {
             console.error('刷新失敗:', error)
-            toast.error('刷新失敗，請稍後重試')
+            toast.error(t('common.refreshFailed'))
         }
     }
 })

@@ -1,10 +1,10 @@
-import type { Database } from '@/shared/lib/database.types'
+import type { Database, SplitMethod } from '@/shared/lib/database.types'
+
+// Re-export SplitMethod from canonical source
+export type { SplitMethod }
 
 // Row type aliases
 export type ExpenseSplitRow = Database['public']['Tables']['expense_splits']['Row']
-
-// Split method type
-export type SplitMethod = 'equal' | 'exact' | 'percentage' | 'shares'
 
 // Participant in a split (used in UI for configuring splits)
 export interface SplitParticipant {

@@ -207,9 +207,15 @@ const handleEndDateSelect = (date: DateValue | undefined) => {
 const toggleCategory = (categoryId: string) => {
     const index = filters.value.categories.indexOf(categoryId)
     if (index > -1) {
-        filters.value.categories.splice(index, 1)
+        filters.value = {
+            ...filters.value,
+            categories: filters.value.categories.filter((_, i) => i !== index)
+        }
     } else {
-        filters.value.categories.push(categoryId)
+        filters.value = {
+            ...filters.value,
+            categories: [...filters.value.categories, categoryId]
+        }
     }
 }
 
