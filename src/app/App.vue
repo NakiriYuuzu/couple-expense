@@ -21,15 +21,6 @@ const themeStore = useThemeStore()
 const settlementStore = useSettlementStore()
 const { startPreload } = useBackgroundPreload()
 
-// 頁面索引（保留用於其他邏輯參考）
-const pageIndexMap: Record<string, number> = {
-    '/': 0,
-    '/dashboard': 1,
-    '/expenses': 2,
-    '/overview': 3,
-    '/settings': 4
-}
-
 // 需要顯示底部導航的路由
 const routesWithBottomNav = ['/dashboard', '/expenses', '/overview', '/settings']
 

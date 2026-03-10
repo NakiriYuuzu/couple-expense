@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CheckCircle, ArrowRight, MoreHorizontal, Pencil, Trash2 } from 'lucide-vue-next'
 import {
@@ -22,7 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avat
 import { Button } from '@/shared/components/ui/button'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import { Separator } from '@/shared/components/ui/separator'
-import { useSettlementStore } from '@/features/settlement/stores/settlement'
+import { useSettlementStore } from '@/shared/stores'
 import { useAuthStore } from '@/features/auth/stores/auth'
 import { toast } from 'vue-sonner'
 import type { SettlementHistoryItem } from '@/entities/settlement/types'
@@ -48,7 +48,7 @@ const deleteTarget = ref<SettlementHistoryItem | null>(null)
 const isDeleteDialogOpen = ref(false)
 const isDeleting = ref(false)
 
-const currentUserId = authStore.user?.id ?? ''
+const currentUserId = computed(() => authStore.user?.id ?? '')
 
 const getInitial = (displayName: string | null): string => {
     if (!displayName) return '?'
@@ -68,7 +68,7 @@ const formatDate = (dateStr: string): string => {
 }
 
 const isOwnSettlement = (item: SettlementHistoryItem): boolean => {
-    return item.paidBy.userId === currentUserId
+    return item.paidBy.userId === currentUserId.value
 }
 
 const handleEdit = (item: SettlementHistoryItem) => {

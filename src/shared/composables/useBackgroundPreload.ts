@@ -1,6 +1,4 @@
-import { useExpenseStore } from '@/shared/stores'
-import { useGroupStore } from '@/features/group/stores/group'
-import { useSettlementStore } from '@/features/settlement/stores/settlement'
+import { useExpenseStore, useGroupStore, useSettlementStore } from '@/shared/stores'
 
 function scheduleIdleTask(fn: () => void): void {
     if ('requestIdleCallback' in window) {

@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
-import { useSettlementStore } from '@/features/settlement/stores/settlement'
+import { useSettlementStore } from '@/shared/stores'
 
 export function useNetBalances() {
     const settlementStore = useSettlementStore()

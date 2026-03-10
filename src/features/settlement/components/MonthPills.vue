@@ -45,7 +45,9 @@ const scrollToSelected = async () => {
     if (!container) return
     const selected = container.querySelector('[data-selected="true"]') as HTMLElement
     if (selected) {
-        selected.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        const behavior: ScrollBehavior = prefersReducedMotion ? 'auto' : 'smooth'
+        selected.scrollIntoView({ behavior, inline: 'center', block: 'nearest' })
     }
 }
 
