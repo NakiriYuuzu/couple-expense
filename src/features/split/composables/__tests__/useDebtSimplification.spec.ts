@@ -109,4 +109,59 @@ describe('simplifyDebts', () => {
         // Amount 0.005 rounds below threshold; no debt should be emitted
         expect(result).toHaveLength(0)
     })
+
+    describe('edge cases', () => {
+        it('returns empty when all balances are negative (no creditors)', () => {
+            const balances = [
+                makeBalance('A', -50),
+                makeBalance('B', -50)
+            ]
+            const result = simplifyDebts(balances)
+            expect(result).toEqual([])
+        })
+
+        it('handles very large amounts in a single transfer', () => {
+            const balances = [
+                makeBalance('A', -1000000),
+                makeBalance('B', 1000000)
+            ]
+            const result = simplifyDebts(balances)
+
+            expect(result).toHaveLength(1)
+            expect(result[0]!.fromUser.userId).toBe('A')
+            expect(result[0]!.toUser.userId).toBe('B')
+            expect(result[0]!.amount).toBe(1000000)
+        })
+
+        it('resolves many small alternating balances correctly', () => {
+            // 10 people: odd-indexed owe 1, even-indexed are owed 1
+            const balances = Array.from({ length: 10 }, (_, i) =>
+                makeBalance(`P${i}`, i % 2 === 0 ? 1 : -1)
+            )
+            const result = simplifyDebts(balances)
+
+            const totalTransferred = result.reduce((s, d) => s + d.amount, 0)
+            expect(totalTransferred).toBeCloseTo(5, 2)
+            // All amounts should be positive
+            result.forEach(d => expect(d.amount).toBeGreaterThan(0))
+        })
+
+        it('produces no spurious debt from near-zero accumulation', () => {
+            // Values that sum to 0.004 remainder after cancellation
+            const balances = [
+                makeBalance('A', -10.002),
+                makeBalance('B', -10.002),
+                makeBalance('C', 20.008)
+            ]
+            const result = simplifyDebts(balances)
+
+            // All transferred amounts must be rounded to 2 decimal places
+            result.forEach(d => {
+                const decimals = d.amount.toString().split('.')[1] ?? ''
+                expect(decimals.length).toBeLessThanOrEqual(2)
+            })
+            // No debt should be less than 0.01
+            result.forEach(d => expect(d.amount).toBeGreaterThanOrEqual(0.01))
+        })
+    })
 })

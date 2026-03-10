@@ -191,9 +191,17 @@ export const useAccountManagerStore = defineStore('accountManager', () => {
     localStorage.removeItem('couple-expense-accounts')
   }
   
+  // 更新帳號顯示名稱
+  const updateAccountName = (accountId: string, name: string) => {
+    storedAccounts.value = storedAccounts.value.map(acc =>
+        acc.id === accountId ? { ...acc, name } : acc
+    )
+    saveToStorage()
+  }
+
   // 初始化
   initAccountManager()
-  
+
   return {
     storedAccounts,
     currentAccountId,
@@ -204,6 +212,7 @@ export const useAccountManagerStore = defineStore('accountManager', () => {
     switchToAccount,
     removeAccount,
     clearAllAccounts,
+    updateAccountName,
     initAccountManager
   }
 }, {

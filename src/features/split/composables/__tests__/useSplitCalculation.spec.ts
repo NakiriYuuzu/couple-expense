@@ -54,10 +54,10 @@ describe('useSplitCalculation', () => {
 
             const { calculatedSplits, isBalanced, splitTotal } = useSplitCalculation(total, participants, method)
 
-            // First two get the rounded per-person amount, last gets the remainder
-            expect(calculatedSplits.value[0]!.amount).toBe(33.33)
+            // 整數分分配：餘數分給前 N 人（10000/3=3333 餘 1）
+            expect(calculatedSplits.value[0]!.amount).toBe(33.34)
             expect(calculatedSplits.value[1]!.amount).toBe(33.33)
-            expect(calculatedSplits.value[2]!.amount).toBeCloseTo(33.34, 2)
+            expect(calculatedSplits.value[2]!.amount).toBe(33.33)
             expect(splitTotal.value).toBeCloseTo(100, 2)
             expect(isBalanced.value).toBe(true)
         })
@@ -255,6 +255,125 @@ describe('useSplitCalculation', () => {
             // Last participant absorbs floating-point remainder
             // splitTotal may be 99.99 due to JS floating-point; isBalanced uses <0.01 threshold
             expect(Math.abs(splitTotal.value - 100)).toBeLessThan(0.02)
+        })
+    })
+
+    // ─── edge cases ─────────────────────────────────────────────────────────
+
+    describe('edge cases', () => {
+        it('returns zero amounts for negative total', () => {
+            const total = ref(-100)
+            const participants = ref([
+                makeParticipant('A'),
+                makeParticipant('B')
+            ])
+            const method = ref<SplitMethod>('equal')
+
+            const { calculatedSplits } = useSplitCalculation(total, participants, method)
+
+            calculatedSplits.value.forEach(p => expect(p.amount).toBe(0))
+        })
+
+        it('returns zero amounts for NaN total', () => {
+            const total = ref(NaN)
+            const participants = ref([
+                makeParticipant('A'),
+                makeParticipant('B')
+            ])
+            const method = ref<SplitMethod>('equal')
+
+            const { calculatedSplits } = useSplitCalculation(total, participants, method)
+
+            calculatedSplits.value.forEach(p => expect(p.amount).toBe(0))
+        })
+
+        it('returns zero amounts for Infinity total (percentage)', () => {
+            const total = ref(Infinity)
+            const participants = ref([
+                makeParticipant('A', 0, true, 100)
+            ])
+            const method = ref<SplitMethod>('percentage')
+
+            const { calculatedSplits } = useSplitCalculation(total, participants, method)
+
+            calculatedSplits.value.forEach(p => expect(p.amount).toBe(0))
+        })
+
+        it('preserves precision for large amount equal split', () => {
+            const total = ref(999999.99)
+            const participants = ref([
+                makeParticipant('A'),
+                makeParticipant('B'),
+                makeParticipant('C')
+            ])
+            const method = ref<SplitMethod>('equal')
+
+            const { calculatedSplits, splitTotal, isBalanced } = useSplitCalculation(total, participants, method)
+
+            expect(splitTotal.value).toBe(999999.99)
+            expect(isBalanced.value).toBe(true)
+            // 99999999 cents / 3 = 33333333 remainder 0 → all equal
+            calculatedSplits.value.forEach(p => expect(p.amount).toBe(333333.33))
+        })
+
+        it('allows percentage > 100% but marks as unbalanced', () => {
+            const total = ref(1000)
+            const participants = ref([
+                makeParticipant('A', 0, true, 150)
+            ])
+            const method = ref<SplitMethod>('percentage')
+
+            const { calculatedSplits, isBalanced } = useSplitCalculation(total, participants, method)
+
+            expect(calculatedSplits.value[0]!.amount).toBe(1500)
+            expect(isBalanced.value).toBe(false)
+        })
+
+        it('returns zero amounts when all percentages are 0', () => {
+            const total = ref(1000)
+            const participants = ref([
+                makeParticipant('A', 0, true, 0),
+                makeParticipant('B', 0, true, 0)
+            ])
+            const method = ref<SplitMethod>('percentage')
+
+            const { calculatedSplits, isBalanced } = useSplitCalculation(total, participants, method)
+
+            calculatedSplits.value.forEach(p => expect(p.amount).toBe(0))
+            expect(isBalanced.value).toBe(false)
+        })
+
+        it('distributes single cent to first participant in equal split', () => {
+            const total = ref(0.01)
+            const participants = ref([
+                makeParticipant('A'),
+                makeParticipant('B')
+            ])
+            const method = ref<SplitMethod>('equal')
+
+            const { calculatedSplits, isBalanced } = useSplitCalculation(total, participants, method)
+
+            // 1 cent / 2 = 0 remainder 1 → first participant gets the extra cent
+            expect(calculatedSplits.value[0]!.amount).toBe(0.01)
+            expect(calculatedSplits.value[1]!.amount).toBe(0)
+            expect(isBalanced.value).toBe(true)
+        })
+
+        it('sums exactly for many participants in equal split', () => {
+            const total = ref(100)
+            const participants = ref(
+                Array.from({ length: 7 }, (_, i) => makeParticipant(`P${i}`))
+            )
+            const method = ref<SplitMethod>('equal')
+
+            const { calculatedSplits, splitTotal, isBalanced } = useSplitCalculation(total, participants, method)
+
+            expect(calculatedSplits.value).toHaveLength(7)
+            // 10000 cents / 7 = 1428 remainder 4 → first 4 get 14.29, last 3 get 14.28
+            const sum = calculatedSplits.value.reduce((s, p) => s + p.amount, 0)
+            expect(Math.round(sum * 100)).toBe(10000)
+            expect(splitTotal.value).toBeCloseTo(100, 2)
+            expect(isBalanced.value).toBe(true)
         })
     })
 

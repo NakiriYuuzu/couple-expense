@@ -40,28 +40,33 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  
+
   /* Custom app color mappings */
   --color-brand-primary: var(--brand-primary);
   --color-brand-primary-foreground: var(--brand-primary-foreground);
   --color-brand-accent: var(--brand-accent);
-  
+
+  /* Warm accent color mappings */
+  --color-warm-accent: var(--warm-accent);
+  --color-warm-accent-foreground: var(--warm-accent-foreground);
+  --color-warm-accent-muted: var(--warm-accent-muted);
+
   /* Navigation color mappings */
   --color-nav-background: var(--nav-background);
   --color-nav-foreground: var(--nav-foreground);
   --color-nav-border: var(--nav-border);
-  
+
   /* Financial color mappings */
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-income: var(--income);
   --color-expense: var(--expense);
   --color-expense-foreground: var(--expense-foreground);
-  
+
   /* Category color mappings */
   --color-category-food: var(--category-food);
   --color-category-food-bg: var(--category-food-bg);
-  --color-category-pet: var(--category-pet);  
+  --color-category-pet: var(--category-pet);
   --color-category-pet-bg: var(--category-pet-bg);
   --color-category-shopping: var(--category-shopping);
   --color-category-shopping-bg: var(--category-shopping-bg);
@@ -71,6 +76,18 @@
   --color-category-home-bg: var(--category-home-bg);
   --color-category-other: var(--category-other);
   --color-category-other-bg: var(--category-other-bg);
+
+  /* Glass color mappings */
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-bg-heavy: var(--glass-bg-heavy);
+  --color-glass-bg-light: var(--glass-bg-light);
+  --color-glass-border: var(--glass-border);
+  --color-glass-border-strong: var(--glass-border-strong);
+
+  /* Font families */
+  --font-heading: 'Inter', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
   @keyframes accordion-down {
@@ -91,32 +108,35 @@
   }
 }
 
+/* ============================================
+   Light Mode Color Tokens
+   ============================================ */
 :root {
-  --background: oklch(0.918 0.014 277.859); /* #E9E8F9 converted to OKLCH */
+  --background: oklch(0.965 0.008 278);
   --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(0.985 0.008 277.859); /* Lighter version for cards */
+  --card: oklch(0.997 0.003 280);
   --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(0.985 0.008 277.859);
+  --popover: oklch(0.997 0.003 280);
   --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.677 0.112 277.859); /* 使用我們的品牌主色 #9180D1 */
+  --primary: oklch(0.637 0.153 278);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.93 0.004 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
   --muted: oklch(0.93 0.004 286.375);
   --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.961 0.019 277.859); /* 使用我們的品牌淺色作為 accent */
-  --accent-foreground: oklch(0.677 0.112 277.859); /* 使用品牌主色作為 accent 前景 */
+  --accent: oklch(0.945 0.025 278);
+  --accent-foreground: oklch(0.637 0.153 278);
   --destructive: oklch(0.48 0.23 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.85 0.008 286.32);
-  --input: oklch(0.85 0.008 286.32);
+  --border: oklch(0.88 0.01 278);
+  --input: oklch(0.88 0.01 278);
   --ring: oklch(0.705 0.015 286.067);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
+  --radius: 1.25rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.141 0.005 285.823);
   --sidebar-primary: oklch(0.21 0.006 285.885);
@@ -125,59 +145,87 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
-  
-  /* Custom app colors */
-  --brand-primary: oklch(0.677 0.112 277.859); /* #9180D1 converted to OKLCH */
+
+  /* Brand colors */
+  --brand-primary: oklch(0.637 0.153 278);
   --brand-primary-foreground: oklch(0.985 0 0);
-  --brand-accent: oklch(0.961 0.019 277.859); /* Light version for hover states */
-  
+  --brand-accent: oklch(0.945 0.025 278);
+
+  /* Warm accent - Peach */
+  --warm-accent: oklch(0.780 0.100 45);
+  --warm-accent-foreground: oklch(0.985 0 0);
+  --warm-accent-muted: oklch(0.960 0.030 45);
+
   /* Navigation colors */
-  --nav-background: oklch(0.985 0.008 277.859); /* Lighter than main background for elevation */
+  --nav-background: oklch(0.997 0.003 280);
   --nav-foreground: oklch(0.141 0.005 285.823);
-  --nav-border: oklch(0.857 0.021 277.859); /* Slightly darker border */
-  
+  --nav-border: oklch(0.857 0.021 278);
+
   /* Financial colors */
-  --success: oklch(0.648 0.148 142.495); /* Green for positive amounts */
+  --success: oklch(0.648 0.148 142.495);
   --success-foreground: oklch(0.985 0 0);
-  --income: oklch(0.648 0.148 142.495); /* Alias for success */
-  --expense: oklch(0.52 0.24 29.234); /* Red for negative amounts */
+  --income: oklch(0.648 0.148 142.495);
+  --expense: oklch(0.52 0.24 29.234);
   --expense-foreground: oklch(0.985 0 0);
-  
+
   /* Category icon colors */
-  --category-food: oklch(0.705 0.198 41.32); /* Orange - 餐飲 */
+  --category-food: oklch(0.705 0.198 41.32);
   --category-food-bg: oklch(0.96 0.05 41.32);
-  --category-pet: oklch(0.701 0.221 328.363); /* Pink - 寵物 */
+  --category-pet: oklch(0.701 0.221 328.363);
   --category-pet-bg: oklch(0.95 0.05 328.363);
-  --category-shopping: oklch(0.654 0.196 251.136); /* Blue - 購物 */
+  --category-shopping: oklch(0.654 0.196 251.136);
   --category-shopping-bg: oklch(0.95 0.05 251.136);
-  --category-transport: oklch(0.648 0.148 142.495); /* Green - 交通 */
+  --category-transport: oklch(0.648 0.148 142.495);
   --category-transport-bg: oklch(0.95 0.05 142.495);
-  --category-home: oklch(0.615 0.196 265.754); /* Indigo - 居家 */
+  --category-home: oklch(0.615 0.196 265.754);
   --category-home-bg: oklch(0.95 0.05 265.754);
-  --category-other: oklch(0.627 0.204 308.851); /* Purple - 其他 */
+  --category-other: oklch(0.627 0.204 308.851);
   --category-other-bg: oklch(0.95 0.05 308.851);
+
+  /* Glassmorphism tokens */
+  --glass-bg: oklch(0.96 0.015 278 / 0.55);
+  --glass-bg-heavy: oklch(0.96 0.015 278 / 0.72);
+  --glass-bg-light: oklch(0.97 0.010 278 / 0.35);
+  --glass-border: oklch(0.78 0.04 278 / 0.35);
+  --glass-border-strong: oklch(0.70 0.06 278 / 0.40);
+  --glass-blur: 20px;
+  --glass-shadow: 0 4px 16px oklch(0.637 0.153 278 / 0.10),
+                 0 8px 32px oklch(0.637 0.153 278 / 0.08);
+  --glass-shadow-elevated: 0 8px 24px oklch(0.637 0.153 278 / 0.14),
+                           0 16px 48px oklch(0.637 0.153 278 / 0.10);
+
+  /* Shadow system */
+  --shadow-card: 0 2px 8px -2px oklch(0.637 0.153 278 / 0.08),
+                 0 1px 3px -1px oklch(0.637 0.153 278 / 0.05);
+  --shadow-card-hover: 0 8px 20px -4px oklch(0.637 0.153 278 / 0.15),
+                       0 4px 8px -2px oklch(0.637 0.153 278 / 0.08);
+  --shadow-elevated: 0 12px 32px -6px oklch(0.637 0.153 278 / 0.20),
+                     0 6px 12px -4px oklch(0.637 0.153 278 / 0.10);
 }
 
+/* ============================================
+   Dark Mode Color Tokens
+   ============================================ */
 .dark {
-  --background: oklch(0.215 0.028 277.859); /* Dark version of #E9E8F9 - approximately #3A3347 */
-  --foreground: oklch(0.918 0.014 277.859); /* Use light background as foreground */
-  --card: oklch(0.285 0.035 277.859); /* Lighter version for cards - approximately #4A4157 */
-  --card-foreground: oklch(0.918 0.014 277.859);
-  --popover: oklch(0.285 0.035 277.859);
-  --popover-foreground: oklch(0.918 0.014 277.859);
-  --primary: oklch(0.757 0.132 277.859); /* Dark 模式使用較亮的品牌色 */
-  --primary-foreground: oklch(0.215 0.028 277.859); /* Dark 背景色作為前景 */
-  --secondary: oklch(0.355 0.042 277.859); /* Consistent with our purple theme */
-  --secondary-foreground: oklch(0.918 0.014 277.859);
-  --muted: oklch(0.355 0.042 277.859);
-  --muted-foreground: oklch(0.785 0.056 277.859); /* Lighter purple for muted text */
-  --accent: oklch(0.425 0.056 277.859); /* Dark 模式使用中等品牌色作為 accent */
-  --accent-foreground: oklch(0.918 0.014 277.859); /* 使用淺背景色作為前景 */
+  --background: oklch(0.12 0.02 278);
+  --foreground: oklch(0.918 0.014 278);
+  --card: oklch(0.20 0.03 278);
+  --card-foreground: oklch(0.918 0.014 278);
+  --popover: oklch(0.20 0.03 278);
+  --popover-foreground: oklch(0.918 0.014 278);
+  --primary: oklch(0.737 0.145 278);
+  --primary-foreground: oklch(0.18 0.025 278);
+  --secondary: oklch(0.30 0.04 278);
+  --secondary-foreground: oklch(0.918 0.014 278);
+  --muted: oklch(0.30 0.04 278);
+  --muted-foreground: oklch(0.785 0.056 278);
+  --accent: oklch(0.35 0.05 278);
+  --accent-foreground: oklch(0.918 0.014 278);
   --destructive: oklch(0.75 0.18 25.723);
   --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.425 0.056 277.859); /* Purple-tinted border for consistency */
-  --input: oklch(0.425 0.056 277.859);
-  --ring: oklch(0.525 0.070 277.859); /* Brighter purple ring */
+  --border: oklch(0.30 0.04 278);
+  --input: oklch(0.30 0.04 278);
+  --ring: oklch(0.525 0.070 278);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -191,49 +239,271 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.274 0.006 286.033);
   --sidebar-ring: oklch(0.442 0.017 285.786);
-  
-  /* Custom app colors - Dark mode */
-  --brand-primary: oklch(0.757 0.132 277.859); /* Lighter brand color for dark mode */
-  --brand-primary-foreground: oklch(0.215 0.028 277.859);
-  --brand-accent: oklch(0.425 0.056 277.859); /* Medium purple for hover states */
-  
+
+  /* Brand colors - Dark mode */
+  --brand-primary: oklch(0.737 0.145 278);
+  --brand-primary-foreground: oklch(0.18 0.025 278);
+  --brand-accent: oklch(0.35 0.05 278);
+
+  /* Warm accent - Dark mode */
+  --warm-accent: oklch(0.720 0.080 45);
+  --warm-accent-foreground: oklch(0.18 0.025 278);
+  --warm-accent-muted: oklch(0.300 0.035 45);
+
   /* Navigation colors - Dark mode */
-  --nav-background: oklch(0.285 0.035 277.859); /* Same as card background for consistency */
-  --nav-foreground: oklch(0.918 0.014 277.859);
-  --nav-border: oklch(0.355 0.042 277.859); /* Lighter border for definition */
-  
+  --nav-background: oklch(0.20 0.03 278);
+  --nav-foreground: oklch(0.918 0.014 278);
+  --nav-border: oklch(0.30 0.04 278);
+
   /* Financial colors - Dark mode */
-  --success: oklch(0.728 0.168 142.495); /* Brighter green for dark mode */
-  --success-foreground: oklch(0.215 0.028 277.859);
+  --success: oklch(0.728 0.168 142.495);
+  --success-foreground: oklch(0.18 0.025 278);
   --income: oklch(0.728 0.168 142.495);
-  --expense: oklch(0.78 0.2 29.234); /* Light red for dark mode */
-  --expense-foreground: oklch(0.215 0.028 277.859);
-  
+  --expense: oklch(0.78 0.2 29.234);
+  --expense-foreground: oklch(0.18 0.025 278);
+
   /* Category icon colors - Dark mode */
-  --category-food: oklch(0.785 0.218 41.32); /* Orange - 餐飲 */
+  --category-food: oklch(0.785 0.218 41.32);
   --category-food-bg: oklch(0.26 0.032 41.32);
-  --category-pet: oklch(0.781 0.241 328.363); /* Pink - 寵物 */
+  --category-pet: oklch(0.781 0.241 328.363);
   --category-pet-bg: oklch(0.25 0.032 328.363);
-  --category-shopping: oklch(0.734 0.216 251.136); /* Blue - 購物 */
+  --category-shopping: oklch(0.734 0.216 251.136);
   --category-shopping-bg: oklch(0.25 0.032 251.136);
-  --category-transport: oklch(0.728 0.168 142.495); /* Green - 交通 */
+  --category-transport: oklch(0.728 0.168 142.495);
   --category-transport-bg: oklch(0.25 0.032 142.495);
-  --category-home: oklch(0.695 0.216 265.754); /* Indigo - 居家 */
+  --category-home: oklch(0.695 0.216 265.754);
   --category-home-bg: oklch(0.25 0.032 265.754);
-  --category-other: oklch(0.707 0.224 308.851); /* Purple - 其他 */
+  --category-other: oklch(0.707 0.224 308.851);
   --category-other-bg: oklch(0.25 0.032 308.851);
+
+  /* Glassmorphism tokens - Dark mode */
+  --glass-bg: oklch(0.18 0.03 278 / 0.58);
+  --glass-bg-heavy: oklch(0.18 0.03 278 / 0.75);
+  --glass-bg-light: oklch(0.18 0.03 278 / 0.38);
+  --glass-border: oklch(1 0 0 / 0.12);
+  --glass-border-strong: oklch(1 0 0 / 0.22);
+  --glass-blur: 20px;
+  --glass-shadow: 0 8px 32px oklch(0 0 0 / 0.35);
+  --glass-shadow-elevated: 0 16px 48px oklch(0 0 0 / 0.45);
+
+  /* Shadow system - Dark mode */
+  --shadow-card: 0 2px 8px -2px oklch(0 0 0 / 0.3),
+                 0 1px 3px -1px oklch(0 0 0 / 0.2);
+  --shadow-card-hover: 0 8px 20px -4px oklch(0.737 0.145 278 / 0.2),
+                       0 4px 8px -2px oklch(0 0 0 / 0.2);
+  --shadow-elevated: 0 12px 32px -6px oklch(0 0 0 / 0.4),
+                     0 6px 12px -4px oklch(0 0 0 / 0.25);
 }
 
+/* ============================================
+   Base Layer
+   ============================================ */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
   }
 }
 
-/* 防止 PWA 模式下的瀏覽器下拉刷新 */
+/* ============================================
+   Glassmorphism Background Decoration
+   Gradient blobs applied directly as background-image
+   so they layer on top of bg-background color and
+   glass cards can blur them via backdrop-filter.
+   ============================================ */
+.glass-page-bg {
+    background-image:
+        radial-gradient(circle 800px at 10% 10%, oklch(0.637 0.153 278 / 0.22) 0%, transparent 60%),
+        radial-gradient(circle 600px at 90% 20%, oklch(0.650 0.200 330 / 0.16) 0%, transparent 55%),
+        radial-gradient(circle 700px at 50% 50%, oklch(0.600 0.160 260 / 0.10) 0%, transparent 55%),
+        radial-gradient(circle 500px at 30% 80%, oklch(0.620 0.170 240 / 0.14) 0%, transparent 55%),
+        radial-gradient(circle 400px at 75% 70%, oklch(0.750 0.120 55 / 0.08) 0%, transparent 50%);
+    background-attachment: fixed;
+}
+
+.dark .glass-page-bg {
+    background-image:
+        radial-gradient(circle 800px at 10% 10%, rgba(99, 52, 196, 0.40) 0%, transparent 60%),
+        radial-gradient(circle 600px at 90% 20%, rgba(186, 42, 123, 0.30) 0%, transparent 55%),
+        radial-gradient(circle 700px at 50% 50%, rgba(59, 62, 191, 0.22) 0%, transparent 55%),
+        radial-gradient(circle 500px at 30% 80%, rgba(29, 80, 196, 0.25) 0%, transparent 55%),
+        radial-gradient(circle 400px at 75% 70%, rgba(201, 106, 20, 0.15) 0%, transparent 50%);
+    background-attachment: fixed;
+}
+
+/* ============================================
+   Glassmorphism Utilities
+   ============================================ */
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+}
+
+.glass-heavy {
+    background: var(--glass-bg-heavy);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    border: 1px solid var(--glass-border-strong);
+    box-shadow: var(--glass-shadow);
+}
+
+.glass-light {
+    background: var(--glass-bg-light);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid var(--glass-border);
+}
+
+.glass-elevated {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+    border: 1px solid var(--glass-border-strong);
+    box-shadow: var(--glass-shadow-elevated);
+}
+
+.glass-nav {
+    background: var(--glass-bg-heavy);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 30px oklch(0 0 0 / 0.1);
+}
+
+/* Fallback for browsers without backdrop-filter */
+@supports not (backdrop-filter: blur(1px)) {
+    .glass,
+    .glass-heavy,
+    .glass-light,
+    .glass-elevated,
+    .glass-nav {
+        background: var(--card);
+        border: 1px solid var(--border);
+    }
+}
+
+/* ============================================
+   Animation System
+   ============================================ */
+@media (prefers-reduced-motion: no-preference) {
+    /* Card appearance - fade up */
+    @keyframes fade-up {
+        from {
+            opacity: 0;
+            transform: translateY(12px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Scale in */
+    @keyframes scale-in {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    /* Sliding number transitions */
+    @keyframes slide-number-up {
+        from {
+            opacity: 0;
+            transform: translateY(8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slide-number-down {
+        from {
+            opacity: 0;
+            transform: translateY(-8px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-fade-up {
+        animation: fade-up 0.3s ease-out both;
+    }
+
+    .animate-scale-in {
+        animation: scale-in 0.25s ease-out both;
+    }
+
+    .animate-slide-number-up {
+        animation: slide-number-up 0.2s ease-out both;
+    }
+
+    .animate-slide-number-down {
+        animation: slide-number-down 0.2s ease-out both;
+    }
+}
+
+/* Interaction feedback */
+.press-feedback {
+    transition: transform 100ms ease;
+}
+.press-feedback:active {
+    transform: scale(0.97);
+}
+
+.hover-transition {
+    transition: color 150ms ease, background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+/* Stagger delay utilities (50ms intervals) */
+.stagger-1 { animation-delay: 50ms; }
+.stagger-2 { animation-delay: 100ms; }
+.stagger-3 { animation-delay: 150ms; }
+.stagger-4 { animation-delay: 200ms; }
+.stagger-5 { animation-delay: 250ms; }
+.stagger-6 { animation-delay: 300ms; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ============================================
+   Font Utilities
+   ============================================ */
+.font-heading {
+  font-family: var(--font-heading);
+}
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* ============================================
+   PWA & Global Overrides
+   ============================================ */
 html {
   overscroll-behavior-y: contain;
   height: 100%;
@@ -241,7 +511,6 @@ html {
 
 body {
   overscroll-behavior-y: contain;
-  /* 防止iOS橡皮筋效果，但保留滾動功能 */
   width: 100%;
   min-height: 100vh;
 }
@@ -250,12 +519,11 @@ body {
   min-height: 100vh;
 }
 
-/* 確保所有頁面容器正確處理滾動 */
 .min-h-screen {
   min-height: 100vh;
 }
 
-/* 防止在 PWA 中的意外滾動 */
+/* PWA tap highlight prevention */
 * {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
@@ -263,13 +531,15 @@ body {
   user-select: none;
 }
 
-/* 允許文字輸入框的選擇 */
+/* Allow text selection in inputs */
 input, textarea {
   -webkit-user-select: text;
   user-select: text;
 }
 
-/* PullToRefreshJS 樣式 */
+/* ============================================
+   PullToRefreshJS Styles
+   ============================================ */
 .ptr--ptr {
   box-shadow: inset 0 -3px 5px rgba(0, 0, 0, 0.12);
   pointer-events: none;
@@ -323,7 +593,6 @@ input, textarea {
   animation: spin 1s linear infinite;
 }
 
-/* 覆蓋預設的文字顏色 */
 .ptr--loading .ptr--text,
 .ptr--pulling .ptr--text {
   color: var(--brand-primary);

@@ -1,6 +1,6 @@
 import type { Database } from '@/shared/lib/database.types'
 
-export type UserProfileRow = Database['public']['Tables']['user_profiles']['Row']
+export type UserProfileRow = Database['group_expense']['Tables']['user_profiles']['Row']
 
 // User profile update payload
 export interface UserProfileUpdate {

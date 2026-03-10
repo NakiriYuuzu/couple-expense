@@ -33,17 +33,11 @@ export const routes = {
         meta: { title: '支出詳情', roles: [], requiresAuth: true },
         component: () => import('@/pages/expense-detail/ExpenseDetailPage.vue')
     } satisfies RouteRecordRaw,
-    balances: {
-        name: 'Balances',
-        path: '/balances',
-        meta: { title: '帳務', roles: [], requiresAuth: true },
-        component: () => import('@/pages/balances/BalancesPage.vue')
-    } satisfies RouteRecordRaw,
-    statistics: {
-        name: 'Statistics',
-        path: '/statistics',
-        meta: { title: '統計分析', roles: [], requiresAuth: true },
-        component: () => import('@/pages/statistics/StatisticsPage.vue')
+    overview: {
+        name: 'Overview',
+        path: '/overview',
+        meta: { title: '總覽', roles: [], requiresAuth: true },
+        component: () => import('@/pages/overview/OverviewPage.vue')
     } satisfies RouteRecordRaw,
     settings: {
         name: 'Settings',

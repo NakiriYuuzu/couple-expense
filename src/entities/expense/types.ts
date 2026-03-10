@@ -15,6 +15,7 @@ export interface DisplayExpense {
     id: string
     title: string
     amount: string
+    numericAmount?: number
     category: string
     icon: string
     user?: ExpenseUser
@@ -28,10 +29,11 @@ export interface AddExpenseEvent {
     id?: string
     title: string
     amount: string
-    category: string
+    category: CategoryId
     icon: string
     date: string
     groupId: string | null
+    paidBy?: string
     splitMethod?: SplitMethod
     splits?: Array<{
         userId: string

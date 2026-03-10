@@ -41,11 +41,12 @@ export function simplifyDebts(balances: NetBalance[]): SimplifiedDebt[] {
             })
         }
 
-        debtor.remaining -= amount
-        creditor.remaining -= amount
+        // 每步 round to cents，避免浮點累積誤差
+        debtor.remaining = Math.round((debtor.remaining - amount) * 100) / 100
+        creditor.remaining = Math.round((creditor.remaining - amount) * 100) / 100
 
-        if (debtor.remaining < 0.01) i++
-        if (creditor.remaining < 0.01) j++
+        if (debtor.remaining < 0.005) i++
+        if (creditor.remaining < 0.005) j++
     }
 
     return debts

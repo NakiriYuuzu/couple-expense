@@ -4,9 +4,9 @@ import type { Database, SplitMethod } from '@/shared/lib/database.types'
 export type { SplitMethod }
 
 // Row type aliases
-export type GroupRow = Database['public']['Tables']['groups']['Row']
-export type GroupMemberRow = Database['public']['Tables']['group_members']['Row']
-export type GroupSettingsRow = Database['public']['Tables']['group_settings']['Row']
+export type GroupRow = Database['group_expense']['Tables']['groups']['Row']
+export type GroupMemberRow = Database['group_expense']['Tables']['group_members']['Row']
+export type GroupSettingsRow = Database['group_expense']['Tables']['group_settings']['Row']
 
 // Group member role
 export type GroupMemberRole = 'owner' | 'admin' | 'member'

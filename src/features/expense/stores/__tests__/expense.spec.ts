@@ -3,24 +3,21 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useExpenseStore, type Expense } from '../expense'
 import { useGroupStore } from '@/features/group/stores/group'
 
+const { single, insertSelect, insert, upsert, from } = vi.hoisted(() => ({
+    single: vi.fn(),
+    insertSelect: vi.fn(),
+    insert: vi.fn(),
+    upsert: vi.fn(),
+    from: vi.fn()
+}))
+
 // Mock supabase — no real network calls
 vi.mock('@/shared/lib/supabase', () => ({
     supabase: {
         auth: {
             getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } })
         },
-        from: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnThis(),
-            eq: vi.fn().mockReturnThis(),
-            in: vi.fn().mockReturnThis(),
-            is: vi.fn().mockReturnThis(),
-            or: vi.fn().mockReturnThis(),
-            order: vi.fn().mockReturnThis(),
-            insert: vi.fn().mockReturnThis(),
-            update: vi.fn().mockReturnThis(),
-            delete: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: null, error: null })
-        })
+        from
     }
 }))
 
@@ -52,6 +49,65 @@ function makeExpense(overrides: Partial<Expense> = {}): Expense {
 describe('useExpenseStore', () => {
     beforeEach(() => {
         setActivePinia(createPinia())
+
+        single.mockReset()
+        insertSelect.mockReset()
+        insert.mockReset()
+        upsert.mockReset()
+        from.mockReset()
+
+        insertSelect.mockReturnValue({
+            single
+        })
+
+        insert.mockReturnValue({
+            select: insertSelect
+        })
+
+        from.mockImplementation((table: string) => {
+            if (table === 'expenses') {
+                return {
+                    select: vi.fn().mockReturnThis(),
+                    eq: vi.fn().mockReturnThis(),
+                    in: vi.fn().mockReturnThis(),
+                    is: vi.fn().mockReturnThis(),
+                    or: vi.fn().mockReturnThis(),
+                    order: vi.fn().mockReturnThis(),
+                    insert,
+                    update: vi.fn().mockReturnThis(),
+                    delete: vi.fn().mockReturnThis(),
+                    single
+                }
+            }
+
+            if (table === 'user_profiles') {
+                return {
+                    select: vi.fn().mockReturnThis(),
+                    eq: vi.fn().mockReturnThis(),
+                    in: vi.fn().mockReturnThis(),
+                    single
+                }
+            }
+
+            if (table === 'expense_splits') {
+                return {
+                    upsert
+                }
+            }
+
+            return {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockReturnThis(),
+                in: vi.fn().mockReturnThis(),
+                is: vi.fn().mockReturnThis(),
+                or: vi.fn().mockReturnThis(),
+                order: vi.fn().mockReturnThis(),
+                insert,
+                update: vi.fn().mockReturnThis(),
+                delete: vi.fn().mockReturnThis(),
+                single
+            }
+        })
     })
 
     // ─── personalExpenses ──────────────────────────────────────────────────────
@@ -66,8 +122,8 @@ describe('useExpenseStore', () => {
                 makeExpense({ group_id: null, user_id: 'user-2' })
             ]
             expect(store.personalExpenses).toHaveLength(1)
-            expect(store.personalExpenses[0].group_id).toBeNull()
-            expect(store.personalExpenses[0].user_id).toBe('user-1')
+            expect(store.personalExpenses[0]!.group_id).toBeNull()
+            expect(store.personalExpenses[0]!.user_id).toBe('user-1')
         })
 
         it('returns empty array when no personal expenses exist', () => {
@@ -102,7 +158,7 @@ describe('useExpenseStore', () => {
                 makeExpense({ group_id: null })
             ]
             expect(store.groupExpenses).toHaveLength(1)
-            expect(store.groupExpenses[0].group_id).toBe('g1')
+            expect(store.groupExpenses[0]!.group_id).toBe('g1')
         })
 
         it('returns empty array when no group is active', () => {
@@ -224,13 +280,113 @@ describe('useExpenseStore', () => {
             ]
             const result = store.getExpensesByDateRange('2026-02-01', '2026-03-01')
             expect(result).toHaveLength(1)
-            expect(result[0].date).toBe('2026-02-15')
+            expect(result[0]!.date).toBe('2026-02-15')
         })
 
         it('returns empty array when no expenses are in range', () => {
             const store = useExpenseStore()
             store.expenses = [makeExpense({ date: '2026-01-01' })]
             expect(store.getExpensesByDateRange('2026-06-01', '2026-06-30')).toHaveLength(0)
+        })
+    })
+
+    describe('addExpense', () => {
+        it('persists group splits when creating a group expense', async () => {
+            const createdExpense = {
+                id: 'expense-1',
+                user_id: 'user-1',
+                group_id: 'group-1',
+                title: 'Dinner',
+                amount: 300,
+                category: 'food',
+                icon: 'restaurant',
+                date: '2026-03-10',
+                currency: 'TWD',
+                split_method: 'percentage',
+                paid_by: 'user-2',
+                notes: null,
+                is_settled: false,
+                created_at: '2026-03-10T00:00:00Z',
+                updated_at: '2026-03-10T00:00:00Z'
+            }
+
+            single
+                .mockResolvedValueOnce({ data: createdExpense, error: null })
+                .mockResolvedValueOnce({
+                    data: {
+                        id: 'user-1',
+                        display_name: 'Alice',
+                        avatar_url: null
+                    },
+                    error: null
+                })
+
+            upsert.mockResolvedValue({ error: null })
+
+            const store = useExpenseStore()
+
+            await store.addExpense({
+                title: 'Dinner',
+                amount: 300,
+                category: 'food',
+                icon: 'restaurant',
+                date: '2026-03-10',
+                group_id: 'group-1',
+                split_method: 'percentage',
+                paid_by: 'user-2',
+                splits: [
+                    {
+                        userId: 'user-1',
+                        amount: 120,
+                        percentage: 40
+                    },
+                    {
+                        userId: 'user-2',
+                        amount: 180,
+                        percentage: 60
+                    }
+                ]
+            })
+
+            expect(upsert).toHaveBeenCalledWith([
+                {
+                    expense_id: 'expense-1',
+                    user_id: 'user-1',
+                    amount: 120,
+                    percentage: 40,
+                    shares: null,
+                    is_settled: false
+                },
+                {
+                    expense_id: 'expense-1',
+                    user_id: 'user-2',
+                    amount: 180,
+                    percentage: 60,
+                    shares: null,
+                    is_settled: false
+                }
+            ], { onConflict: 'expense_id,user_id' })
+        })
+    })
+
+    // ─── preloadStatus ──────────────────────────────────────────────────────
+
+    describe('preloadStatus', () => {
+        it('defaults to idle', () => {
+            const store = useExpenseStore()
+            expect(store.preloadStatus).toBe('idle')
+        })
+
+        it('fullHistoryLoaded is true when preloadStatus is done', () => {
+            const store = useExpenseStore()
+            store.preloadStatus = 'done'
+            expect(store.fullHistoryLoaded).toBe(true)
+        })
+
+        it('fullHistoryLoaded is false when preloadStatus is not done', () => {
+            const store = useExpenseStore()
+            store.preloadStatus = 'loading'
+            expect(store.fullHistoryLoaded).toBe(false)
         })
     })
 })

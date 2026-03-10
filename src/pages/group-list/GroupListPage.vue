@@ -6,7 +6,7 @@ import { toast } from 'vue-sonner'
 import TopBar from '@/shared/components/TopBar.vue'
 import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
-import { Card } from '@/shared/components/ui/card'
+
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import { useGroupStore } from '@/features/group/stores/group'
 import { usePullToRefresh } from '@/shared/composables/usePullToRefresh'
@@ -25,6 +25,8 @@ const router = useRouter()
 const groupStore = useGroupStore()
 
 const loading = ref(false)
+
+const groupColors = ['bg-purple-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500']
 
 const currentUserId = computed(() => groupStore.userProfile?.id ?? null)
 
@@ -113,7 +115,7 @@ onMounted(fetchGroups)
 </script>
 
 <template>
-    <div class="min-h-screen bg-background">
+    <div class="min-h-screen bg-background glass-page-bg">
         <TopBar
             :title="t('group.groupList')"
             :show-back-button="true"
@@ -131,7 +133,7 @@ onMounted(fetchGroups)
             </template>
         </TopBar>
 
-        <main class="px-4 pb-24 pt-6">
+        <main class="px-4 pb-28 pt-6">
             <!-- Loading state -->
             <div v-if="loading" class="space-y-3">
                 <Skeleton
@@ -168,13 +170,16 @@ onMounted(fetchGroups)
 
             <!-- Group list -->
             <div v-else class="space-y-3">
-                <Card
-                    v-for="group in groupStore.groups"
+                <div
+                    v-for="(group, index) in groupStore.groups"
                     :key="group.id"
-                    class="p-4 cursor-pointer hover:bg-accent transition-colors relative overflow-hidden"
+                    class="glass rounded-2xl p-4 cursor-pointer press-feedback hover-transition relative overflow-hidden"
                     :class="isActiveGroup(group.id) ? 'border-brand-primary ring-1 ring-brand-primary' : ''"
                     @click="navigateToGroup(group.id)"
                 >
+                    <!-- Colored top stripe -->
+                    <div :class="['absolute top-0 left-0 right-0 h-1 rounded-t-xl', groupColors[index % groupColors.length]]" />
+
                     <!-- Active indicator -->
                     <div
                         v-if="isActiveGroup(group.id)"
@@ -183,8 +188,8 @@ onMounted(fetchGroups)
 
                     <div class="flex items-center gap-3">
                         <!-- Group avatar -->
-                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-accent">
-                            <Users class="h-6 w-6 text-brand-primary" />
+                        <div :class="['flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white', groupColors[index % groupColors.length]]">
+                            {{ group.name.charAt(0) }}
                         </div>
 
                         <!-- Group info -->
@@ -224,7 +229,7 @@ onMounted(fetchGroups)
                             <ChevronRight class="h-4 w-4 text-muted-foreground" />
                         </div>
                     </div>
-                </Card>
+                </div>
             </div>
         </main>
 
@@ -235,7 +240,7 @@ onMounted(fetchGroups)
         >
             <Button
                 size="lg"
-                class="h-14 w-14 rounded-full shadow-lg bg-brand-primary hover:bg-brand-primary/90 text-primary-foreground"
+                class="h-14 w-14 rounded-full glass-elevated bg-brand-primary hover:bg-brand-primary/90 text-primary-foreground press-feedback"
                 @click="navigateToCreate"
             >
                 <Plus class="h-6 w-6" />

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { supabase } from '@/shared/lib/supabase'
-import type { ExpenseSplitRow } from '@/shared/lib/database.types'
+import type { ExpenseSplitInsert, ExpenseSplitRow } from '@/shared/lib/database.types'
 
 export const useSplitStore = defineStore('split', () => {
     // 狀態
@@ -82,6 +82,90 @@ export const useSplitStore = defineStore('split', () => {
         return splitsByExpense.value[expenseId] ?? []
     }
 
+    const updateExpenseSplits = async (
+        expenseId: string,
+        splits: Array<{
+            userId: string
+            amount: number
+            percentage?: number
+            shares?: number
+        }>
+    ) => {
+        try {
+            loading.value = true
+            error.value = null
+
+            const rows: ExpenseSplitInsert[] = splits.map(split => ({
+                expense_id: expenseId,
+                user_id: split.userId,
+                amount: split.amount,
+                percentage: split.percentage ?? null,
+                shares: split.shares ?? null,
+                is_settled: false
+            }))
+
+            const upsertResult = rows.length > 0
+                ? await supabase
+                    .from('expense_splits')
+                    .upsert(rows, { onConflict: 'expense_id,user_id' })
+                    .select('*')
+                : { data: [], error: null }
+
+            if (upsertResult.error) {
+                throw upsertResult.error
+            }
+
+            const incomingUserIds = new Set(rows.map(row => row.user_id))
+
+            if (incomingUserIds.size === 0) {
+                const { error: deleteAllError } = await supabase
+                    .from('expense_splits')
+                    .delete()
+                    .eq('expense_id', expenseId)
+
+                if (deleteAllError) {
+                    throw deleteAllError
+                }
+            } else {
+                // 安全方式：先查出現有 splits，再用 .in() 刪除需移除的
+                const { data: currentSplits, error: fetchCurrentError } = await supabase
+                    .from('expense_splits')
+                    .select('id, user_id')
+                    .eq('expense_id', expenseId)
+
+                if (fetchCurrentError) throw fetchCurrentError
+
+                const toDeleteIds = (currentSplits ?? [])
+                    .filter(s => !incomingUserIds.has(s.user_id))
+                    .map(s => s.id)
+
+                if (toDeleteIds.length > 0) {
+                    const { error: deleteRemovedError } = await supabase
+                        .from('expense_splits')
+                        .delete()
+                        .in('id', toDeleteIds)
+
+                    if (deleteRemovedError) {
+                        throw deleteRemovedError
+                    }
+                }
+            }
+
+            splitsByExpense.value = {
+                ...splitsByExpense.value,
+                [expenseId]: (upsertResult.data ?? []) as ExpenseSplitRow[]
+            }
+
+            return splitsByExpense.value[expenseId]
+        } catch (err) {
+            console.error('更新分帳記錄失敗:', err)
+            error.value = err instanceof Error ? err.message : '更新分帳記錄失敗'
+            throw err
+        } finally {
+            loading.value = false
+        }
+    }
+
     // 清除所有分帳資料
     const clearSplits = () => {
         splitsByExpense.value = {}
@@ -101,6 +185,7 @@ export const useSplitStore = defineStore('split', () => {
         // 方法
         fetchSplitsForExpense,
         fetchSplitsForExpenses,
+        updateExpenseSplits,
         getSplitsForExpense,
         clearSplits,
         clearError

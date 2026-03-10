@@ -1,27 +1,27 @@
 <template>
-    <header class="sticky top-0 z-50 w-full bg-nav-background shadow-lg border-b border-nav-border backdrop-blur-md">
-        <div class="flex items-center justify-between px-4 py-3">
+    <header class="sticky top-0 z-50 w-full glass">
+        <div class="flex items-center justify-between px-4 py-2">
             <!-- 返回按鈕 (可選) -->
             <Button
                 v-if="showBackButton"
                 variant="ghost"
                 size="icon"
-                class="h-10 w-10 rounded-full"
+                class="h-9 w-9 rounded-full press-feedback hover-transition"
                 @click="handleBack"
             >
                 <ChevronLeft class="h-6 w-6" />
             </Button>
             <!-- 佔位元素 (當沒有返回按鈕時) -->
-            <div v-else class="h-10 w-10" />
+            <div v-else class="h-9 w-9" />
 
             <!-- 標題 -->
-            <h1 class="text-2xl font-normal text-nav-foreground">
+            <h1 class="text-lg font-semibold font-heading text-nav-foreground">
                 {{ displayTitle }}
             </h1>
 
             <!-- 右側按鈕或佔位元素 -->
             <slot name="action">
-                <div class="h-10 w-10" />
+                <div class="h-9 w-9" />
             </slot>
         </div>
     </header>

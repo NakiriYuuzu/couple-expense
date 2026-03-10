@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { HandCoins } from 'lucide-vue-next'
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm } from 'vee-validate'
+import { HandCoins, Pencil } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
+import { z } from 'zod'
 import {
     Drawer,
     DrawerContent,
@@ -29,28 +32,60 @@ interface Props {
     groupId: string
     toUser: ToUser
     suggestedAmount: number
+    yearMonth?: string | null
+    editSettlementId?: string | null
+    editNotes?: string | null
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+    yearMonth: null,
+    editSettlementId: null,
+    editNotes: null
+})
 
 const emit = defineEmits<{
     'update:open': [value: boolean]
     settled: []
 }>()
 
-const amount = ref<string>('')
-const notes = ref<string>('')
-const submitting = ref(false)
+const isEditMode = computed(() => !!props.editSettlementId)
+
+const settlementSchema = toTypedSchema(z.object({
+    amount: z.number({
+        required_error: t('validation.required'),
+        invalid_type_error: t('validation.number')
+    }).positive(t('settlement.invalidAmount')),
+    notes: z.string()
+}))
+
+const settlementForm = useForm({
+    validationSchema: settlementSchema,
+    initialValues: {
+        amount: undefined,
+        notes: ''
+    }
+})
+
+const submitting = computed(() => settlementForm.isSubmitting.value)
+const amountError = computed(() => settlementForm.errors.value.amount ?? '')
+
+const resetSettlementForm = () => {
+    settlementForm.resetForm({
+        values: {
+            amount: props.suggestedAmount > 0
+                ? props.suggestedAmount
+                : undefined,
+            notes: props.editNotes ?? ''
+        }
+    })
+}
 
 // Sync amount with suggestedAmount whenever the drawer opens
 watch(
     () => props.open,
     (isOpen) => {
         if (isOpen) {
-            amount.value = props.suggestedAmount > 0
-                ? props.suggestedAmount.toString()
-                : ''
-            notes.value = ''
+            resetSettlementForm()
         }
     }
 )
@@ -59,33 +94,44 @@ const handleClose = () => {
     emit('update:open', false)
 }
 
-const handleConfirm = async () => {
-    const parsedAmount = parseFloat(amount.value)
-
-    if (!amount.value || isNaN(parsedAmount) || parsedAmount <= 0) {
-        toast.error(t('settlement.invalidAmount'))
-        return
-    }
-
-    submitting.value = true
-
+const submitSettlementForm = settlementForm.handleSubmit(async (values) => {
     try {
-        await settlementStore.createSettlement(
-            props.groupId,
-            props.toUser.userId,
-            parsedAmount,
-            notes.value.trim() || undefined
-        )
+        if (isEditMode.value) {
+            await settlementStore.updateSettlement(
+                props.editSettlementId!,
+                props.groupId,
+                values.amount,
+                values.notes.trim() || undefined
+            )
+            toast.success(t('settlement.editSuccess'))
+        } else if (props.yearMonth) {
+            await settlementStore.settleMonthlyDebt(
+                props.groupId,
+                props.toUser.userId,
+                values.amount,
+                props.yearMonth,
+                values.notes.trim() || undefined
+            )
+            toast.success(t('settlement.settleSuccess'))
+        } else {
+            await settlementStore.createSettlement(
+                props.groupId,
+                props.toUser.userId,
+                values.amount,
+                values.notes.trim() || undefined
+            )
+            toast.success(t('settlement.settleSuccess'))
+        }
 
-        toast.success(t('settlement.settleSuccess'))
         emit('settled')
         emit('update:open', false)
     } catch {
-        toast.error(t('settlement.settleFailed'))
-    } finally {
-        submitting.value = false
+        toast.error(isEditMode.value
+            ? t('settlement.editFailed')
+            : t('settlement.settleFailed')
+        )
     }
-}
+})
 </script>
 
 <template>
@@ -94,15 +140,20 @@ const handleConfirm = async () => {
             <DrawerHeader class="px-6 pt-6 pb-4">
                 <div class="flex items-center gap-3 mb-1">
                     <div class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-accent">
-                        <HandCoins class="h-5 w-5 text-brand-primary" />
+                        <Pencil v-if="isEditMode" class="h-5 w-5 text-brand-primary" />
+                        <HandCoins v-else class="h-5 w-5 text-brand-primary" />
                     </div>
                     <div class="flex-1 text-left">
                         <DrawerTitle class="text-lg font-semibold">
-                            {{ t('settlement.settleDrawerTitle') }}
+                            {{ isEditMode
+                                ? t('settlement.editDrawerTitle')
+                                : t('settlement.settleDrawerTitle')
+                            }}
                         </DrawerTitle>
                         <DrawerDescription class="text-sm text-muted-foreground">
-                            {{
-                                t('settlement.settleDrawerDesc', {
+                            {{ isEditMode
+                                ? t('settlement.editDrawerDesc')
+                                : t('settlement.settleDrawerDesc', {
                                     name: props.toUser.displayName || t('common.unknown')
                                 })
                             }}
@@ -112,65 +163,75 @@ const handleConfirm = async () => {
             </DrawerHeader>
 
             <div class="px-6 pb-2 space-y-5">
-                <!-- Amount input -->
-                <div class="space-y-2">
-                    <Label for="settle-amount" class="text-sm font-medium">
-                        {{ t('settlement.amount') }}
-                    </Label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">
-                            NT$
-                        </span>
-                        <Input
-                            id="settle-amount"
-                            v-model="amount"
-                            type="number"
-                            min="0"
-                            step="1"
-                            class="pl-12 text-base h-12"
-                            :placeholder="t('settlement.amountPlaceholder')"
+                <form class="space-y-5" @submit="submitSettlementForm">
+                    <div class="space-y-2">
+                        <Label for="settle-amount" class="text-sm font-medium">
+                            {{ t('settlement.amount') }}
+                        </Label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">
+                                NT$
+                            </span>
+                            <Input
+                                id="settle-amount"
+                                :model-value="settlementForm.values.amount ?? ''"
+                                type="number"
+                                min="0"
+                                step="1"
+                                class="pl-12 text-base h-12"
+                                :class="amountError ? 'border-destructive' : ''"
+                                :placeholder="t('settlement.amountPlaceholder')"
+                                @update:model-value="settlementForm.setFieldValue('amount', $event === '' ? undefined : Number($event))"
+                            />
+                        </div>
+                        <p v-if="amountError" class="text-xs text-destructive">
+                            {{ amountError }}
+                        </p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <Label for="settle-notes" class="text-sm font-medium">
+                            {{ t('settlement.notes') }}
+                            <span class="text-muted-foreground font-normal ml-1">
+                                {{ t('common.optional') }}
+                            </span>
+                        </Label>
+                        <textarea
+                            id="settle-notes"
+                            :value="settlementForm.values.notes"
+                            rows="3"
+                            class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+                            :placeholder="t('settlement.notesPlaceholder')"
+                            @input="settlementForm.setFieldValue('notes', ($event.target as HTMLTextAreaElement).value)"
                         />
                     </div>
-                </div>
 
-                <!-- Notes textarea -->
-                <div class="space-y-2">
-                    <Label for="settle-notes" class="text-sm font-medium">
-                        {{ t('settlement.notes') }}
-                        <span class="text-muted-foreground font-normal ml-1">
-                            {{ t('common.optional') }}
-                        </span>
-                    </Label>
-                    <textarea
-                        id="settle-notes"
-                        v-model="notes"
-                        rows="3"
-                        class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
-                        :placeholder="t('settlement.notesPlaceholder')"
-                    />
-                </div>
+                    <DrawerFooter class="px-0 pb-4 pt-4 flex flex-col gap-2">
+                        <Button
+                            type="submit"
+                            class="w-full h-12 bg-brand-primary hover:bg-brand-primary/90 text-brand-primary-foreground text-base font-medium"
+                            :disabled="submitting"
+                        >
+                            <span v-if="submitting">{{ t('common.processing') }}</span>
+                            <span v-else>
+                                {{ isEditMode
+                                    ? t('settlement.confirmEdit')
+                                    : t('settlement.confirmSettle')
+                                }}
+                            </span>
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            class="w-full h-12 text-base"
+                            :disabled="submitting"
+                            @click="handleClose"
+                        >
+                            {{ t('common.cancel') }}
+                        </Button>
+                    </DrawerFooter>
+                </form>
             </div>
-
-            <DrawerFooter class="px-6 pb-6 pt-4 flex flex-col gap-2">
-                <Button
-                    class="w-full h-12 bg-brand-primary hover:bg-brand-primary/90 text-brand-primary-foreground text-base font-medium"
-                    :disabled="submitting || !amount || parseFloat(amount) <= 0"
-                    @click="handleConfirm"
-                >
-                    <span v-if="submitting">{{ t('common.processing') }}</span>
-                    <span v-else>
-                        {{ t('settlement.confirmSettle') }}
-                    </span>
-                </Button>
-                <Button
-                    variant="ghost"
-                    class="w-full h-12 text-base"
-                    :disabled="submitting"
-                    @click="handleClose"
-                >
-                    {{ t('common.cancel') }}
-                </Button>
-            </DrawerFooter>
         </DrawerContent>
     </Drawer>
 </template>

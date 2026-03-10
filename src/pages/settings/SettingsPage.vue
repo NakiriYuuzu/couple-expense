@@ -2,14 +2,18 @@
 import { ref, nextTick, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm } from 'vee-validate'
 import i18n from '@/shared/i18n'
-import { Card } from '@/shared/components/ui/card'
+import { z } from 'zod'
+
 import { Button } from '@/shared/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/shared/components/ui/drawer'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar'
 import TopBar from '@/shared/components/TopBar.vue'
 import ThemeToggle from '@/shared/components/ThemeToggle.vue'
 import { useLocaleStore } from '@/shared/stores'
@@ -27,8 +31,14 @@ import {
     LogOut,
     UserCog,
     Users,
-    Wallet
+    Wallet,
+    UserCircle,
+    Info,
+    Pencil,
+    Check,
+    X
 } from 'lucide-vue-next'
+import { useSettlementStore } from '@/features/settlement/stores/settlement'
 
 const { t, locale } = useI18n()
 const localeStore = useLocaleStore()
@@ -36,11 +46,11 @@ const authStore = useAuthStore()
 const groupStore = useGroupStore()
 const expenseStore = useExpenseStore()
 const accountManagerStore = useAccountManagerStore()
+const settlementStore = useSettlementStore()
 const router = useRouter()
 
 // 個人預算設定 Drawer 狀態
 const isPersonalBudgetDrawerOpen = ref(false)
-const personalBudgetInput = ref<number | null>(null)
 
 // 登出確認 Dialog 狀態
 const isLogoutDialogOpen = ref(false)
@@ -49,6 +59,71 @@ const isAccountSwitchDrawerOpen = ref(false)
 // 獲取用戶資訊
 const userEmail = computed(() => authStore.user?.email || '')
 const currentUser = computed(() => authStore.user)
+const displayName = computed(() =>
+    groupStore.userProfile?.display_name || userEmail.value
+)
+
+// 行內編輯 display name
+const isEditingName = ref(false)
+const editNameValue = ref('')
+const isSavingName = ref(false)
+const nameValidationError = ref('')
+
+const startEditingName = () => {
+    editNameValue.value = groupStore.userProfile?.display_name || ''
+    nameValidationError.value = ''
+    isEditingName.value = true
+}
+
+const cancelEditingName = () => {
+    isEditingName.value = false
+    nameValidationError.value = ''
+}
+
+const validateDisplayName = (value: string): boolean => {
+    const trimmed = value.trim()
+    if (!trimmed) {
+        nameValidationError.value = t('settings.displayNameRequired')
+        return false
+    }
+    if (trimmed.length > 50) {
+        nameValidationError.value = t('settings.displayNameMaxLength')
+        return false
+    }
+    nameValidationError.value = ''
+    return true
+}
+
+const saveDisplayName = async () => {
+    const trimmed = editNameValue.value.trim()
+    if (!validateDisplayName(editNameValue.value)) return
+    if (trimmed === (groupStore.userProfile?.display_name || '')) {
+        isEditingName.value = false
+        return
+    }
+
+    try {
+        isSavingName.value = true
+        await groupStore.updateUserProfile({ display_name: trimmed })
+
+        const userId = authStore.user?.id
+        if (userId) {
+            settlementStore.invalidateProfileCache(userId)
+            accountManagerStore.updateAccountName(userId, trimmed)
+        }
+
+        // Fire-and-forget: sync Auth metadata
+        authStore.updateProfile({ data: { full_name: trimmed } }).catch(() => {})
+
+        toast.success(t('settings.displayNameSaved'))
+        isEditingName.value = false
+    } catch (err) {
+        console.error('更新顯示名稱失敗:', err)
+        toast.error(t('settings.displayNameError'))
+    } finally {
+        isSavingName.value = false
+    }
+}
 
 // 獲取所有儲存的帳號
 const storedAccounts = computed(() => accountManagerStore.storedAccounts)
@@ -61,29 +136,61 @@ const personalBudgetUsage = computed(() => {
     return Math.min((expenseStore.personalStats.month / budget) * 100, 100)
 })
 
+const personalBudgetFormSchema = toTypedSchema(z.object({
+    personalBudgetInput: z.number({
+        invalid_type_error: t('validation.number')
+    }).min(0, t('validation.number')).optional()
+}))
+
+const personalBudgetForm = useForm({
+    validationSchema: personalBudgetFormSchema,
+    initialValues: {
+        personalBudgetInput: undefined
+    }
+})
+
+const personalBudgetError = computed(() =>
+    personalBudgetForm.errors.value.personalBudgetInput ?? ''
+)
+
+const budgetToInputValue = (value: number | null | undefined) =>
+    value === null || value === undefined
+        ? undefined
+        : value
+
 // 打開個人預算設定 Drawer
 const openPersonalBudgetDrawer = () => {
-    personalBudgetInput.value = groupStore.personalBudget
+    personalBudgetForm.resetForm({
+        values: {
+            personalBudgetInput: budgetToInputValue(groupStore.personalBudget)
+        }
+    })
     isPersonalBudgetDrawerOpen.value = true
 }
 
 // 儲存個人預算
-const savePersonalBudget = async () => {
+const savePersonalBudget = personalBudgetForm.handleSubmit(async (values) => {
     try {
-        await groupStore.updatePersonalBudget(personalBudgetInput.value)
+        await groupStore.updatePersonalBudget(
+            values.personalBudgetInput ?? null
+        )
         toast.success(t('settings.personalBudgetSaved'))
         isPersonalBudgetDrawerOpen.value = false
     } catch (error) {
         console.error('儲存個人預算失敗:', error)
         toast.error(t('common.error'))
     }
-}
+})
 
 // 清除個人預算
 const clearPersonalBudget = async () => {
     try {
         await groupStore.updatePersonalBudget(null)
-        personalBudgetInput.value = null
+        personalBudgetForm.resetForm({
+            values: {
+                personalBudgetInput: undefined
+            }
+        })
         toast.success(t('settings.personalBudgetCleared'))
         isPersonalBudgetDrawerOpen.value = false
     } catch (error) {
@@ -93,8 +200,8 @@ const clearPersonalBudget = async () => {
 }
 
 // 處理語言變更
-const handleLanguageChange = async (value: string) => {
-    if (value) {
+const handleLanguageChange = async (value: unknown) => {
+    if (typeof value === 'string' && value) {
         const newLocale = value as 'zh-TW' | 'en'
 
         // 更新 store
@@ -143,9 +250,9 @@ const handleSwitchToAccount = async (accountId: string) => {
             isAccountSwitchDrawerOpen.value = false
             return
         }
-        
+
         const result = await accountManagerStore.switchToAccount(accountId, router.currentRoute.value.fullPath)
-        
+
         if (result.success) {
             // OAuth 會自動重新導向，不需要在這裡做任何事
             toast.info(t('settings.switchingAccount'))
@@ -162,7 +269,7 @@ const handleSwitchToAccount = async (accountId: string) => {
 const handleAddAccount = async () => {
     try {
         const result = await accountManagerStore.addNewAccountWithGoogle(router.currentRoute.value.fullPath)
-        
+
         if (result.success) {
             // OAuth 會自動重新導向，不需要在這裡做任何事
             toast.info(t('settings.addAccountInfo'))
@@ -182,26 +289,85 @@ const handleRemoveAccount = (accountId: string) => {
         toast.error(t('settings.cannotRemoveCurrentAccount'))
         return
     }
-    
+
     accountManagerStore.removeAccount(accountId)
     toast.success(t('settings.accountRemoved'))
 }
 </script>
 
 <template>
-    <div class="min-h-screen bg-background">
+    <div class="min-h-screen bg-background glass-page-bg">
         <!-- 頂部導航欄 -->
         <TopBar :title="t('settings.title')" />
 
         <!-- 主要內容區域 -->
-        <main class="px-4 pb-20">
-            <div class="mt-6 space-y-4">
+        <main class="px-4 pb-28">
+            <!-- 用戶資訊 -->
+            <div class="flex flex-col items-center py-6 gap-3">
+                <Avatar class="h-16 w-16">
+                    <AvatarImage :src="groupStore.userProfile?.avatar_url || currentUser?.user_metadata?.avatar_url || ''" />
+                    <AvatarFallback class="bg-primary text-primary-foreground text-xl font-heading">
+                        {{ displayName?.charAt(0)?.toUpperCase() || '?' }}
+                    </AvatarFallback>
+                </Avatar>
+                <div class="text-center">
+                    <!-- 顯示模式 -->
+                    <div v-if="!isEditingName" class="flex items-center justify-center gap-1.5">
+                        <p class="text-lg font-semibold font-heading text-foreground">
+                            {{ displayName }}
+                        </p>
+                        <button
+                            class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                            @click="startEditingName"
+                        >
+                            <Pencil class="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+                    <!-- 編輯模式 -->
+                    <div v-else class="flex flex-col items-center gap-1.5">
+                        <div class="flex items-center gap-1.5">
+                            <Input
+                                v-model="editNameValue"
+                                class="h-8 w-48 text-center text-sm"
+                                :class="nameValidationError ? 'border-destructive' : ''"
+                                :placeholder="t('settings.displayNamePlaceholder')"
+                                :disabled="isSavingName"
+                                @keydown.enter="saveDisplayName"
+                                @keydown.escape="cancelEditingName"
+                            />
+                            <button
+                                class="p-1 rounded-md text-green-600 hover:bg-green-50 dark:hover:bg-green-950 transition-colors disabled:opacity-50"
+                                :disabled="isSavingName"
+                                @click="saveDisplayName"
+                            >
+                                <Check class="h-4 w-4" />
+                            </button>
+                            <button
+                                class="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                                :disabled="isSavingName"
+                                @click="cancelEditingName"
+                            >
+                                <X class="h-4 w-4" />
+                            </button>
+                        </div>
+                        <p v-if="nameValidationError" class="text-xs text-destructive">
+                            {{ nameValidationError }}
+                        </p>
+                    </div>
+                    <p class="text-sm text-muted-foreground">{{ userEmail }}</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <!-- 外觀區塊標題 -->
+                <h2 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">外觀</h2>
+
                 <!-- 主題設定 -->
-                <Card class="p-4">
+                <div class="glass rounded-2xl p-4 hover-transition">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
-                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-accent">
-                                <Moon class="h-5 w-5 text-brand-primary" />
+                            <div class="flex h-10 w-10 items-center justify-center rounded-lg glass-light text-purple-600 dark:text-purple-400">
+                                <Moon class="h-5 w-5" />
                             </div>
                             <div>
                                 <h3 class="text-base font-medium text-foreground">{{ t('settings.theme') }}</h3>
@@ -210,21 +376,21 @@ const handleRemoveAccount = (accountId: string) => {
                         </div>
                         <ThemeToggle />
                     </div>
-                </Card>
+                </div>
 
                 <!-- 語言設定 -->
-                <Card class="p-4">
+                <div class="glass rounded-2xl p-4 hover-transition">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
-                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-accent">
-                                <Languages class="h-5 w-5 text-brand-primary" />
+                            <div class="flex h-10 w-10 items-center justify-center rounded-lg glass-light text-blue-600 dark:text-blue-400">
+                                <Languages class="h-5 w-5" />
                             </div>
                             <div>
                                 <h3 class="text-base font-medium text-foreground">{{ t('settings.language') }}</h3>
                                 <p class="text-sm text-muted-foreground">{{ t('settings.languageDesc') }}</p>
                             </div>
                         </div>
-                        <Select 
+                        <Select
                             :defaultValue="localeStore.currentLocale"
                             @update:modelValue="handleLanguageChange"
                         >
@@ -232,9 +398,9 @@ const handleRemoveAccount = (accountId: string) => {
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem 
-                                    v-for="lang in localeStore.availableLocales" 
-                                    :key="lang.value" 
+                                <SelectItem
+                                    v-for="lang in localeStore.availableLocales"
+                                    :key="lang.value"
                                     :value="lang.value"
                                 >
                                     {{ lang.label }}
@@ -242,14 +408,17 @@ const handleRemoveAccount = (accountId: string) => {
                             </SelectContent>
                         </Select>
                     </div>
-                </Card>
+                </div>
+
+                <!-- 預算區塊標題 -->
+                <h2 class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 mt-8">預算</h2>
 
                 <!-- 個人預算設定 -->
-                <Card class="p-4 cursor-pointer hover:bg-accent transition-colors" @click="openPersonalBudgetDrawer">
+                <div class="glass rounded-2xl p-4 cursor-pointer press-feedback hover-transition" @click="openPersonalBudgetDrawer">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
-                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-accent">
-                                <Wallet class="h-5 w-5 text-brand-primary" />
+                            <div class="flex h-10 w-10 items-center justify-center rounded-lg glass-light text-amber-600 dark:text-amber-400">
+                                <Wallet class="h-5 w-5" />
                             </div>
                             <div>
                                 <h3 class="text-base font-medium text-foreground">{{ t('settings.personalBudget') }}</h3>
@@ -263,18 +432,18 @@ const handleRemoveAccount = (accountId: string) => {
                         </div>
                         <ChevronRight class="h-5 w-5 text-muted-foreground" />
                     </div>
-                </Card>
+                </div>
 
-                <!-- 更多設定項目 (未來擴展用) -->
+                <!-- 更多設定項目 -->
                 <div class="mt-8">
                     <h2 class="mb-4 text-sm font-medium text-muted-foreground">{{ t('settings.moreSettings') }}</h2>
-                    
+
                     <!-- 群組設定 -->
-                    <Card class="p-4 mb-3 cursor-pointer hover:bg-accent transition-colors" @click="goToGroupList">
+                    <div class="glass rounded-2xl p-4 mb-3 cursor-pointer press-feedback hover-transition" @click="goToGroupList">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
-                                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-accent">
-                                    <Users class="h-5 w-5 text-brand-primary" />
+                                <div class="flex h-10 w-10 items-center justify-center rounded-lg glass-light text-emerald-600 dark:text-emerald-400">
+                                    <Users class="h-5 w-5" />
                                 </div>
                                 <div>
                                     <h3 class="text-base font-medium text-foreground">{{ t('group.title') }}</h3>
@@ -283,25 +452,25 @@ const handleRemoveAccount = (accountId: string) => {
                             </div>
                             <ChevronRight class="h-5 w-5 text-muted-foreground" />
                         </div>
-                    </Card>
-                    
+                    </div>
+
                     <!-- 帳戶設定 -->
-                    <Card class="p-4 mb-3">
+                    <div class="glass rounded-2xl p-4 mb-3">
                         <div class="space-y-4">
                             <div class="flex items-center gap-3 mb-3">
-                                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-accent">
-                                    <span class="text-lg">👤</span>
+                                <div class="flex h-10 w-10 items-center justify-center rounded-lg glass-light text-slate-600 dark:text-slate-400">
+                                    <UserCircle class="h-5 w-5" />
                                 </div>
                                 <div>
                                     <h3 class="text-base font-medium text-foreground">{{ t('settings.account') }}</h3>
                                     <p class="text-sm text-muted-foreground">{{ userEmail }}</p>
                                 </div>
                             </div>
-                            
+
                             <!-- 切換帳號按鈕 -->
-                            <Button 
-                                variant="outline" 
-                                class="w-full justify-start"
+                            <Button
+                                variant="outline"
+                                class="w-full justify-start press-feedback"
                                 @click="isAccountSwitchDrawerOpen = true"
                             >
                                 <UserCog class="mr-2 h-4 w-4" />
@@ -310,25 +479,25 @@ const handleRemoveAccount = (accountId: string) => {
                                     {{ storedAccounts.length }}
                                 </span>
                             </Button>
-                            
+
                             <!-- 登出按鈕 -->
-                            <Button 
-                                variant="outline" 
-                                class="w-full justify-start text-destructive hover:text-destructive"
+                            <Button
+                                variant="outline"
+                                class="w-full justify-start text-destructive hover:text-destructive press-feedback"
                                 @click="isLogoutDialogOpen = true"
                             >
                                 <LogOut class="mr-2 h-4 w-4" />
                                 {{ t('settings.logout') }}
                             </Button>
                         </div>
-                    </Card>
+                    </div>
 
-                    <!-- 範例: 關於 -->
-                    <Card class="p-4 cursor-pointer hover:bg-accent transition-colors">
+                    <!-- 關於 -->
+                    <div class="glass rounded-2xl p-4 cursor-pointer press-feedback hover-transition">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-3">
-                                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-accent">
-                                    <span class="text-lg">ℹ️</span>
+                                <div class="flex h-10 w-10 items-center justify-center rounded-lg glass-light text-sky-600 dark:text-sky-400">
+                                    <Info class="h-5 w-5" />
                                 </div>
                                 <div>
                                     <h3 class="text-base font-medium text-foreground">{{ t('settings.about') }}</h3>
@@ -337,7 +506,7 @@ const handleRemoveAccount = (accountId: string) => {
                             </div>
                             <ChevronRight class="h-5 w-5 text-muted-foreground" />
                         </div>
-                    </Card>
+                    </div>
                 </div>
             </div>
         </main>
@@ -361,7 +530,7 @@ const handleRemoveAccount = (accountId: string) => {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-        
+
         <!-- 帳號切換 Drawer -->
         <Drawer v-model:open="isAccountSwitchDrawerOpen">
             <DrawerContent class="max-h-[90vh]">
@@ -460,19 +629,24 @@ const handleRemoveAccount = (accountId: string) => {
                 <DrawerHeader>
                     <DrawerTitle>{{ t('settings.personalBudgetTitle') }}</DrawerTitle>
                 </DrawerHeader>
-                <div class="px-4 pb-6 space-y-4">
+                <form class="px-4 pb-6 space-y-4" @submit="savePersonalBudget">
                     <div class="space-y-2">
                         <Label>{{ t('settings.monthlyBudgetAmount') }}</Label>
                         <div class="flex items-center gap-2">
                             <span class="text-sm text-muted-foreground">NT$</span>
                             <Input
-                                v-model.number="personalBudgetInput"
+                                :model-value="personalBudgetForm.values.personalBudgetInput ?? ''"
                                 type="number"
                                 min="0"
                                 step="100"
+                                :class="personalBudgetError ? 'border-destructive' : ''"
                                 :placeholder="t('settings.enterBudgetAmount')"
+                                @update:model-value="personalBudgetForm.setFieldValue('personalBudgetInput', $event === '' ? undefined : Number($event))"
                             />
                         </div>
+                        <p v-if="personalBudgetError" class="text-xs text-destructive">
+                            {{ personalBudgetError }}
+                        </p>
                         <p class="text-xs text-muted-foreground">
                             {{ t('settings.personalBudgetDesc') }}
                         </p>
@@ -490,6 +664,7 @@ const handleRemoveAccount = (accountId: string) => {
 
                     <div class="flex gap-2 pt-4">
                         <Button
+                            type="button"
                             variant="outline"
                             class="flex-1"
                             @click="clearPersonalBudget"
@@ -497,14 +672,14 @@ const handleRemoveAccount = (accountId: string) => {
                             {{ t('settings.clearBudget') }}
                         </Button>
                         <Button
+                            type="submit"
                             class="flex-1"
-                            @click="savePersonalBudget"
                             :disabled="groupStore.loading"
                         >
                             {{ t('common.save') }}
                         </Button>
                     </div>
-                </div>
+                </form>
             </DrawerContent>
         </Drawer>
     </div>

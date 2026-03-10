@@ -63,7 +63,9 @@ const en = {
     expenses: {
         noPersonalExpenses: 'No personal expenses yet',
         noFamilyExpenses: 'No family expenses yet',
-        noGroupExpenses: 'No group expenses yet'
+        noGroupExpenses: 'No group expenses yet',
+        noMoreExpenses: 'All expenses loaded',
+        loadingMore: 'Loading more...'
     },
 
     // Home
@@ -189,6 +191,7 @@ const en = {
         confirmDeleteDesc: 'Are you sure you want to delete this expense? This action cannot be undone.',
         // Context and steps
         context: 'Expense Context',
+        recentQuickCopy: 'Recent items',
         step: 'Step {n}',
         stepExpenseInfo: 'Expense Info',
         nextStep: 'Next',
@@ -237,6 +240,10 @@ const en = {
         exact: 'Exact Amount',
         percentage: 'By Percentage',
         shares: 'By Shares',
+        equalDesc: 'Split the amount equally among all participants',
+        exactDesc: 'Enter the exact amount each participant should cover',
+        percentageDesc: 'Split by percentage, with all participants totaling 100%',
+        sharesDesc: 'Split by shares, where higher shares cover more',
         people: '{n} people',
         stepSplitConfig: 'Split Settings'
     },
@@ -347,7 +354,62 @@ const en = {
         owes: 'owes',
         settleSuccess: 'Settlement successful',
         settleFailed: 'Settlement failed',
-        invalidAmount: 'Please enter a valid amount'
+        invalidAmount: 'Please enter a valid amount',
+        editDrawerTitle: 'Edit Settlement',
+        editDrawerDesc: 'Modify settlement record',
+        confirmEdit: 'Confirm Edit',
+        editSuccess: 'Settlement updated',
+        editFailed: 'Failed to update settlement',
+        deleteConfirmTitle: 'Delete Settlement',
+        deleteConfirmDesc: 'Are you sure you want to delete this settlement? Balances will be recalculated.',
+        deleteSuccess: 'Settlement deleted',
+        deleteFailed: 'Failed to delete settlement'
+    },
+
+    // Overview page
+    overview: {
+        title: 'Overview',
+        statistics: 'Statistics',
+        debts: 'Debts',
+        monthlyTotal: 'Monthly Total',
+        todayExpense: "Today's Expense",
+        dailyAverage: 'Daily Average',
+        byMonth: 'Monthly',
+        byYear: 'Yearly',
+        areaChartTitle: 'Spending Distribution',
+        areaChartXAxisMonthHint: 'X Axis: Week of month',
+        areaChartXAxisYearHint: 'X Axis: Month',
+        areaChartYAxisHint: 'Y Axis: Spending Amount (NT$)',
+        areaChartWeekTick: 'Week {value}',
+        areaChartMonthTick: '{value} mo',
+        categoryBreakdown: 'Category Breakdown',
+        inProgress: 'In Progress',
+        settled: 'Settled',
+        partiallyUnsettled: 'Partially Unsettled',
+        unsettled: 'Unsettled',
+        totalUnsettled: 'Unsettled',
+        pendingSettlement: '{count} pending',
+        expandDetails: 'Expand Details',
+        collapseDetails: 'Collapse Details',
+        selectGroupForDebts: 'Select a group to view debts',
+        noSnapshotsYet: 'No settlement history yet',
+        currentMonth: 'This Month',
+        // Redesigned debt panel
+        yearUnit: '',
+        monthUnit: '',
+        heroYouOwe: 'You owe {name}',
+        heroOwesYou: '{name} owes you',
+        andMore: 'and {count} more',
+        settleNow: 'Settle Now',
+        allClear: 'All Settled!',
+        allClearDesc: 'No pending debts this month',
+        noDebtsThisMonth: 'No debt data this month',
+        noDataThisYear: 'No data this year',
+        totalExpenses: 'Total Expenses',
+        unsettledAmount: 'Unsettled',
+        debtDetails: 'Debt Details',
+        memberBalances: 'Member Balances',
+        settlementRecords: 'Settlement History'
     },
 
     // Search
@@ -431,7 +493,13 @@ const en = {
         clearDataDesc: 'Are you sure you want to clear all expense data? This cannot be undone.',
         clearDataConfirm: 'Confirm Clear',
         clearDataSuccess: 'Expense data cleared',
-        clearDataError: 'Failed to clear data'
+        clearDataError: 'Failed to clear data',
+        // Display name
+        displayNamePlaceholder: 'Enter display name',
+        displayNameSaved: 'Display name updated',
+        displayNameError: 'Failed to update display name',
+        displayNameRequired: 'Display name cannot be empty',
+        displayNameMaxLength: 'Display name must be 50 characters or less'
     },
 
     // Validation messages

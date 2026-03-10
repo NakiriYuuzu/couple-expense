@@ -4,7 +4,7 @@ import type { Database, SplitMethod } from '@/shared/lib/database.types'
 export type { SplitMethod }
 
 // Row type aliases
-export type ExpenseSplitRow = Database['public']['Tables']['expense_splits']['Row']
+export type ExpenseSplitRow = Database['group_expense']['Tables']['expense_splits']['Row']
 
 // Participant in a split (used in UI for configuring splits)
 export interface SplitParticipant {

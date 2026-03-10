@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
+import { useStorage, refDebounced } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
@@ -21,7 +22,7 @@ import { useCategories, CategoryUtils } from '@/features/expense/composables/use
 import type { Expense } from '@/features/expense/stores/expense'
 import type { DisplayExpense } from '@/entities/expense/types'
 import { toast } from 'vue-sonner'
-import { User, Users, Calendar as CalendarIcon, Search, SlidersHorizontal } from 'lucide-vue-next'
+import { User, Users, Calendar as CalendarIcon, Search, SlidersHorizontal, Plus } from 'lucide-vue-next'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -37,11 +38,17 @@ const {
 
 const isInGroup = computed(() => groupStore.isInAnyGroup)
 
-// 當前選中的 Tab（從 URL query 讀取或預設為 'personal'）
-const activeTab = ref<string>((route.query.tab as string) || 'personal')
+// 持久化 Tab 選擇（localStorage），URL query 可覆蓋
+const savedTab = useStorage<string>('expenses-active-tab', 'personal')
+const urlTab = route.query.tab as string | undefined
+const resolvedTab = urlTab || savedTab.value || 'personal'
+const activeTab = ref<string>(resolvedTab === 'group' && !groupStore.isInAnyGroup ? 'personal' : resolvedTab)
 
-// 搜尋查詢
+const isPreloading = computed(() => expenseStore.preloadStatus === 'loading' || expenseStore.preloadStatus === 'idle')
+
+// 搜尋查詢（300ms debounce 減少每次按鍵觸發的計算）
 const searchQuery = ref('')
+const debouncedSearch = refDebounced(searchQuery, 300)
 
 // 篩選 Dialog 狀態
 const isFilterDialogOpen = ref(false)
@@ -63,17 +70,33 @@ const filters = ref({
 const sliderValues = ref([0, 3000])
 const maxPossibleAmount = 10000
 
-// 監聽滑動條變化並更新輸入框
-watch(sliderValues, (newValues) => {
-    filters.value.minAmount = newValues[0].toString()
-    filters.value.maxAmount = newValues[1].toString()
+// 是否有啟用的篩選條件
+const hasActiveFilters = computed(() => {
+    return filters.value.categories.length > 0
+        || filters.value.startDate !== null
+        || filters.value.endDate !== null
+        || filters.value.minAmount !== ''
+        || filters.value.maxAmount !== ''
 })
 
-// 監聯輸入框變化並更新滑動條
+// 防止 slider ↔ input 循環觸發的 flag
+const syncingFromSlider = ref(false)
+
+// 監聽滑動條變化並更新輸入框
+watch(sliderValues, (newValues) => {
+    syncingFromSlider.value = true
+    filters.value.minAmount = (newValues[0] ?? 0).toString()
+    filters.value.maxAmount = (newValues[1] ?? maxPossibleAmount).toString()
+    nextTick(() => { syncingFromSlider.value = false })
+})
+
+// 監聽輸入框變化並更新滑動條（slider 驅動時跳過）
 watch(() => [filters.value.minAmount, filters.value.maxAmount], ([min, max]) => {
-    const minNum = min ? parseFloat(min) : 0
-    const maxNum = max ? parseFloat(max) : maxPossibleAmount
-    sliderValues.value = [minNum, maxNum]
+    if (syncingFromSlider.value) return
+    sliderValues.value = [
+        min ? parseFloat(min) : 0,
+        max ? parseFloat(max) : maxPossibleAmount
+    ]
 })
 
 // 監聽 route query 變化
@@ -83,107 +106,83 @@ watch(() => route.query.tab, (newTab) => {
     }
 })
 
-// 監聽 tab 變化，更新 URL
+// 監聽 tab 變化，更新 URL 和持久化儲存
 watch(activeTab, (newTab) => {
+    savedTab.value = newTab
     router.replace({ query: { ...route.query, tab: newTab } })
 })
 
-// 轉換 store 資料格式為組件需要的格式
-const convertStoreExpense = (storeExpense: Expense): DisplayExpense => {
-    return {
-        id: storeExpense.id,
-        title: storeExpense.title,
-        amount: `NT ${Math.round(storeExpense.amount)}`,
-        category: storeExpense.category,
-        icon: CategoryUtils.getIconKey(storeExpense.category),
-        user: storeExpense.user,
-        groupId: storeExpense.group_id,
-        splitMethod: storeExpense.split_method,
-        isSettled: storeExpense.is_settled
-    }
-}
+// 懶計算：只取當前 tab 的支出來源
+const activeExpenses = computed(() =>
+    activeTab.value === 'group'
+        ? groupExpenses.value
+        : personalExpenses.value
+)
 
-// 篩選邏輯
+// 快取 DisplayExpense 轉換（避免每次 computed 重算時重建所有物件）
+const displayExpenseMap = computed(() => {
+    const map = new Map<string, DisplayExpense>()
+    for (const e of activeExpenses.value) {
+        map.set(e.id, {
+            id: e.id,
+            title: e.title,
+            amount: `NT ${Math.round(e.amount)}`,
+            numericAmount: e.amount,
+            category: e.category,
+            icon: CategoryUtils.getIconKey(e.category),
+            user: e.user,
+            groupId: e.group_id,
+            splitMethod: e.split_method,
+            isSettled: e.is_settled
+        })
+    }
+    return map
+})
+
+// 篩選邏輯（single-pass，使用 debounced 搜尋值）
 const applyFilters = (expenses: Expense[]) => {
-    let result = [...expenses]
+    const query = debouncedSearch.value?.toLowerCase()
+    const startDate = filters.value.startDate?.replace(/\//g, '-')
+    const endDate = filters.value.endDate?.replace(/\//g, '-')
+    const cats = filters.value.categories
+    const min = filters.value.minAmount ? parseFloat(filters.value.minAmount) : null
+    const max = filters.value.maxAmount ? parseFloat(filters.value.maxAmount) : null
 
-    // 文字搜尋
-    if (searchQuery.value) {
-        const query = searchQuery.value.toLowerCase()
-        result = result.filter(expense =>
-            expense.title.toLowerCase().includes(query)
-        )
-    }
-
-    // 日期範圍篩選
-    if (filters.value.startDate) {
-        const startDate = filters.value.startDate.replace(/\//g, '-')
-        result = result.filter(expense => expense.date >= startDate)
-    }
-    if (filters.value.endDate) {
-        const endDate = filters.value.endDate.replace(/\//g, '-')
-        result = result.filter(expense => expense.date <= endDate)
-    }
-
-    // 類別篩選
-    if (filters.value.categories.length > 0) {
-        result = result.filter(expense =>
-            filters.value.categories.includes(expense.category)
-        )
-    }
-
-    // 金額範圍篩選
-    if (filters.value.minAmount) {
-        const min = parseFloat(filters.value.minAmount)
-        result = result.filter(expense => expense.amount >= min)
-    }
-    if (filters.value.maxAmount) {
-        const max = parseFloat(filters.value.maxAmount)
-        result = result.filter(expense => expense.amount <= max)
-    }
-
-    return result
+    return expenses.filter(e =>
+        (!query || e.title.toLowerCase().includes(query))
+        && (!startDate || e.date >= startDate)
+        && (!endDate || e.date <= endDate)
+        && (cats.length === 0 || cats.includes(e.category))
+        && (min === null || e.amount >= min)
+        && (max === null || e.amount <= max)
+    )
 }
 
-// 篩選後的個人支出
-const filteredPersonalExpenses = computed(() => applyFilters(personalExpenses.value))
+// 篩選後的支出（只計算活躍 tab）
+const filteredExpenses = computed(() => applyFilters(activeExpenses.value))
 
-// 篩選後的群組支出
-const filteredGroupExpenses = computed(() => applyFilters(groupExpenses.value))
-
-// 個人支出分組
-const personalExpenseGroups = computed(() => {
+// 按日期分組工具函式
+const groupByDate = (expenses: Expense[]): { date: string; expenses: DisplayExpense[] }[] => {
     const groups: Record<string, DisplayExpense[]> = {}
 
-    filteredPersonalExpenses.value.forEach(expense => {
+    for (const expense of expenses) {
         const displayDate = expense.date.replace(/-/g, '/')
         if (!groups[displayDate]) {
             groups[displayDate] = []
         }
-        groups[displayDate].push(convertStoreExpense(expense))
-    })
-
-    return Object.entries(groups)
-        .map(([date, expenses]) => ({ date, expenses }))
-        .sort((a, b) => b.date.localeCompare(a.date))
-})
-
-// 群組支出分組
-const groupExpenseGroups = computed(() => {
-    const groups: Record<string, DisplayExpense[]> = {}
-
-    filteredGroupExpenses.value.forEach(expense => {
-        const displayDate = expense.date.replace(/-/g, '/')
-        if (!groups[displayDate]) {
-            groups[displayDate] = []
+        const display = displayExpenseMap.value.get(expense.id)
+        if (display) {
+            groups[displayDate].push(display)
         }
-        groups[displayDate].push(convertStoreExpense(expense))
-    })
+    }
 
     return Object.entries(groups)
-        .map(([date, expenses]) => ({ date, expenses }))
+        .map(([date, exps]) => ({ date, expenses: exps }))
         .sort((a, b) => b.date.localeCompare(a.date))
-})
+}
+
+// 活躍 tab 的分組結果
+const expenseGroups = computed(() => groupByDate(filteredExpenses.value))
 
 // 日期格式化
 const formatDate = (dateStr: string) => {
@@ -250,10 +249,13 @@ const handleExpenseClick = (expense: DisplayExpense) => {
 usePullToRefresh({
     onRefresh: async () => {
         try {
+            expenseStore.preloadStatus = 'loading'
             await expenseStore.fetchExpenses()
+            expenseStore.preloadStatus = 'done'
             toast.success(t('common.refreshed'))
-        } catch (error) {
-            console.error('刷新失敗:', error)
+        } catch (err) {
+            console.error('刷新失敗:', err)
+            expenseStore.preloadStatus = 'error'
             toast.error(t('common.refreshFailed'))
         }
     }
@@ -261,12 +263,12 @@ usePullToRefresh({
 </script>
 
 <template>
-    <div class="min-h-screen bg-background">
+    <div class="min-h-screen bg-background glass-page-bg">
         <TopBar :title="t('nav.expenses')" />
 
         <!-- 搜尋區域 -->
-        <div class="sticky top-[64px] z-40 bg-background px-4 py-3 border-b border-border">
-            <div class="flex gap-2">
+        <div class="sticky top-[64px] z-40 px-4 py-3">
+            <div class="flex gap-2 glass rounded-full p-1.5">
                 <!-- 搜尋輸入框 -->
                 <div class="flex-1 relative">
                     <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -274,31 +276,44 @@ usePullToRefresh({
                         v-model="searchQuery"
                         type="text"
                         :placeholder="t('search.searchTransaction')"
-                        class="pl-10 pr-4 h-11"
+                        class="pl-10 pr-4 h-11 border-0 bg-transparent shadow-none focus-visible:ring-0"
                     />
                 </div>
 
                 <!-- 篩選按鈕 -->
-                <Button
-                    variant="outline"
-                    size="icon"
-                    class="h-11 w-11"
-                    @click="isFilterDialogOpen = true"
-                >
-                    <SlidersHorizontal class="h-5 w-5" />
-                </Button>
+                <div class="relative">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        class="h-11 w-11 rounded-full press-feedback hover-transition"
+                        @click="isFilterDialogOpen = true"
+                    >
+                        <SlidersHorizontal class="h-5 w-5" />
+                    </Button>
+                    <span
+                        v-if="hasActiveFilters"
+                        class="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 bg-red-500 rounded-full"
+                    />
+                </div>
             </div>
         </div>
 
-        <main class="px-4 pb-24">
+        <main class="px-4 pb-28">
             <!-- Tab 切換 -->
             <Tabs v-model="activeTab" class="mt-4">
-                <TabsList class="grid w-full grid-cols-2">
-                    <TabsTrigger value="personal" class="flex items-center gap-2">
+                <TabsList class="grid w-full grid-cols-2 rounded-full glass-light p-[2px]">
+                    <TabsTrigger
+                        value="personal"
+                        class="flex items-center gap-2 rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200 press-feedback"
+                    >
                         <User class="h-4 w-4" />
                         {{ t('expense.personal') }}
                     </TabsTrigger>
-                    <TabsTrigger value="group" :disabled="!isInGroup" class="flex items-center gap-2">
+                    <TabsTrigger
+                        value="group"
+                        :disabled="!isInGroup"
+                        class="flex items-center gap-2 rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200 press-feedback"
+                    >
                         <Users class="h-4 w-4" />
                         {{ t('expense.group') }}
                     </TabsTrigger>
@@ -306,9 +321,25 @@ usePullToRefresh({
 
                 <!-- 個人支出列表 -->
                 <TabsContent value="personal" class="mt-4">
-                    <div v-if="personalExpenseGroups.length > 0" class="space-y-4">
+                    <!-- Skeleton 載入中 -->
+                    <div v-if="isPreloading" class="space-y-4">
+                        <div v-for="i in 3" :key="i" class="glass rounded-2xl p-4 space-y-3">
+                            <div class="h-4 bg-muted rounded w-24 animate-pulse" />
+                            <div v-for="j in 2" :key="j" class="flex items-center gap-3">
+                                <div class="h-10 w-10 bg-muted rounded-lg animate-pulse" />
+                                <div class="flex-1 space-y-1.5">
+                                    <div class="h-3.5 bg-muted rounded w-32 animate-pulse" />
+                                    <div class="h-3 bg-muted rounded w-20 animate-pulse" />
+                                </div>
+                                <div class="h-4 bg-muted rounded w-16 animate-pulse" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 支出列表 -->
+                    <div v-else-if="expenseGroups.length > 0" class="space-y-4">
                         <ExpenseGroup
-                            v-for="group in personalExpenseGroups"
+                            v-for="group in expenseGroups"
                             :key="group.date"
                             :date="group.date"
                             :expenses="group.expenses"
@@ -316,19 +347,41 @@ usePullToRefresh({
                             @expense-click="handleExpenseClick"
                         />
                     </div>
-                    <div v-else class="text-center py-12">
+
+                    <!-- 空狀態 -->
+                    <div v-else-if="!expenseStore.loading" class="text-center py-12">
                         <User class="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                        <p class="text-muted-foreground">
+                        <p class="text-muted-foreground mb-4">
                             {{ searchQuery || filters.categories.length > 0 ? t('search.noResultsFound') : t('expenses.noPersonalExpenses') }}
                         </p>
+                        <Button variant="outline" class="rounded-full gap-2 press-feedback">
+                            <Plus class="h-4 w-4" />
+                            {{ t('expense.addExpense') }}
+                        </Button>
                     </div>
                 </TabsContent>
 
                 <!-- 群組支出列表 -->
                 <TabsContent value="group" class="mt-4">
-                    <div v-if="groupExpenseGroups.length > 0" class="space-y-4">
+                    <!-- Skeleton 載入中 -->
+                    <div v-if="isPreloading" class="space-y-4">
+                        <div v-for="i in 3" :key="i" class="glass rounded-2xl p-4 space-y-3">
+                            <div class="h-4 bg-muted rounded w-24 animate-pulse" />
+                            <div v-for="j in 2" :key="j" class="flex items-center gap-3">
+                                <div class="h-10 w-10 bg-muted rounded-lg animate-pulse" />
+                                <div class="flex-1 space-y-1.5">
+                                    <div class="h-3.5 bg-muted rounded w-32 animate-pulse" />
+                                    <div class="h-3 bg-muted rounded w-20 animate-pulse" />
+                                </div>
+                                <div class="h-4 bg-muted rounded w-16 animate-pulse" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 支出列表 -->
+                    <div v-else-if="expenseGroups.length > 0" class="space-y-4">
                         <ExpenseGroup
-                            v-for="group in groupExpenseGroups"
+                            v-for="group in expenseGroups"
                             :key="group.date"
                             :date="group.date"
                             :expenses="group.expenses"
@@ -336,11 +389,17 @@ usePullToRefresh({
                             @expense-click="handleExpenseClick"
                         />
                     </div>
-                    <div v-else class="text-center py-12">
+
+                    <!-- 空狀態 -->
+                    <div v-else-if="!expenseStore.loading" class="text-center py-12">
                         <Users class="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-                        <p class="text-muted-foreground">
+                        <p class="text-muted-foreground mb-4">
                             {{ searchQuery || filters.categories.length > 0 ? t('search.noResultsFound') : t('expenses.noGroupExpenses') }}
                         </p>
+                        <Button variant="outline" class="rounded-full gap-2 press-feedback">
+                            <Plus class="h-4 w-4" />
+                            {{ t('expense.addExpense') }}
+                        </Button>
                     </div>
                 </TabsContent>
             </Tabs>
@@ -348,7 +407,7 @@ usePullToRefresh({
 
         <!-- 篩選 Dialog -->
         <Dialog v-model:open="isFilterDialogOpen">
-            <DialogContent class="sm:max-w-md">
+            <DialogContent class="sm:max-w-md glass-elevated">
                 <DialogHeader>
                     <DialogTitle>{{ t('search.filterConditions') }}</DialogTitle>
                     <DialogDescription>
@@ -406,7 +465,7 @@ usePullToRefresh({
                                 type="button"
                                 @click="toggleCategory(category.id)"
                                 :class="[
-                                    'flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all duration-200',
+                                    'flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all duration-200 press-feedback',
                                     filters.categories.includes(category.id)
                                         ? 'border-brand-primary bg-brand-accent'
                                         : 'border-border bg-background hover:border-brand-primary hover:bg-brand-accent'
@@ -465,10 +524,10 @@ usePullToRefresh({
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" @click="resetFilters">
+                    <Button variant="outline" class="press-feedback" @click="resetFilters">
                         {{ t('search.reset') }}
                     </Button>
-                    <Button @click="handleApplyFilters" class="bg-brand-primary hover:bg-brand-primary/90">
+                    <Button @click="handleApplyFilters" class="bg-brand-primary hover:bg-brand-primary/90 press-feedback">
                         {{ t('search.applyFilter') }}
                     </Button>
                 </DialogFooter>

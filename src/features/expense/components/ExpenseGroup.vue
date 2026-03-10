@@ -1,34 +1,42 @@
 <template>
-    <div class="bg-background rounded-[20px] p-4 shadow-sm hover:shadow-md transition-all duration-300">
+    <div class="glass rounded-2xl p-4 hover-transition">
         <!-- 日期標題 -->
         <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-2">
+                <Calendar class="h-4 w-4 text-muted-foreground" />
                 <h3 class="text-sm font-normal text-foreground">
                     {{ date }}
                 </h3>
             </div>
-            
-            <!-- 下拉選單 -->
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        class="h-6 w-6 rounded-full hover:bg-accent"
-                    >
-                        <MoreHorizontal class="h-4 w-4 text-foreground" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" class="w-40">
-                    <DropdownMenuItem 
-                        @click="handleDeleteAll"
-                        class="text-destructive focus:text-destructive hover:text-destructive cursor-pointer"
-                    >
-                        <Trash2 class="mr-2 h-4 w-4" />
-                        {{ t('expense.deleteAll') }}
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+
+            <div class="flex items-center gap-2">
+                <!-- 每日總計 -->
+                <span class="text-sm font-semibold text-expense">
+                    NT {{ dailyTotal.toLocaleString() }}
+                </span>
+
+                <!-- 下拉選單 -->
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            class="h-6 w-6 rounded-full hover:bg-accent"
+                        >
+                            <MoreHorizontal class="h-4 w-4 text-foreground" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" class="w-40">
+                        <DropdownMenuItem
+                            @click="handleDeleteAll"
+                            class="text-destructive focus:text-destructive hover:text-destructive cursor-pointer"
+                        >
+                            <Trash2 class="mr-2 h-4 w-4" />
+                            {{ t('expense.deleteAll') }}
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
         </div>
 
         <!-- 費用列表 -->
@@ -72,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/shared/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog'
@@ -82,7 +90,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from '@/shared/components/ui/dropdown-menu'
-import { MoreHorizontal, Trash2 } from 'lucide-vue-next'
+import { Calendar, MoreHorizontal, Trash2 } from 'lucide-vue-next'
 import { useExpenseStore } from '@/shared/stores'
 import { toast } from 'vue-sonner'
 import ExpenseItem from '@/features/expense/components/ExpenseItem.vue'
@@ -105,6 +113,11 @@ const emit = defineEmits<{
 const expenseStore = useExpenseStore()
 const { loading } = expenseStore
 
+// 每日總計：優先使用 numericAmount，避免 regex 解析字串
+const dailyTotal = computed(() =>
+    props.expenses.reduce((sum, e) => sum + (e.numericAmount ?? 0), 0)
+)
+
 // 確認刪除對話框狀態
 const showDeleteDialog = ref(false)
 
@@ -126,9 +139,9 @@ const confirmDeleteAll = async () => {
     try {
         // 轉換日期格式從 "2025/08/03" 到 "2025-08-03"
         const storeDate = props.date.replace(/\//g, '-')
-        
+
         await expenseStore.deleteExpensesByDate(storeDate)
-        
+
         showDeleteDialog.value = false
         toast.success(t('expense.deleteAllSuccess'))
     } catch (error) {

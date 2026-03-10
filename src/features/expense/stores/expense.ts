@@ -1,9 +1,20 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/shared/lib/supabase'
-import type { ExpenseRow, ExpenseInsert, SplitMethod } from '@/shared/lib/database.types'
+import type { ExpenseRow, ExpenseInsert, SplitMethod, CurrencyType } from '@/shared/lib/database.types'
 import type { CategoryId, ExpenseUser } from '@/entities/expense/types'
 import { useGroupStore } from '@/features/group/stores/group'
+
+const VALID_CATEGORIES: ReadonlySet<string> = new Set([
+    'food', 'pet', 'shopping', 'transport', 'home', 'other'
+])
+
+function toValidCategory(value: unknown): CategoryId {
+    if (typeof value === 'string' && VALID_CATEGORIES.has(value)) {
+        return value as CategoryId
+    }
+    return 'other'
+}
 
 export interface Expense {
     id: string
@@ -14,7 +25,7 @@ export interface Expense {
     category: CategoryId
     icon: string | null
     date: string
-    currency: string
+    currency: CurrencyType
     split_method: SplitMethod | null
     paid_by: string | null
     notes: string | null
@@ -32,10 +43,30 @@ export interface CreateExpenseData {
     icon: string
     date: string
     group_id?: string | null
-    currency?: string
+    currency?: CurrencyType
     split_method?: SplitMethod
     paid_by?: string
     notes?: string
+    splits?: Array<{
+        userId: string
+        amount: number
+        percentage?: number
+        shares?: number
+    }>
+}
+
+export interface UpdateExpenseData {
+    title?: string
+    amount?: number
+    category?: CategoryId
+    icon?: string
+    date?: string
+    group_id?: string | null
+    currency?: CurrencyType
+    split_method?: SplitMethod | null
+    paid_by?: string | null
+    notes?: string | null
+    is_settled?: boolean
 }
 
 // 支出統計介面
@@ -58,30 +89,42 @@ export const useExpenseStore = defineStore('expense', () => {
     // 當前使用者 ID（用於過濾個人支出）
     const currentUserId = ref<string | null>(null)
 
-    // 輔助函數：計算統計數據
+    // 預載狀態
+    const preloadStatus = ref<'idle' | 'loading' | 'done' | 'error'>('idle')
+
+    // 完整歷史是否已載入（向後相容）
+    const fullHistoryLoaded = computed(() => preloadStatus.value === 'done')
+
+    // 輔助函數：計算統計數據（單次遍歷）
     const calculateStatsForExpenses = (expenseList: Expense[]): ExpenseStats => {
         const now = new Date()
-        const today = now.toISOString().split('T')[0]
+        const todayStr = now.toISOString().split('T')[0]
         const weekStart = new Date(now)
         weekStart.setDate(now.getDate() - now.getDay())
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
-        const todayExpenses = expenseList.filter(e => e.date === today)
-        const weekExpenses = expenseList.filter(e => new Date(e.date) >= weekStart)
-        const monthExpenses = expenseList.filter(e => new Date(e.date) >= monthStart)
+        let today = 0
+        let week = 0
+        let month = 0
+        const byCategory: Record<string, number> = {
+            food: 0, pet: 0, shopping: 0, transport: 0, home: 0, other: 0
+        }
+
+        for (const e of expenseList) {
+            const d = new Date(e.date)
+            if (e.date === todayStr) today += e.amount
+            if (d >= weekStart) week += e.amount
+            if (d >= monthStart) {
+                month += e.amount
+                byCategory[e.category] = (byCategory[e.category] ?? 0) + e.amount
+            }
+        }
 
         return {
-            today: todayExpenses.reduce((sum, e) => sum + e.amount, 0),
-            week: weekExpenses.reduce((sum, e) => sum + e.amount, 0),
-            month: monthExpenses.reduce((sum, e) => sum + e.amount, 0),
-            byCategory: {
-                food: monthExpenses.filter(e => e.category === 'food').reduce((sum, e) => sum + e.amount, 0),
-                pet: monthExpenses.filter(e => e.category === 'pet').reduce((sum, e) => sum + e.amount, 0),
-                shopping: monthExpenses.filter(e => e.category === 'shopping').reduce((sum, e) => sum + e.amount, 0),
-                transport: monthExpenses.filter(e => e.category === 'transport').reduce((sum, e) => sum + e.amount, 0),
-                home: monthExpenses.filter(e => e.category === 'home').reduce((sum, e) => sum + e.amount, 0),
-                other: monthExpenses.filter(e => e.category === 'other').reduce((sum, e) => sum + e.amount, 0)
-            }
+            today,
+            week,
+            month,
+            byCategory: byCategory as Record<CategoryId, number>
         }
     }
 
@@ -120,7 +163,7 @@ export const useExpenseStore = defineStore('expense', () => {
             if (!grouped[expense.date]) {
                 grouped[expense.date] = []
             }
-            grouped[expense.date] = [...grouped[expense.date], expense]
+            grouped[expense.date] = [...(grouped[expense.date] ?? []), expense]
         })
         return grouped
     })
@@ -132,7 +175,7 @@ export const useExpenseStore = defineStore('expense', () => {
             if (!grouped[expense.date]) {
                 grouped[expense.date] = []
             }
-            grouped[expense.date] = [...grouped[expense.date], expense]
+            grouped[expense.date] = [...(grouped[expense.date] ?? []), expense]
         })
         return grouped
     })
@@ -147,7 +190,7 @@ export const useExpenseStore = defineStore('expense', () => {
         group_id: row.group_id,
         title: row.title,
         amount: row.amount,
-        category: row.category as CategoryId,
+        category: toValidCategory(row.category),
         icon: row.icon,
         date: row.date,
         currency: row.currency,
@@ -240,6 +283,7 @@ export const useExpenseStore = defineStore('expense', () => {
         } catch (err) {
             console.error('獲取支出記錄失敗:', err)
             error.value = err instanceof Error ? err.message : '未知錯誤'
+            throw err
         } finally {
             loading.value = false
         }
@@ -331,6 +375,25 @@ export const useExpenseStore = defineStore('expense', () => {
             }
 
             if (data) {
+                if (groupId && expenseData.splits && expenseData.splits.length > 0) {
+                    const splitRows = expenseData.splits.map(split => ({
+                        expense_id: data.id,
+                        user_id: split.userId,
+                        amount: split.amount,
+                        percentage: split.percentage ?? null,
+                        shares: split.shares ?? null,
+                        is_settled: false
+                    }))
+
+                    const { error: splitError } = await supabase
+                        .from('expense_splits')
+                        .upsert(splitRows, { onConflict: 'expense_id,user_id' })
+
+                    if (splitError) {
+                        throw splitError
+                    }
+                }
+
                 const { data: userProfile } = await supabase
                     .from('user_profiles')
                     .select('id, display_name, avatar_url')
@@ -359,7 +422,7 @@ export const useExpenseStore = defineStore('expense', () => {
     }
 
     // 更新費用
-    const updateExpense = async (id: string, updates: Partial<CreateExpenseData>) => {
+    const updateExpense = async (id: string, updates: UpdateExpenseData) => {
         try {
             loading.value = true
             error.value = null
@@ -378,7 +441,7 @@ export const useExpenseStore = defineStore('expense', () => {
             // 更新本地資料（保留既有的 user 資訊）
             const index = expenses.value.findIndex(expense => expense.id === id)
             if (index !== -1 && data) {
-                const existingUser = expenses.value[index].user
+                const existingUser = expenses.value[index]?.user
                 const usersMap = new Map<string, ExpenseUser>()
                 if (existingUser) {
                     usersMap.set(existingUser.id, existingUser)
@@ -461,7 +524,7 @@ export const useExpenseStore = defineStore('expense', () => {
             if (!grouped[expense.date]) {
                 grouped[expense.date] = []
             }
-            grouped[expense.date] = [...grouped[expense.date], expense]
+            grouped[expense.date] = [...(grouped[expense.date] ?? []), expense]
         })
         return grouped
     })
@@ -470,7 +533,7 @@ export const useExpenseStore = defineStore('expense', () => {
     const dailyTotals = computed(() => {
         const totals: Record<string, number> = {}
         Object.keys(expensesByDate.value).forEach(date => {
-            totals[date] = expensesByDate.value[date].reduce((sum, expense) => sum + expense.amount, 0)
+            totals[date] = (expensesByDate.value[date] ?? []).reduce((sum, expense) => sum + expense.amount, 0)
         })
         return totals
     })
@@ -597,6 +660,7 @@ export const useExpenseStore = defineStore('expense', () => {
         error,
         lastUsedGroupId,
         currentUserId,
+        preloadStatus,
 
         // 統計數據
         stats,
@@ -608,6 +672,9 @@ export const useExpenseStore = defineStore('expense', () => {
         groupExpenses,
         personalExpensesByDate,
         groupExpensesByDate,
+
+        // 完整歷史標記（向後相容）
+        fullHistoryLoaded,
 
         // 方法
         fetchExpenses,

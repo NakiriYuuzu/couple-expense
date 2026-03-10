@@ -3,13 +3,13 @@ import { Toaster } from '@/shared/components/ui/sonner'
 import 'vue-sonner/style.css'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import type { RouteLocationNormalized } from 'vue-router'
 import BottomNavigation from '@/shared/components/BottomNavigation.vue'
 import AddExpenseDrawer from '@/features/expense/components/AddExpenseDrawer.vue'
 import { routes } from '@/app/router/routes/index.ts'
-import { useExpenseStore, useThemeStore } from '@/shared/stores'
+import { useExpenseStore, useThemeStore, useSettlementStore } from '@/shared/stores'
 import { useAuthStore } from '@/features/auth/stores/auth'
 import { useGroupStore } from '@/features/group/stores/group'
+import { useBackgroundPreload } from '@/shared/composables/useBackgroundPreload'
 import type { AddExpenseEvent } from '@/entities/expense/types'
 
 const router = useRouter()
@@ -18,18 +18,20 @@ const expenseStore = useExpenseStore()
 const authStore = useAuthStore()
 const groupStore = useGroupStore()
 const themeStore = useThemeStore()
+const settlementStore = useSettlementStore()
+const { startPreload } = useBackgroundPreload()
 
-// 定義頁面索引來決定動畫方向
+// 頁面索引（保留用於其他邏輯參考）
 const pageIndexMap: Record<string, number> = {
-    '/': 0,               // Startup
-    '/dashboard': 1,      // Dashboard
-    '/expenses': 2,       // Expenses
-    '/balances': 3,       // Balances
-    '/settings': 4        // Settings
+    '/': 0,
+    '/dashboard': 1,
+    '/expenses': 2,
+    '/overview': 3,
+    '/settings': 4
 }
 
 // 需要顯示底部導航的路由
-const routesWithBottomNav = ['/dashboard', '/expenses', '/balances', '/settings']
+const routesWithBottomNav = ['/dashboard', '/expenses', '/overview', '/settings']
 
 // 是否顯示底部導航
 const showBottomNavigation = computed(() => {
@@ -43,8 +45,8 @@ const activeTab = computed(() => {
             return 'dashboard'
         case '/expenses':
             return 'expenses'
-        case '/balances':
-            return 'balances'
+        case '/overview':
+            return 'overview'
         case '/settings':
             return 'settings'
         default:
@@ -55,31 +57,8 @@ const activeTab = computed(() => {
 // Drawer 狀態
 const isAddExpenseDrawerOpen = ref(false)
 
-// 追踪前一個頁面索引
-const previousPageIndex = ref(0)
-
-// 根據路由變化決定過渡動畫名稱
-const getTransitionName = (route: RouteLocationNormalized) => {
-    const currentIndex = pageIndexMap[route.path] ?? 0
-    const prevIndex = previousPageIndex.value
-
-    // 更新前一個頁面索引
-    previousPageIndex.value = currentIndex
-
-    if (currentIndex > prevIndex) {
-        return 'slide-left'  // 向左滑動（前進）
-    } else if (currentIndex < prevIndex) {
-        return 'slide-right' // 向右滑動（後退）
-    } else {
-        return 'fade'        // 淡入淡出（同級或首次進入）
-    }
-}
-
-// 監聽路由變化來更新頁面索引
-router.beforeEach((to, from) => {
-    const fromIndex = pageIndexMap[from.path] ?? 0
-    previousPageIndex.value = fromIndex
-})
+// 所有頁面統一使用 fade 過渡
+const transitionName = 'fade'
 
 // 底部導航處理器
 const handleNavigation = (tab: string) => {
@@ -90,8 +69,8 @@ const handleNavigation = (tab: string) => {
         case 'expenses':
             router.push({ name: routes.expenses.name })
             break
-        case 'balances':
-            router.push({ name: routes.balances.name })
+        case 'overview':
+            router.push({ name: routes.overview.name })
             break
         case 'settings':
             router.push({ name: routes.settings.name })
@@ -118,7 +97,9 @@ const handleExpenseAdded = async (expense: AddExpenseEvent) => {
             icon: expense.icon,
             date: expense.date,
             group_id: expense.groupId,
-            split_method: expense.splitMethod
+            paid_by: expense.paidBy,
+            split_method: expense.splitMethod,
+            splits: expense.splits
         }
 
         await expenseStore.addExpense(storeExpense)
@@ -138,8 +119,8 @@ const loadAllData = async () => {
             groupStore.fetchUserGroups()
         ])
 
-        // 2. 再載入 expense 資料（會根據群組狀態載入）
-        await expenseStore.fetchExpenses()
+        // 2. 背景預載 expenses + settlement
+        startPreload()
     } catch (error) {
         console.error('載入資料失敗:', error)
     }
@@ -152,25 +133,21 @@ watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
     } else {
         // 用戶登出時清空所有資料
         expenseStore.expenses = []
+        expenseStore.preloadStatus = 'idle'
+        settlementStore.clearSettlementData()
     }
 }, { immediate: true })
 
-// 監聽群組切換，自動重新載入支出資料
-watch(() => groupStore.activeGroupId, async () => {
+// 監聽群組切換，重新背景預載
+watch(() => groupStore.activeGroupId, () => {
     if (authStore.isLoggedIn) {
-        await expenseStore.fetchExpenses()
+        startPreload()
     }
 })
 
 // 應用初始化
-onMounted(async () => {
-    // 初始化主題
+onMounted(() => {
     themeStore.initializeTheme()
-
-    // 如果用戶已經登入，載入所有資料
-    if (authStore.isLoggedIn) {
-        await loadAllData()
-    }
 })
 </script>
 
@@ -180,8 +157,8 @@ onMounted(async () => {
         <!-- 主要內容區域 -->
         <div class="main-content">
             <RouterView v-slot="{ Component, route }">
-                <Transition 
-                    :name="getTransitionName(route)" 
+                <Transition
+                    :name="transitionName"
                     mode="out-in"
                     appear
                 >
@@ -207,7 +184,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* 應用容器 */
 .app-container {
     position: relative;
     overflow-x: hidden;
@@ -217,7 +193,6 @@ onMounted(async () => {
     flex-direction: column;
 }
 
-/* 主要內容區域 */
 .main-content {
     position: relative;
     flex: 1;
@@ -225,64 +200,14 @@ onMounted(async () => {
     overflow-y: auto;
 }
 
-/* 頁面切換動畫 */
-
-/* 淡入淡出動畫 */
+/* 頁面切換 - 統一 fade 過渡 */
 .fade-enter-active,
 .fade-leave-active {
-    transition: opacity 0.3s ease;
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
-}
-
-/* 向左滑動動畫（前進） */
-.slide-left-enter-active,
-.slide-left-leave-active {
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.slide-left-enter-from {
-    transform: translateX(100%);
-    opacity: 0;
-}
-
-.slide-left-leave-to {
-    transform: translateX(-100%);
-    opacity: 0;
-}
-
-/* 向右滑動動畫（後退） */
-.slide-right-enter-active,
-.slide-right-leave-active {
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.slide-right-enter-from {
-    transform: translateX(-100%);
-    opacity: 0;
-}
-
-.slide-right-leave-to {
-    transform: translateX(100%);
-    opacity: 0;
-}
-
-/* 確保動畫期間頁面定位正確 */
-.slide-left-enter-active,
-.slide-left-leave-active,
-.slide-right-enter-active,
-.slide-right-leave-active {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
-    overflow-y: auto;
 }
 </style>

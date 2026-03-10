@@ -12,7 +12,7 @@ export type CategoryType = 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 
 export type CurrencyType = 'TWD' | 'USD' | 'EUR' | 'JPY' | 'CNY'
 
 export interface Database {
-    public: {
+    group_expense: {
         Tables: {
             groups: {
                 Row: {
@@ -48,6 +48,7 @@ export interface Database {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: []
             }
             group_members: {
                 Row: {
@@ -77,6 +78,15 @@ export interface Database {
                     joined_at?: string
                     created_at?: string
                 }
+                Relationships: [
+                    {
+                        foreignKeyName: 'group_members_group_id_fkey'
+                        columns: ['group_id']
+                        isOneToOne: false
+                        referencedRelation: 'groups'
+                        referencedColumns: ['id']
+                    }
+                ]
             }
             group_settings: {
                 Row: {
@@ -115,6 +125,15 @@ export interface Database {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: [
+                    {
+                        foreignKeyName: 'group_settings_group_id_fkey'
+                        columns: ['group_id']
+                        isOneToOne: true
+                        referencedRelation: 'groups'
+                        referencedColumns: ['id']
+                    }
+                ]
             }
             expenses: {
                 Row: {
@@ -168,6 +187,15 @@ export interface Database {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: [
+                    {
+                        foreignKeyName: 'expenses_group_id_fkey'
+                        columns: ['group_id']
+                        isOneToOne: false
+                        referencedRelation: 'groups'
+                        referencedColumns: ['id']
+                    }
+                ]
             }
             expense_splits: {
                 Row: {
@@ -200,6 +228,15 @@ export interface Database {
                     is_settled?: boolean
                     created_at?: string
                 }
+                Relationships: [
+                    {
+                        foreignKeyName: 'expense_splits_expense_id_fkey'
+                        columns: ['expense_id']
+                        isOneToOne: false
+                        referencedRelation: 'expenses'
+                        referencedColumns: ['id']
+                    }
+                ]
             }
             settlements: {
                 Row: {
@@ -209,6 +246,7 @@ export interface Database {
                     paid_to: string
                     amount: number
                     notes: string | null
+                    year_month: string | null
                     settled_at: string
                     created_at: string
                 }
@@ -219,6 +257,7 @@ export interface Database {
                     paid_to: string
                     amount: number
                     notes?: string | null
+                    year_month?: string | null
                     settled_at?: string
                     created_at?: string
                 }
@@ -229,9 +268,57 @@ export interface Database {
                     paid_to?: string
                     amount?: number
                     notes?: string | null
+                    year_month?: string | null
                     settled_at?: string
                     created_at?: string
                 }
+                Relationships: [
+                    {
+                        foreignKeyName: 'settlements_group_id_fkey'
+                        columns: ['group_id']
+                        isOneToOne: false
+                        referencedRelation: 'groups'
+                        referencedColumns: ['id']
+                    }
+                ]
+            }
+            monthly_debt_snapshots: {
+                Row: {
+                    id: string
+                    group_id: string
+                    year_month: string
+                    snapshot_data: Json
+                    total_unsettled: number
+                    status: string
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    group_id: string
+                    year_month: string
+                    snapshot_data?: Json
+                    total_unsettled?: number
+                    status?: string
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    group_id?: string
+                    year_month?: string
+                    snapshot_data?: Json
+                    total_unsettled?: number
+                    status?: string
+                    created_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: 'monthly_debt_snapshots_group_id_fkey'
+                        columns: ['group_id']
+                        isOneToOne: false
+                        referencedRelation: 'groups'
+                        referencedColumns: ['id']
+                    }
+                ]
             }
             user_profiles: {
                 Row: {
@@ -261,6 +348,7 @@ export interface Database {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: []
             }
             user_settings: {
                 Row: {
@@ -290,6 +378,7 @@ export interface Database {
                     created_at?: string
                     updated_at?: string
                 }
+                Relationships: []
             }
         }
         Views: {
@@ -352,51 +441,118 @@ export interface Database {
                 }
                 Returns: string
             }
+            get_expense_months: {
+                Args: {
+                    p_group_id: string
+                }
+                Returns: { year_month: string }[]
+            }
+            get_monthly_snapshots: {
+                Args: {
+                    p_group_id: string
+                }
+                Returns: {
+                    id: string
+                    year_month: string
+                    snapshot_data: Json
+                    total_unsettled: number
+                    status: string
+                    created_at: string
+                }[]
+            }
+            get_monthly_balances: {
+                Args: {
+                    p_group_id: string
+                    p_year_month: string
+                }
+                Returns: { user_id: string; net_balance: number }[]
+            }
+            get_monthly_simplified_debts: {
+                Args: {
+                    p_group_id: string
+                    p_year_month: string
+                }
+                Returns: { from_user: string; to_user: string; amount: number }[]
+            }
+            create_monthly_snapshot: {
+                Args: {
+                    p_group_id: string
+                    p_year_month: string
+                }
+                Returns: string
+            }
+            settle_monthly_debt: {
+                Args: {
+                    p_group_id: string
+                    p_paid_to: string
+                    p_amount: number
+                    p_notes?: string
+                    p_year_month?: string
+                }
+                Returns: string
+            }
+            update_settlement: {
+                Args: {
+                    p_settlement_id: string
+                    p_amount: number
+                    p_notes?: string
+                }
+                Returns: undefined
+            }
+            delete_settlement: {
+                Args: {
+                    p_settlement_id: string
+                }
+                Returns: undefined
+            }
         }
         Enums: {
             expense_category: CategoryType
             split_method: SplitMethod
             group_member_role: GroupMemberRole
         }
+        CompositeTypes: {
+            [_ in never]: never
+        }
     }
 }
 
 // Group type aliases
-export type GroupRow = Database['public']['Tables']['groups']['Row']
-export type GroupInsert = Database['public']['Tables']['groups']['Insert']
-export type GroupUpdate = Database['public']['Tables']['groups']['Update']
+export type GroupRow = Database['group_expense']['Tables']['groups']['Row']
+export type GroupInsert = Database['group_expense']['Tables']['groups']['Insert']
+export type GroupUpdate = Database['group_expense']['Tables']['groups']['Update']
 
 // GroupMember type aliases
-export type GroupMemberRow = Database['public']['Tables']['group_members']['Row']
-export type GroupMemberInsert = Database['public']['Tables']['group_members']['Insert']
-export type GroupMemberUpdate = Database['public']['Tables']['group_members']['Update']
+export type GroupMemberRow = Database['group_expense']['Tables']['group_members']['Row']
+export type GroupMemberInsert = Database['group_expense']['Tables']['group_members']['Insert']
+export type GroupMemberUpdate = Database['group_expense']['Tables']['group_members']['Update']
 
 // GroupSettings type aliases
-export type GroupSettingsRow = Database['public']['Tables']['group_settings']['Row']
-export type GroupSettingsInsert = Database['public']['Tables']['group_settings']['Insert']
-export type GroupSettingsUpdate = Database['public']['Tables']['group_settings']['Update']
+export type GroupSettingsRow = Database['group_expense']['Tables']['group_settings']['Row']
+export type GroupSettingsInsert = Database['group_expense']['Tables']['group_settings']['Insert']
+export type GroupSettingsUpdate = Database['group_expense']['Tables']['group_settings']['Update']
 
 // Expense type aliases
-export type ExpenseRow = Database['public']['Tables']['expenses']['Row']
-export type ExpenseInsert = Database['public']['Tables']['expenses']['Insert']
-export type ExpenseUpdate = Database['public']['Tables']['expenses']['Update']
+export type ExpenseRow = Database['group_expense']['Tables']['expenses']['Row']
+export type ExpenseInsert = Database['group_expense']['Tables']['expenses']['Insert']
+export type ExpenseUpdate = Database['group_expense']['Tables']['expenses']['Update']
 
 // ExpenseSplit type aliases
-export type ExpenseSplitRow = Database['public']['Tables']['expense_splits']['Row']
-export type ExpenseSplitInsert = Database['public']['Tables']['expense_splits']['Insert']
-export type ExpenseSplitUpdate = Database['public']['Tables']['expense_splits']['Update']
+export type ExpenseSplitRow = Database['group_expense']['Tables']['expense_splits']['Row']
+export type ExpenseSplitInsert = Database['group_expense']['Tables']['expense_splits']['Insert']
+export type ExpenseSplitUpdate = Database['group_expense']['Tables']['expense_splits']['Update']
 
 // Settlement type aliases
-export type SettlementRow = Database['public']['Tables']['settlements']['Row']
-export type SettlementInsert = Database['public']['Tables']['settlements']['Insert']
-export type SettlementUpdate = Database['public']['Tables']['settlements']['Update']
+export type SettlementRow = Database['group_expense']['Tables']['settlements']['Row']
+export type SettlementInsert = Database['group_expense']['Tables']['settlements']['Insert']
+export type SettlementUpdate = Database['group_expense']['Tables']['settlements']['Update']
 
 // UserProfile type aliases
-export type UserProfileRow = Database['public']['Tables']['user_profiles']['Row']
-export type UserProfileInsert = Database['public']['Tables']['user_profiles']['Insert']
-export type UserProfileUpdate = Database['public']['Tables']['user_profiles']['Update']
+export type UserProfileRow = Database['group_expense']['Tables']['user_profiles']['Row']
+export type UserProfileInsert = Database['group_expense']['Tables']['user_profiles']['Insert']
+export type UserProfileUpdate = Database['group_expense']['Tables']['user_profiles']['Update']
 
 // UserSettings type aliases
-export type UserSettingsRow = Database['public']['Tables']['user_settings']['Row']
-export type UserSettingsInsert = Database['public']['Tables']['user_settings']['Insert']
-export type UserSettingsUpdate = Database['public']['Tables']['user_settings']['Update']
+export type UserSettingsRow = Database['group_expense']['Tables']['user_settings']['Row']
+export type UserSettingsInsert = Database['group_expense']['Tables']['user_settings']['Insert']
+export type UserSettingsUpdate = Database['group_expense']['Tables']['user_settings']['Update']

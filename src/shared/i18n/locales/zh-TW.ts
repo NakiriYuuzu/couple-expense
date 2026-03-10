@@ -63,7 +63,9 @@ const zhTW = {
     expenses: {
         noPersonalExpenses: '尚無個人支出記錄',
         noFamilyExpenses: '尚無家庭支出記錄',
-        noGroupExpenses: '尚無群組支出記錄'
+        noGroupExpenses: '尚無群組支出記錄',
+        noMoreExpenses: '已載入所有支出',
+        loadingMore: '載入更多中...'
     },
 
     // 首頁
@@ -189,6 +191,7 @@ const zhTW = {
         confirmDeleteDesc: '確定要刪除這筆支出記錄嗎？此操作無法撤銷。',
         // 上下文與步驟
         context: '支出上下文',
+        recentQuickCopy: '最近記錄',
         step: '步驟 {n}',
         stepExpenseInfo: '支出資訊',
         nextStep: '下一步',
@@ -237,6 +240,10 @@ const zhTW = {
         exact: '指定金額',
         percentage: '按比例',
         shares: '按份數',
+        equalDesc: '將金額平均分配給所有參與者',
+        exactDesc: '直接指定每位參與者應分擔的金額',
+        percentageDesc: '依百分比分配，每位參與者合計需為 100%',
+        sharesDesc: '依份數比例分配，份數越高分到越多',
         people: '{n} 人',
         stepSplitConfig: '分帳設定'
     },
@@ -347,7 +354,64 @@ const zhTW = {
         owes: '欠',
         settleSuccess: '結算成功',
         settleFailed: '結算失敗',
-        invalidAmount: '請輸入有效金額'
+        invalidAmount: '請輸入有效金額',
+        editDrawerTitle: '編輯還款',
+        editDrawerDesc: '修改還款記錄',
+        confirmEdit: '確認修改',
+        editSuccess: '修改成功',
+        editFailed: '修改失敗',
+        deleteConfirmTitle: '刪除結算記錄',
+        deleteConfirmDesc: '確定要刪除這筆結算記錄嗎？刪除後帳務餘額將重新計算。',
+        deleteSuccess: '已刪除結算記錄',
+        deleteFailed: '刪除失敗'
+    },
+
+    // 總覽頁面
+    overview: {
+        title: '總覽',
+        statistics: '統計',
+        debts: '債務',
+        // Statistics panel
+        monthlyTotal: '月總消費',
+        todayExpense: '今日消費',
+        dailyAverage: '平均每日',
+        byMonth: '按月',
+        byYear: '按年',
+        areaChartTitle: '支出分佈',
+        areaChartXAxisMonthHint: 'X 軸：第幾週',
+        areaChartXAxisYearHint: 'X 軸：月份',
+        areaChartYAxisHint: 'Y 軸：消費金額（NT$）',
+        areaChartWeekTick: '第 {value} 週',
+        areaChartMonthTick: '{value} 月',
+        categoryBreakdown: '類別明細',
+        // Debt panel
+        inProgress: '進行中',
+        settled: '已結清',
+        partiallyUnsettled: '部分未結清',
+        unsettled: '未結清',
+        totalUnsettled: '未結清',
+        pendingSettlement: '{count} 筆待結算',
+        expandDetails: '展開詳情',
+        collapseDetails: '收起詳情',
+        selectGroupForDebts: '請選擇群組以查看債務',
+        noSnapshotsYet: '尚無歷史結算記錄',
+        currentMonth: '本月',
+        // Redesigned debt panel
+        yearUnit: '年',
+        monthUnit: '月',
+        heroYouOwe: '你欠 {name}',
+        heroOwesYou: '{name} 欠你',
+        andMore: '等 {count} 人',
+        settleNow: '立即結算',
+        allClear: '全部已結清',
+        allClearDesc: '這個月沒有待結算的債務',
+        noDebtsThisMonth: '本月無債務資料',
+        noDataThisYear: '此年度無資料',
+        totalExpenses: '總支出',
+        unsettledAmount: '待結清',
+        debtDetails: '債務明細',
+        memberBalances: '成員餘額',
+        settlementRecords: '結算紀錄'
     },
 
     // 搜尋
@@ -431,7 +495,13 @@ const zhTW = {
         clearDataDesc: '確定要清除所有支出資料嗎？此操作無法撤銷。',
         clearDataConfirm: '確認清除',
         clearDataSuccess: '支出資料已清除',
-        clearDataError: '清除失敗'
+        clearDataError: '清除失敗',
+        // 顯示名稱
+        displayNamePlaceholder: '輸入顯示名稱',
+        displayNameSaved: '顯示名稱已更新',
+        displayNameError: '更新顯示名稱失敗',
+        displayNameRequired: '顯示名稱不能為空',
+        displayNameMaxLength: '顯示名稱最多 50 個字元'
     },
 
     // 驗證訊息

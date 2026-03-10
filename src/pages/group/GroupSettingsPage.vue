@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm } from 'vee-validate'
+import { z } from 'zod'
 import { toast } from 'vue-sonner'
 import TopBar from '@/shared/components/TopBar.vue'
 import GroupInvite from '@/features/group/components/GroupInvite.vue'
@@ -9,7 +12,6 @@ import GroupMemberList from '@/features/group/components/GroupMemberList.vue'
 import { Button } from '@/shared/components/ui/button'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
-import { Card } from '@/shared/components/ui/card'
 import { Separator } from '@/shared/components/ui/separator'
 import { Skeleton } from '@/shared/components/ui/skeleton'
 import { Spinner } from '@/shared/components/ui/spinner'
@@ -43,10 +45,31 @@ import {
     CalendarDays,
     LogOut,
     Crown,
-    Shield,
     Wallet,
     ChevronRight
 } from 'lucide-vue-next'
+
+interface MemberWithProfile {
+    member: GroupMemberRow
+    profile: UserProfileRow | null
+}
+
+type CategoryBudgetKey = keyof CategoryBudgets
+
+interface BudgetSettingsFormValues {
+    monthly_budget: number | undefined
+    budget_start_day: number | undefined
+    default_split_method: SplitMethod
+    currency: Currency
+    category_budgets: Record<CategoryBudgetKey, number | undefined>
+}
+
+type BudgetFieldPath =
+    | 'monthly_budget'
+    | 'budget_start_day'
+    | 'default_split_method'
+    | 'currency'
+    | `category_budgets.${CategoryBudgetKey}`
 
 const { t } = useI18n()
 const router = useRouter()
@@ -54,46 +77,19 @@ const route = useRoute()
 const groupStore = useGroupStore()
 
 const groupId = route.params.id as string
-
-// Local loading states
 const pageLoading = ref(false)
 const settingsSaving = ref(false)
 const leaveLoading = ref(false)
-
-// Member profiles
-interface MemberWithProfile {
-    member: GroupMemberRow
-    profile: UserProfileRow | null
-}
-
 const membersWithProfiles = ref<MemberWithProfile[]>([])
 
-// Budget settings form
-const budgetForm = ref({
-    monthly_budget: 0,
-    budget_start_day: 1,
-    default_split_method: 'equal' as SplitMethod,
-    currency: 'TWD' as Currency,
-    category_budgets: {
-        food: 0,
-        transport: 0,
-        shopping: 0,
-        home: 0,
-        pet: 0,
-        other: 0
-    } as CategoryBudgets
-})
-
-// Derived data from store
 const group = computed(() => groupStore.groups.find(g => g.id === groupId) ?? null)
 const groupSettings = computed(() => groupStore.settingsByGroup[groupId] ?? null)
 const members = computed(() => groupStore.membersByGroup[groupId] ?? [])
-
 const currentUserId = computed(() => groupStore.userProfile?.id ?? null)
 
 const currentMemberRole = computed(() => {
     if (!currentUserId.value) return 'member'
-    const self = members.value.find(m => m.user_id === currentUserId.value)
+    const self = members.value.find(member => member.user_id === currentUserId.value)
     return self?.role ?? 'member'
 })
 
@@ -102,21 +98,94 @@ const isOwnerOrAdmin = computed(() =>
 )
 
 const isOwner = computed(() => currentMemberRole.value === 'owner')
-
 const canLeave = computed(() => !isOwner.value)
+
+const splitMethodValues = ['equal', 'exact', 'percentage', 'shares'] as const
+const currencyValues = ['TWD', 'USD', 'EUR', 'JPY', 'CNY'] as const
 
 const splitMethods = [
     { value: 'equal', label: () => t('group.splitEqual') },
     { value: 'exact', label: () => t('group.splitExact') },
     { value: 'percentage', label: () => t('group.splitPercentage') },
     { value: 'shares', label: () => t('group.splitShares') }
+] as const
+
+const categoryKeys: CategoryBudgetKey[] = [
+    'food',
+    'transport',
+    'shopping',
+    'home',
+    'pet',
+    'other'
 ]
 
-const currencies = ['TWD', 'USD', 'EUR', 'JPY', 'CNY']
+const requiredFieldMessage = t('validation.required')
+const numberFieldMessage = t('validation.number')
 
-const categoryKeys: (keyof CategoryBudgets)[] = [
-    'food', 'transport', 'shopping', 'home', 'pet', 'other'
-]
+const nonNegativeNumberSchema = z.preprocess((value) => {
+    if (typeof value === 'string') {
+        const trimmed = value.trim()
+        if (trimmed === '') return undefined
+        return Number(trimmed)
+    }
+
+    return value
+}, z.number({
+    required_error: requiredFieldMessage,
+    invalid_type_error: numberFieldMessage
+}).min(0, numberFieldMessage))
+
+const budgetStartDaySchema = z.preprocess((value) => {
+    if (typeof value === 'string') {
+        const trimmed = value.trim()
+        if (trimmed === '') return undefined
+        return Number(trimmed)
+    }
+
+    return value
+}, z.number({
+    required_error: requiredFieldMessage,
+    invalid_type_error: numberFieldMessage
+}).int().min(1, numberFieldMessage).max(28, numberFieldMessage))
+
+const budgetSettingsSchema = toTypedSchema(z.object({
+    monthly_budget: nonNegativeNumberSchema,
+    budget_start_day: budgetStartDaySchema,
+    default_split_method: z.enum(splitMethodValues),
+    currency: z.enum(currencyValues),
+    category_budgets: z.object({
+        food: nonNegativeNumberSchema,
+        transport: nonNegativeNumberSchema,
+        shopping: nonNegativeNumberSchema,
+        home: nonNegativeNumberSchema,
+        pet: nonNegativeNumberSchema,
+        other: nonNegativeNumberSchema
+    })
+}))
+
+const buildBudgetFormValues = (settings = groupSettings.value): BudgetSettingsFormValues => {
+    const categoryBudgets = (settings?.category_budgets as Record<string, number> | null) ?? {}
+
+    return {
+        monthly_budget: settings?.monthly_budget ?? 0,
+        budget_start_day: settings?.budget_start_day ?? 1,
+        default_split_method: (settings?.default_split_method ?? 'equal') as SplitMethod,
+        currency: (settings?.currency ?? 'TWD') as Currency,
+        category_budgets: {
+            food: categoryBudgets.food ?? 0,
+            transport: categoryBudgets.transport ?? 0,
+            shopping: categoryBudgets.shopping ?? 0,
+            home: categoryBudgets.home ?? 0,
+            pet: categoryBudgets.pet ?? 0,
+            other: categoryBudgets.other ?? 0
+        }
+    }
+}
+
+const budgetSettingsForm = useForm<BudgetSettingsFormValues>({
+    validationSchema: budgetSettingsSchema,
+    initialValues: buildBudgetFormValues()
+})
 
 const getCategoryLabel = (key: string) => {
     return t(`expense.category.${key}`)
@@ -130,26 +199,27 @@ const formatDate = (dateStr: string) => {
     })
 }
 
+const updateBudgetField = (field: BudgetFieldPath, value: string | number) => {
+    budgetSettingsForm.setFieldValue(field, value === '' ? undefined : Number(value))
+}
+
+const updateBudgetSelectField = (
+    field: 'budget_start_day' | 'default_split_method' | 'currency',
+    value: string | null
+) => {
+    if (!value) return
+    budgetSettingsForm.setFieldValue(
+        field,
+        field === 'budget_start_day' ? Number(value) : value
+    )
+}
+
 const syncBudgetForm = () => {
-    const settings = groupSettings.value
-    if (!settings) return
+    if (!groupSettings.value) return
 
-    const catBudgets = (settings.category_budgets as Record<string, number> | null) ?? {}
-
-    budgetForm.value = {
-        monthly_budget: settings.monthly_budget ?? 0,
-        budget_start_day: settings.budget_start_day ?? 1,
-        default_split_method: (settings.default_split_method ?? 'equal') as SplitMethod,
-        currency: (settings.currency ?? 'TWD') as Currency,
-        category_budgets: {
-            food: catBudgets.food ?? 0,
-            transport: catBudgets.transport ?? 0,
-            shopping: catBudgets.shopping ?? 0,
-            home: catBudgets.home ?? 0,
-            pet: catBudgets.pet ?? 0,
-            other: catBudgets.other ?? 0
-        }
-    }
+    budgetSettingsForm.resetForm({
+        values: buildBudgetFormValues(groupSettings.value)
+    })
 }
 
 const fetchMemberProfiles = async () => {
@@ -159,7 +229,7 @@ const fetchMemberProfiles = async () => {
         return
     }
 
-    const userIds = memberList.map(m => m.user_id)
+    const userIds = memberList.map(member => member.user_id)
 
     const { data: profiles, error } = await supabase
         .from('user_profiles')
@@ -173,7 +243,7 @@ const fetchMemberProfiles = async () => {
     }
 
     const profileMap = new Map<string, UserProfileRow>(
-        (profiles ?? []).map(p => [p.id, p])
+        (profiles ?? []).map(profile => [profile.id, profile])
     )
 
     membersWithProfiles.value = memberList.map(member => ({
@@ -182,31 +252,36 @@ const fetchMemberProfiles = async () => {
     }))
 }
 
-const handleSaveSettings = async () => {
+const handleSaveSettings = budgetSettingsForm.handleSubmit(async (values) => {
     settingsSaving.value = true
 
-    // Set as the active group for updateGroupSettings to work
     const prevActiveGroupId = groupStore.activeGroupId
     groupStore.setActiveGroup(groupId)
 
     try {
         await groupStore.updateGroupSettings({
-            monthly_budget: budgetForm.value.monthly_budget,
-            budget_start_day: budgetForm.value.budget_start_day,
-            default_split_method: budgetForm.value.default_split_method,
-            currency: budgetForm.value.currency,
-            category_budgets: budgetForm.value.category_budgets
+            monthly_budget: values.monthly_budget ?? 0,
+            budget_start_day: values.budget_start_day ?? 1,
+            default_split_method: values.default_split_method,
+            currency: values.currency,
+            category_budgets: {
+                food: values.category_budgets.food ?? 0,
+                transport: values.category_budgets.transport ?? 0,
+                shopping: values.category_budgets.shopping ?? 0,
+                home: values.category_budgets.home ?? 0,
+                pet: values.category_budgets.pet ?? 0,
+                other: values.category_budgets.other ?? 0
+            }
         })
         toast.success(t('group.settingsSaved'))
     } catch (err) {
         const message = err instanceof Error ? err.message : t('common.error')
         toast.error(message)
-        // Restore previous active group if something went wrong
         groupStore.setActiveGroup(prevActiveGroupId)
     } finally {
         settingsSaving.value = false
     }
-}
+})
 
 const handleLeaveGroup = async () => {
     leaveLoading.value = true
@@ -256,7 +331,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-background">
+    <div class="min-h-screen bg-background glass-page-bg">
         <TopBar
             :title="group?.name ?? t('group.groupSettings')"
             :show-back-button="true"
@@ -269,16 +344,13 @@ onMounted(async () => {
             </template>
         </TopBar>
 
-        <main class="px-4 pb-24 pt-6 space-y-6">
-
-            <!-- Loading state -->
+        <main class="px-4 pb-28 pt-6 space-y-6">
             <div v-if="pageLoading" class="space-y-4">
                 <Skeleton class="h-32 w-full rounded-xl" />
                 <Skeleton class="h-24 w-full rounded-xl" />
                 <Skeleton class="h-48 w-full rounded-xl" />
             </div>
 
-            <!-- Not found -->
             <div
                 v-else-if="!group"
                 class="flex flex-col items-center justify-center pt-20 gap-4"
@@ -290,8 +362,7 @@ onMounted(async () => {
             </div>
 
             <template v-else>
-                <!-- Section 1: Group info -->
-                <Card class="p-5 space-y-4">
+                <div class="glass rounded-2xl p-5 space-y-4">
                     <div class="flex items-center gap-2">
                         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-accent">
                             <Users class="h-5 w-5 text-brand-primary" />
@@ -324,13 +395,12 @@ onMounted(async () => {
                             <span>{{ t('group.memberCount', { count: members.length }) }}</span>
                         </div>
                     </div>
-                </Card>
+                </div>
 
-                <!-- Section 2: Invitation code -->
-                <Card class="p-5 space-y-4">
+                <div class="glass-elevated rounded-2xl p-5 space-y-4">
                     <div class="flex items-center gap-2">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-accent">
-                            <ChevronRight class="h-5 w-5 text-brand-primary" />
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl glass-light text-purple-600 dark:text-purple-400">
+                            <ChevronRight class="h-5 w-5" />
                         </div>
                         <h2 class="text-base font-semibold text-foreground">
                             {{ t('group.invitationCode') }}
@@ -346,13 +416,12 @@ onMounted(async () => {
                     <p v-else class="text-sm text-muted-foreground">
                         {{ t('group.noInvitationCode') }}
                     </p>
-                </Card>
+                </div>
 
-                <!-- Section 3: Members -->
-                <Card class="p-5 space-y-4">
+                <div class="glass rounded-2xl p-5 space-y-4">
                     <div class="flex items-center gap-2">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-accent">
-                            <Users class="h-5 w-5 text-brand-primary" />
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl glass-light text-blue-600 dark:text-blue-400">
+                            <Users class="h-5 w-5" />
                         </div>
                         <h2 class="text-base font-semibold text-foreground">
                             {{ t('group.members') }}
@@ -362,13 +431,12 @@ onMounted(async () => {
                     <Separator />
 
                     <GroupMemberList :members="membersWithProfiles" />
-                </Card>
+                </div>
 
-                <!-- Section 4: Budget settings (owner/admin only) -->
-                <Card v-if="isOwnerOrAdmin && groupSettings" class="p-5 space-y-4">
+                <div v-if="isOwnerOrAdmin && groupSettings" class="glass rounded-2xl p-5 space-y-4">
                     <div class="flex items-center gap-2">
-                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-accent">
-                            <Wallet class="h-5 w-5 text-brand-primary" />
+                        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl glass-light text-amber-600 dark:text-amber-400">
+                            <Wallet class="h-5 w-5" />
                         </div>
                         <h2 class="text-base font-semibold text-foreground">
                             {{ t('group.budgetSettings') }}
@@ -377,33 +445,39 @@ onMounted(async () => {
 
                     <Separator />
 
-                    <div class="space-y-5">
-                        <!-- Monthly budget -->
+                    <form class="space-y-5" @submit="handleSaveSettings">
                         <div class="space-y-2">
                             <Label for="monthly-budget">{{ t('group.monthlyBudget') }}</Label>
                             <div class="flex items-center gap-2">
                                 <span class="text-sm text-muted-foreground">
-                                    {{ budgetForm.currency }}
+                                    {{ budgetSettingsForm.values.currency }}
                                 </span>
                                 <Input
                                     id="monthly-budget"
-                                    v-model.number="budgetForm.monthly_budget"
+                                    :model-value="budgetSettingsForm.values.monthly_budget ?? ''"
                                     type="number"
                                     min="0"
                                     step="100"
+                                    :class="budgetSettingsForm.errors.value.monthly_budget ? 'border-destructive' : ''"
                                     :placeholder="t('group.monthlyBudgetPlaceholder')"
+                                    @update:model-value="value => updateBudgetField('monthly_budget', value)"
                                 />
                             </div>
+                            <p v-if="budgetSettingsForm.errors.value.monthly_budget" class="text-xs text-destructive">
+                                {{ budgetSettingsForm.errors.value.monthly_budget }}
+                            </p>
                         </div>
 
-                        <!-- Budget start day -->
                         <div class="space-y-2">
                             <Label for="budget-start-day">{{ t('group.budgetStartDay') }}</Label>
                             <Select
-                                :model-value="String(budgetForm.budget_start_day)"
-                                @update:model-value="budgetForm.budget_start_day = Number($event)"
+                                :model-value="String(budgetSettingsForm.values.budget_start_day ?? '')"
+                                @update:model-value="value => updateBudgetSelectField('budget_start_day', typeof value === 'string' ? value : null)"
                             >
-                                <SelectTrigger id="budget-start-day">
+                                <SelectTrigger
+                                    id="budget-start-day"
+                                    :class="budgetSettingsForm.errors.value.budget_start_day ? 'border-destructive' : ''"
+                                >
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -416,14 +490,16 @@ onMounted(async () => {
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
+                            <p v-if="budgetSettingsForm.errors.value.budget_start_day" class="text-xs text-destructive">
+                                {{ budgetSettingsForm.errors.value.budget_start_day }}
+                            </p>
                         </div>
 
-                        <!-- Default split method -->
                         <div class="space-y-2">
                             <Label for="split-method">{{ t('group.defaultSplitMethod') }}</Label>
                             <Select
-                                :model-value="budgetForm.default_split_method"
-                                @update:model-value="budgetForm.default_split_method = $event as SplitMethod"
+                                :model-value="budgetSettingsForm.values.default_split_method"
+                                @update:model-value="value => updateBudgetSelectField('default_split_method', typeof value === 'string' ? value : null)"
                             >
                                 <SelectTrigger id="split-method">
                                     <SelectValue />
@@ -440,29 +516,27 @@ onMounted(async () => {
                             </Select>
                         </div>
 
-                        <!-- Currency -->
                         <div class="space-y-2">
                             <Label for="currency">{{ t('group.currency') }}</Label>
                             <Select
-                                :model-value="budgetForm.currency"
-                                @update:model-value="budgetForm.currency = $event as Currency"
+                                :model-value="budgetSettingsForm.values.currency"
+                                @update:model-value="value => updateBudgetSelectField('currency', typeof value === 'string' ? value : null)"
                             >
                                 <SelectTrigger id="currency">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem
-                                        v-for="cur in currencies"
-                                        :key="cur"
-                                        :value="cur"
+                                        v-for="currency in currencyValues"
+                                        :key="currency"
+                                        :value="currency"
                                     >
-                                        {{ cur }}
+                                        {{ currency }}
                                     </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        <!-- Category budgets -->
                         <div class="space-y-3">
                             <Label>{{ t('group.categoryBudgets') }}</Label>
                             <div class="grid grid-cols-2 gap-3">
@@ -476,30 +550,33 @@ onMounted(async () => {
                                     </Label>
                                     <Input
                                         :id="`cat-${key}`"
-                                        v-model.number="budgetForm.category_budgets[key]"
+                                        :model-value="budgetSettingsForm.values.category_budgets?.[key] ?? ''"
                                         type="number"
                                         min="0"
                                         step="100"
+                                        :class="budgetSettingsForm.errors.value[`category_budgets.${key}`] ? 'border-destructive' : ''"
                                         :placeholder="'0'"
+                                        @update:model-value="value => updateBudgetField(`category_budgets.${key}`, value)"
                                     />
+                                    <p v-if="budgetSettingsForm.errors.value[`category_budgets.${key}`]" class="text-xs text-destructive">
+                                        {{ budgetSettingsForm.errors.value[`category_budgets.${key}`] }}
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Save button -->
                         <Button
+                            type="submit"
                             class="w-full bg-brand-primary hover:bg-brand-primary/90 text-primary-foreground"
                             :disabled="settingsSaving"
-                            @click="handleSaveSettings"
                         >
                             <Spinner v-if="settingsSaving" class="mr-2 h-4 w-4" />
                             {{ t('common.save') }}
                         </Button>
-                    </div>
-                </Card>
+                    </form>
+                </div>
 
-                <!-- Section 5: Danger zone (non-owner) -->
-                <Card v-if="canLeave" class="p-5 space-y-4 border-destructive/30">
+                <div v-if="canLeave" class="glass rounded-2xl p-5 space-y-4 border-destructive/30">
                     <div class="flex items-center gap-2">
                         <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/10">
                             <LogOut class="h-5 w-5 text-destructive" />
@@ -555,17 +632,16 @@ onMounted(async () => {
                             </AlertDialogContent>
                         </AlertDialog>
                     </div>
-                </Card>
+                </div>
 
-                <!-- Owner note: cannot leave -->
-                <Card v-if="isOwner" class="p-4 bg-muted/30">
+                <div v-if="isOwner" class="glass rounded-2xl p-4">
                     <div class="flex items-center gap-2">
                         <Crown class="h-4 w-4 text-brand-primary" />
                         <p class="text-xs text-muted-foreground">
                             {{ t('group.ownerCannotLeave') }}
                         </p>
                     </div>
-                </Card>
+                </div>
             </template>
         </main>
     </div>

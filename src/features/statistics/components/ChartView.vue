@@ -1,5 +1,5 @@
 <template>
-    <div class="animate-fade-in-up">
+    <div class="animate-fade-up">
         <!-- 控制器區域 -->
         <div class="mb-8">
             <h2 class="mb-4 text-lg font-semibold text-foreground">{{
@@ -7,83 +7,69 @@
                 }}</h2>
 
             <!-- 時間範圍選擇器 -->
-            <Card class="relative overflow-hidden border-0 shadow-lg mb-4">
-                <CardContent class="p-4">
-                    <div class="flex items-center justify-center space-x-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            :class="timeRange === 'month' ? 'bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-primary/20 dark:text-primary dark:border-primary dark:hover:bg-primary/30' : 'dark:hover:bg-accent dark:hover:text-accent-foreground'"
-                            @click="setTimeRange('month')"
-                        >
-                            {{ t('stats.byMonth') }}
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            :class="timeRange === 'year' ? 'bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-primary/20 dark:text-primary dark:border-primary dark:hover:bg-primary/30' : 'dark:hover:bg-accent dark:hover:text-accent-foreground'"
-                            @click="setTimeRange('year')"
-                        >
-                            {{ t('stats.byYear') }}
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+            <div class="glass-light rounded-full p-1 mb-4 flex items-center justify-center space-x-2">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    class="rounded-full press-feedback hover-transition"
+                    :class="timeRange === 'month' ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''"
+                    @click="setTimeRange('month')"
+                >
+                    {{ t('stats.byMonth') }}
+                </Button>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    class="rounded-full press-feedback hover-transition"
+                    :class="timeRange === 'year' ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''"
+                    @click="setTimeRange('year')"
+                >
+                    {{ t('stats.byYear') }}
+                </Button>
+            </div>
 
             <!-- 月份/年份選擇器 -->
-            <Card class="relative overflow-hidden border-0 shadow-lg">
-                <CardContent class="p-4">
-                    <div class="flex items-center justify-between">
-                        <Button variant="outline" size="sm" @click="changePeriod(-1)">
-                            <ChevronLeft class="h-4 w-4"/>
-                        </Button>
-                        <h3 class="font-semibold text-lg">{{ currentPeriodLabel }}</h3>
-                        <Button variant="outline" size="sm" @click="changePeriod(1)">
-                            <ChevronRight class="h-4 w-4"/>
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+            <div class="glass rounded-2xl p-4">
+                <div class="flex items-center justify-between">
+                    <Button variant="outline" size="sm" class="press-feedback hover-transition" @click="changePeriod(-1)">
+                        <ChevronLeft class="h-4 w-4"/>
+                    </Button>
+                    <h3 class="font-semibold text-lg">{{ currentPeriodLabel }}</h3>
+                    <Button variant="outline" size="sm" class="press-feedback hover-transition" @click="changePeriod(1)">
+                        <ChevronRight class="h-4 w-4"/>
+                    </Button>
+                </div>
+            </div>
         </div>
 
         <!-- 統計卡片區域 -->
         <div class="grid gap-4 sm:grid-cols-2 mb-8">
             <!-- 總消費卡片 -->
-            <Card
-                class="relative overflow-hidden border-0 shadow-lg animate-slide-in-left hover:shadow-xl transition-all duration-300">
-                <div
-                    class="absolute inset-0 bg-gradient-to-br from-brand-primary to-brand-primary/80"/>
-                <CardContent class="relative p-4 sm:p-6">
-                    <p class="text-sm font-medium text-white/80">{{ t('stats.totalExpense') }}</p>
-                    <p class="mt-2 text-2xl sm:text-3xl font-bold text-white">NT$
-                        {{ totalAmount.toLocaleString() }}</p>
-                </CardContent>
-            </Card>
+            <div class="glass-elevated rounded-2xl overflow-hidden p-4 sm:p-6 animate-fade-up stagger-1 hover-transition">
+                <p class="text-sm font-medium text-muted-foreground">{{ t('stats.totalExpense') }}</p>
+                <p class="mt-2 text-2xl sm:text-3xl font-bold text-foreground">NT$
+                    {{ totalAmount.toLocaleString() }}</p>
+            </div>
 
             <!-- 消費筆數卡片 -->
-            <Card
-                class="relative overflow-hidden border-0 shadow-lg animate-slide-in-right hover:shadow-xl transition-all duration-300">
-                <div
-                    class="absolute inset-0 bg-gradient-to-br from-brand-primary/60 to-brand-primary"/>
-                <CardContent class="relative p-4 sm:p-6">
-                    <p class="text-sm font-medium text-white/80">{{
-                            t('stats.transactionCount')
-                        }}</p>
-                    <p class="mt-2 text-2xl sm:text-3xl font-bold text-white">{{ totalCount }}
-                        {{ t('stats.count') }}</p>
-                </CardContent>
-            </Card>
+            <div class="glass-elevated rounded-2xl overflow-hidden p-4 sm:p-6 animate-fade-up stagger-2 hover-transition">
+                <p class="text-sm font-medium text-muted-foreground">{{
+                        t('stats.transactionCount')
+                    }}</p>
+                <p class="mt-2 text-2xl sm:text-3xl font-bold text-foreground">{{ totalCount }}
+                    {{ t('stats.count') }}</p>
+            </div>
         </div>
 
         <!-- 面積圖 - 類別消費分佈 -->
-        <Card class="relative overflow-hidden border-0 shadow-lg mb-6 animate-fade-in-up">
-            <CardHeader>
-                <CardTitle class="text-lg">{{ t('stats.expenseDistribution') }}</CardTitle>
-                <CardDescription>
+        <div class="glass rounded-2xl overflow-hidden mb-6 animate-fade-up">
+            <div class="p-6 pb-0">
+                <h3 class="text-lg font-semibold">{{ t('stats.expenseDistribution') }}</h3>
+                <p class="text-sm text-muted-foreground">
                     {{ currentPeriodLabel }} {{ t('stats.categoryPercentage') }}
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
+                </p>
+            </div>
+            <div class="p-6 pt-4">
                 <template v-if="areaChartData.length > 0">
                     <ChartContainer :config="areaChartConfig">
                         <VisXYContainer :data="areaChartData" :svg-defs="areaChartSvgDefs">
@@ -125,8 +111,8 @@
                 <div v-else class="h-[200px] flex items-center justify-center">
                     <p class="text-muted-foreground">{{ t('stats.noData') }}</p>
                 </div>
-            </CardContent>
-            <CardFooter>
+            </div>
+            <div class="px-6 py-4 border-t border-glass-border">
                 <div class="flex w-full items-start gap-2 text-sm">
                     <div class="grid gap-2">
                         <div class="flex items-center gap-2 leading-none font-medium">
@@ -138,18 +124,18 @@
                         </div>
                     </div>
                 </div>
-            </CardFooter>
-        </Card>
+            </div>
+        </div>
 
         <!-- 長條圖 - 水平方向 -->
-        <Card class="relative overflow-hidden border-0 shadow-lg mb-6 animate-fade-in-up">
-            <CardHeader>
-                <CardTitle class="text-lg">{{ t('stats.expenseRanking') }}</CardTitle>
-                <CardDescription>
+        <div class="glass rounded-2xl overflow-hidden mb-6 animate-fade-up">
+            <div class="p-6 pb-0">
+                <h3 class="text-lg font-semibold">{{ t('stats.expenseRanking') }}</h3>
+                <p class="text-sm text-muted-foreground">
                     {{ t('stats.categoryAmountComparison') }}
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
+                </p>
+            </div>
+            <div class="p-6 pt-4">
                 <template v-if="barChartData.length > 0">
                     <ChartContainer :config="barChartConfig">
                         <VisXYContainer :data="barChartData">
@@ -180,8 +166,8 @@
                 <div v-else class="h-[200px] flex items-center justify-center">
                     <p class="text-muted-foreground">{{ t('stats.noData') }}</p>
                 </div>
-            </CardContent>
-            <CardFooter class="flex-col items-start gap-2 text-sm">
+            </div>
+            <div class="px-6 py-4 border-t border-glass-border flex flex-col items-start gap-2 text-sm">
                 <div class="flex gap-2 font-medium leading-none">
                     {{ t('stats.totalExpense') }}: NT$ {{ totalAmount.toLocaleString() }}
                     <TrendingUp class="h-4 w-4" />
@@ -189,25 +175,25 @@
                 <div class="leading-none text-muted-foreground">
                     {{ currentPeriodLabel }}
                 </div>
-            </CardFooter>
-        </Card>
+            </div>
+        </div>
 
         <!-- 每日消費趨勢 - 互動式長條圖 -->
-        <Card class="relative overflow-hidden border-0 shadow-lg mb-6 animate-fade-in-up py-4 sm:py-0"
+        <div class="glass rounded-2xl overflow-hidden mb-6 animate-fade-up py-4 sm:py-0"
               v-if="timeRange === 'month'">
-            <CardHeader class="flex flex-col items-stretch border-b !p-0 sm:flex-row">
+            <div class="flex flex-col items-stretch border-b border-glass-border !p-0 sm:flex-row">
                 <div class="flex flex-1 flex-col justify-center gap-1 px-6 py-5 sm:py-6">
-                    <CardTitle class="text-lg">{{ t('stats.dailyTrend') }}</CardTitle>
-                    <CardDescription>
+                    <h3 class="text-lg font-semibold">{{ t('stats.dailyTrend') }}</h3>
+                    <p class="text-sm text-muted-foreground">
                         {{ currentPeriodLabel }} {{ t('stats.dailyChangePattern') }}
-                    </CardDescription>
+                    </p>
                 </div>
                 <div class="flex" v-if="Object.keys(sortedCategoryStats).length > 0">
                     <button
                         v-for="category in trendChartCategories"
                         :key="category"
                         :data-active="activeTrendCategory === category"
-                        class="data-[active=true]:bg-muted/50 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l sm:border-t-0 sm:border-l sm:px-8 sm:py-6"
+                        class="data-[active=true]:bg-muted/50 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l sm:border-t-0 sm:border-l sm:px-8 sm:py-6 press-feedback hover-transition"
                         @click="activeTrendCategory = category"
                     >
                         <span class="text-muted-foreground text-xs">
@@ -218,8 +204,8 @@
                         </span>
                     </button>
                 </div>
-            </CardHeader>
-            <CardContent class="px-2 sm:p-6">
+            </div>
+            <div class="px-2 sm:p-6">
                 <template v-if="trendChartData.length > 0">
                     <ChartContainer :config="trendChartConfig" class="aspect-auto h-[250px] w-full" cursor>
                         <VisXYContainer
@@ -266,15 +252,15 @@
                 <div v-else class="h-[250px] flex items-center justify-center">
                     <p class="text-muted-foreground">{{ t('stats.noData') }}</p>
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
 
         <!-- 詳細統計表格 -->
-        <Card class="relative overflow-hidden border-0 shadow-lg animate-fade-in-up">
-            <CardHeader class="pb-3">
-                <CardTitle class="text-lg">{{ t('stats.detailedStats') }}</CardTitle>
-            </CardHeader>
-            <CardContent class="pt-0">
+        <div class="glass rounded-2xl overflow-hidden animate-fade-up">
+            <div class="p-6 pb-3">
+                <h3 class="text-lg font-semibold">{{ t('stats.detailedStats') }}</h3>
+            </div>
+            <div class="px-6 pb-6 pt-0">
                 <div class="space-y-3">
                     <div
                         v-for="(stats, category) in sortedCategoryStats"
@@ -298,7 +284,7 @@
                             </div>
                         </div>
                         <!-- 進度條 -->
-                        <div class="w-full bg-muted rounded-full h-2.5">
+                        <div class="glass-light w-full rounded-full h-2.5">
                             <div
                                 class="h-2.5 rounded-full transition-all duration-300"
                                 :style="{
@@ -309,19 +295,19 @@
                         </div>
                     </div>
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
 
         <!-- 成員消費比例分析（僅在家庭統計時顯示） -->
-        <Card v-if="isInGroup && scope === 'group'"
-              class="relative overflow-hidden border-0 shadow-lg mt-6 animate-fade-in-up">
-            <CardHeader class="pb-3">
-                <CardTitle class="text-lg">{{ t('stats.spendingRatioAnalysis') }}</CardTitle>
-                <CardDescription>
+        <div v-if="isInGroup && scope === 'group'"
+              class="glass rounded-2xl overflow-hidden mt-6 animate-fade-up">
+            <div class="p-6 pb-3">
+                <h3 class="text-lg font-semibold">{{ t('stats.spendingRatioAnalysis') }}</h3>
+                <p class="text-sm text-muted-foreground">
                     {{ t('stats.spendingDistribution') }}
-                </CardDescription>
-            </CardHeader>
-            <CardContent class="pt-0">
+                </p>
+            </div>
+            <div class="px-6 pb-6 pt-0">
                 <!-- 調試信息 -->
                 <div v-if="!currentPeriodSpendingRatio" class="text-center py-8">
                     <p class="text-muted-foreground">
@@ -360,7 +346,7 @@
                                     </p>
                                 </div>
                             </div>
-                            <div class="w-full bg-muted rounded-full h-2.5">
+                            <div class="glass-light w-full rounded-full h-2.5">
                                 <div
                                     class="h-2.5 rounded-full transition-all duration-300"
                                     :style="{
@@ -373,11 +359,11 @@
                     </div>
 
                     <!-- 結算按鈕 -->
-                    <div class="mt-6 pt-4 border-t">
+                    <div class="mt-6 pt-4 border-t border-glass-border">
                         <Button
                             @click="toggleSettlement"
                             variant="outline"
-                            class="w-full"
+                            class="w-full press-feedback hover-transition"
                         >
                             <span v-if="!showSettlement">{{ t('stats.viewSettlement') }}</span>
                             <span v-else>{{ t('stats.hideSettlement') }}</span>
@@ -385,49 +371,46 @@
                     </div>
 
                     <!-- 結算信息 -->
-                    <div v-if="showSettlement && settlementInfo" class="mt-4 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div v-if="showSettlement && settlementInfo" class="mt-4 p-4 glass-light rounded-2xl">
                         <div class="text-center space-y-3">
                             <div class="flex items-center justify-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 dark:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clip-rule="evenodd" />
-                                </svg>
-                                <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100">{{ t('stats.settlementInfo') }}</h3>
+                                <Wallet class="h-5 w-5 text-brand-primary" />
+                                <h3 class="text-lg font-semibold text-foreground">{{ t('stats.settlementInfo') }}</h3>
                             </div>
 
-                            <div class="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm">
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">{{ t('stats.spendingDifference') }}</p>
-                                <p class="text-2xl font-bold text-gray-900 dark:text-gray-100">NT$ {{ settlementInfo.difference.toLocaleString() }}</p>
+                            <div class="glass rounded-2xl p-4">
+                                <p class="text-sm text-muted-foreground mb-2">{{ t('stats.spendingDifference') }}</p>
+                                <p class="text-2xl font-bold text-foreground">NT$ {{ settlementInfo.difference.toLocaleString() }}</p>
                             </div>
 
                             <div class="flex items-center justify-center gap-3 text-base">
-                                <span class="font-medium text-gray-700 dark:text-gray-300">{{ settlementInfo.payer.user?.display_name }}</span>
-                                <span class="text-gray-500 dark:text-gray-400">{{ t('stats.shouldPay') }}</span>
-                                <span class="font-bold text-2xl text-blue-600 dark:text-blue-400">NT$ {{ settlementInfo.halfDifference.toLocaleString() }}</span>
-                                <span class="text-gray-500 dark:text-gray-400">{{ t('stats.toWord') }}</span>
-                                <span class="font-medium text-gray-700 dark:text-gray-300">{{ settlementInfo.receiver.user?.display_name }}</span>
+                                <span class="font-medium text-foreground">{{ settlementInfo.payer.user?.display_name }}</span>
+                                <span class="text-muted-foreground">{{ t('stats.shouldPay') }}</span>
+                                <span class="font-bold text-2xl text-brand-primary">NT$ {{ settlementInfo.halfDifference.toLocaleString() }}</span>
+                                <span class="text-muted-foreground">{{ t('stats.toWord') }}</span>
+                                <span class="font-medium text-foreground">{{ settlementInfo.receiver.user?.display_name }}</span>
                             </div>
 
-                            <p class="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-blue-200 dark:border-blue-800">
+                            <p class="text-xs text-muted-foreground pt-2 border-t border-glass-border">
                                 {{ t('stats.afterSettlement') }} NT$ {{ (settlementInfo.difference / 2 + Math.min(settlementInfo.payer.amount, settlementInfo.receiver.amount)).toLocaleString() }}
                             </p>
                         </div>
                     </div>
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/shared/components/ui/card'
 import { Button } from '@/shared/components/ui/button'
-import { ChevronLeft, ChevronRight, TrendingUp } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, TrendingUp, Wallet } from 'lucide-vue-next'
 import { useExpenseStore } from '@/shared/stores'
 import { useGroupStore } from '@/features/group/stores/group'
 import type { ExpenseUser } from '@/entities/expense/types'
+import { CategoryUtils } from '@/features/expense/composables/useCategories'
 
 // Unovis 導入
 import { Orientation } from '@unovis/ts'
@@ -583,48 +566,47 @@ const getPercentage = (amount: number) => {
 // 按照 shadcn-vue 官方範例：chartConfig 定義顏色，資料中使用 var(--color-KEY) 引用
 const chartConfig = computed<ChartConfig>(() => {
     const config: ChartConfig = {
-        // 預設類別顏色配置 - 使用 chart CSS 變數
         food: {
             label: categoryLabels.food || '餐飲',
-            color: 'var(--chart-1)',
+            color: CategoryUtils.getCategoryColor('food'),
         },
         pet: {
             label: categoryLabels.pet || '寵物',
-            color: 'var(--chart-2)',
+            color: CategoryUtils.getCategoryColor('pet'),
         },
         shopping: {
             label: categoryLabels.shopping || '購物',
-            color: 'var(--chart-3)',
+            color: CategoryUtils.getCategoryColor('shopping'),
         },
         transport: {
             label: categoryLabels.transport || '交通',
-            color: 'var(--chart-4)',
+            color: CategoryUtils.getCategoryColor('transport'),
         },
         home: {
             label: categoryLabels.home || '居家',
-            color: 'var(--chart-5)',
+            color: CategoryUtils.getCategoryColor('home'),
         },
         other: {
             label: categoryLabels.other || '其他',
-            color: 'var(--muted-foreground)',
+            color: CategoryUtils.getCategoryColor('other'),
         },
     }
     return config
 })
 
-// 獲取類別顏色 - 用於非圖表區域（如進度條、圖例指示器）
+// 獲取類別顏色 - 委派給集中式顏色管理
 const getCategoryColor = (category: string) => {
-    return chartConfig.value[category]?.color || 'var(--muted-foreground)'
+    return CategoryUtils.getCategoryColor(category)
 }
 
 // 面積圖設定
 const areaChartConfig = computed<ChartConfig>(() => {
     const categories = Object.keys(sortedCategoryStats.value)
     const config: ChartConfig = {}
-    categories.forEach((category, index) => {
+    categories.forEach((category) => {
         config[category] = {
             label: categoryLabels[category] || category,
-            color: `var(--chart-${index + 1})`,
+            color: CategoryUtils.getCategoryColor(category),
         }
     })
     return config
@@ -633,12 +615,15 @@ const areaChartConfig = computed<ChartConfig>(() => {
 // 面積圖 SVG 漸層定義
 const areaChartSvgDefs = computed(() => {
     const categories = Object.keys(sortedCategoryStats.value)
-    return categories.map((category, index) => `
+    return categories.map((category) => {
+        const color = CategoryUtils.getCategoryColor(category)
+        return `
         <linearGradient id="fill${category}" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stop-color="var(--chart-${index + 1})" stop-opacity="0.8"/>
-            <stop offset="95%" stop-color="var(--chart-${index + 1})" stop-opacity="0.1"/>
+            <stop offset="5%" stop-color="${color}" stop-opacity="0.8"/>
+            <stop offset="95%" stop-color="${color}" stop-opacity="0.1"/>
         </linearGradient>
-    `).join('')
+    `
+    }).join('')
 })
 
 // 面積圖填充顏色
@@ -650,7 +635,7 @@ const areaChartFillColors = computed(() => {
 // 面積圖線條顏色
 const areaChartLineColors = computed(() => {
     const categories = Object.keys(sortedCategoryStats.value)
-    return categories.map((_, index) => `var(--chart-${index + 1})`)
+    return categories.map((category) => CategoryUtils.getCategoryColor(category))
 })
 
 // 面積圖 Y 軸存取器（堆疊）
@@ -737,10 +722,10 @@ const areaChartData = computed<AreaData[]>(() => {
 const barChartConfig = computed<ChartConfig>(() => {
     const entries = Object.entries(sortedCategoryStats.value)
     const config: ChartConfig = {}
-    entries.forEach(([category], index) => {
+    entries.forEach(([category]) => {
         config[category] = {
             label: categoryLabels[category] || category,
-            color: `var(--chart-${index + 1})`,
+            color: CategoryUtils.getCategoryColor(category),
         }
     })
     return config
@@ -769,10 +754,10 @@ const trendChartCategories = computed(() => {
 const trendChartConfig = computed<ChartConfig>(() => {
     const categories = trendChartCategories.value
     const config: ChartConfig = {}
-    categories.forEach((category, index) => {
+    categories.forEach((category) => {
         config[category] = {
             label: categoryLabels[category] || category,
-            color: `var(--chart-${index + 1})`,
+            color: CategoryUtils.getCategoryColor(category),
         }
     })
     return config
@@ -965,52 +950,5 @@ const toggleSettlement = () => {
 </script>
 
 <style scoped>
-/* 動畫定義 */
-@keyframes slide-in-left {
-    from {
-        transform: translateX(-50px);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slide-in-right {
-    from {
-        transform: translateX(50px);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes fade-in-up {
-    from {
-        transform: translateY(30px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-/* 動畫類別 */
-.animate-slide-in-left {
-    animation: slide-in-left 0.5s ease-out forwards;
-}
-
-.animate-slide-in-right {
-    animation: slide-in-right 0.5s ease-out 0.1s forwards;
-    opacity: 0;
-}
-
-.animate-fade-in-up {
-    animation: fade-in-up 0.6s ease-out 0.3s forwards;
-    opacity: 0;
-}
+/* Animations are now defined globally in main.css */
 </style>

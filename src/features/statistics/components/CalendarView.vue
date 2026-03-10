@@ -1,32 +1,26 @@
 <template>
-    <div class="animate-fade-in-up">
+    <div class="animate-fade-up">
         <!-- 統計卡片區域 -->
         <div class="grid gap-4 sm:grid-cols-2 mb-8">
             <!-- 月總消費卡片 -->
-            <Card class="relative overflow-hidden border-0 shadow-lg animate-slide-in-left hover:shadow-xl transition-all duration-300">
-                <div class="absolute inset-0 bg-gradient-to-br from-brand-primary to-brand-primary/80" />
-                <CardContent class="relative p-4 sm:p-6">
-                    <p class="text-sm font-medium text-white/80">{{ t('stats.monthlyTotal') }}</p>
-                    <p class="mt-2 text-2xl sm:text-3xl font-bold text-white">NT$ {{ monthlyTotal.toLocaleString() }}</p>
-                </CardContent>
-            </Card>
+            <div class="glass-elevated rounded-2xl overflow-hidden p-4 sm:p-6 animate-fade-up stagger-1 hover-transition">
+                <p class="text-sm font-medium text-muted-foreground">{{ t('stats.monthlyTotal') }}</p>
+                <p class="mt-2 text-2xl sm:text-3xl font-bold text-foreground">NT$ {{ monthlyTotal.toLocaleString() }}</p>
+            </div>
 
             <!-- 今日消費/平均每日卡片 -->
-            <Card class="relative overflow-hidden border-0 shadow-lg animate-slide-in-left hover:shadow-xl transition-all duration-300">
-                <div class="absolute inset-0 bg-gradient-to-br from-brand-primary/40 to-brand-primary/60" />
-                <CardContent class="relative p-4 sm:p-6">
-                    <p class="text-sm font-medium text-white/80">
-                        {{ isCurrentMonth ? t('stats.todayExpense') : t('stats.dailyAverage') }}
-                    </p>
-                    <p class="mt-2 text-2xl sm:text-3xl font-bold text-white">
-                        NT$ {{ isCurrentMonth ? todayTotal.toLocaleString() : Math.round(monthlyTotal / (currentMonthExpenses.length || 1)).toLocaleString() }}
-                    </p>
-                </CardContent>
-            </Card>
+            <div class="glass-elevated rounded-2xl overflow-hidden p-4 sm:p-6 animate-fade-up stagger-2 hover-transition">
+                <p class="text-sm font-medium text-muted-foreground">
+                    {{ isCurrentMonth ? t('stats.todayExpense') : t('stats.dailyAverage') }}
+                </p>
+                <p class="mt-2 text-2xl sm:text-3xl font-bold text-foreground">
+                    NT$ {{ isCurrentMonth ? todayTotal.toLocaleString() : Math.round(monthlyTotal / (currentMonthExpenses.length || 1)).toLocaleString() }}
+                </p>
+            </div>
         </div>
 
         <!-- 日曆區域 -->
-        <div class="animate-fade-in-up">
+        <div class="animate-fade-up">
             <h2 class="mb-4 text-lg font-semibold text-foreground">{{ t('stats.calendarView') }}</h2>
             
             <!-- 自定義日曆組件 -->
@@ -34,7 +28,7 @@
                 v-slot="{ date, grid, weekDays }"
                 :placeholder="selectedDate as any"
                 @update:placeholder="(value: any) => selectedDate = value"
-                class="rounded-md border-0 shadow-lg bg-card p-4"
+                class="glass rounded-2xl p-4"
             >
             <CalendarHeader>
                 <CalendarHeading class="flex w-full items-center justify-between gap-2">
@@ -114,8 +108,8 @@
                                 <CalendarCellTrigger
                                     :day="weekDate"
                                     :month="month.value"
-                                    class="relative w-full h-20 p-2 flex flex-col items-center justify-start border border-border/20 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
-                                    :class="{ 'cursor-pointer': getDayTotal(weekDate) }"
+                                    class="relative w-full h-20 p-2 flex flex-col items-center justify-start border border-border/20 rounded-md hover:bg-accent hover:text-accent-foreground hover-transition"
+                                    :class="{ 'cursor-pointer press-feedback glass-light': getDayTotal(weekDate) }"
                                     @click="getDayTotal(weekDate) && handleDayClick(weekDate)"
                                 >
                                     <span class="text-sm font-medium mb-auto">{{ weekDate.day }}</span>
@@ -165,7 +159,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Card, CardContent } from '@/shared/components/ui/card'
 import {
     CalendarRoot,
     CalendarCell,
@@ -329,52 +322,5 @@ const displayExpenses = computed(() => {
 </script>
 
 <style scoped>
-/* 動畫定義 */
-@keyframes slide-in-left {
-    from {
-        transform: translateX(-50px);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slide-in-right {
-    from {
-        transform: translateX(50px);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes fade-in-up {
-    from {
-        transform: translateY(30px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-/* 動畫類別 */
-.animate-slide-in-left {
-    animation: slide-in-left 0.5s ease-out forwards;
-}
-
-.animate-slide-in-right {
-    animation: slide-in-right 0.5s ease-out 0.1s forwards;
-    opacity: 0;
-}
-
-.animate-fade-in-up {
-    animation: fade-in-up 0.6s ease-out 0.3s forwards;
-    opacity: 0;
-}
+/* Animations are now defined globally in main.css */
 </style>
