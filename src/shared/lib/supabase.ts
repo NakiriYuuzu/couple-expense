@@ -53,12 +53,14 @@ export const auth = {
             redirectUrl = `${ origin }${ finalBase }`
         }
 
-        console.log('OAuth Redirect Debug:', {
-            baseUrl,
-            origin,
-            redirectUrl,
-            env: import.meta.env.VITE_APP_ROUTER_BASE
-        })
+        if (import.meta.env.DEV) {
+            console.log('OAuth Redirect Debug:', {
+                baseUrl,
+                origin,
+                redirectUrl,
+                env: import.meta.env.VITE_APP_ROUTER_BASE
+            })
+        }
 
         return supabase.auth.signInWithOAuth({
             provider: 'google',

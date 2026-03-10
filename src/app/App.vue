@@ -86,8 +86,13 @@ const handleAddNew = () => {
 
 const handleExpenseAdded = async (expense: AddExpenseEvent) => {
     try {
-        // 從 "-NT 150" 格式中提取數字
-        const amount = Math.abs(parseInt(expense.amount.replace(/[^\d]/g, '')))
+        // 從 "-NT 150" 格式中提取數字，加入 NaN 防護
+        const parsed = parseFloat(expense.amount.replace(/[^\d.]/g, ''))
+        const amount = Number.isFinite(parsed) ? Math.abs(parsed) : 0
+        if (amount <= 0) {
+            console.error('無效的金額:', expense.amount)
+            return
+        }
 
         // 轉換格式以符合 store 的期望 (CreateExpenseData)
         const storeExpense = {
@@ -138,8 +143,13 @@ watch(() => authStore.isLoggedIn, async (isLoggedIn) => {
     }
 }, { immediate: true })
 
-// 監聽群組切換，重新背景預載
+// 監聯群組切換，重新背景預載（跳過初始載入，由 loadAllData 處理）
+let initialGroupLoadDone = false
 watch(() => groupStore.activeGroupId, () => {
+    if (!initialGroupLoadDone) {
+        initialGroupLoadDone = true
+        return
+    }
     if (authStore.isLoggedIn) {
         startPreload()
     }

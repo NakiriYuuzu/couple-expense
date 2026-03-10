@@ -15,25 +15,36 @@ export function useBackgroundPreload() {
     const groupStore = useGroupStore()
     const settlementStore = useSettlementStore()
 
-    const preloadExpenses = async (): Promise<void> => {
+    // 版本計數器：每次 startPreload 遞增，過時的預載自動放棄結果
+    let preloadVersion = 0
+
+    const preloadExpenses = async (version: number): Promise<boolean> => {
         expenseStore.preloadStatus = 'loading'
         try {
             await expenseStore.fetchExpenses()
+            if (version !== preloadVersion) return false
             expenseStore.preloadStatus = 'done'
+            return true
         } catch {
+            if (version !== preloadVersion) return false
             // Retry once
             try {
                 await expenseStore.fetchExpenses()
+                if (version !== preloadVersion) return false
                 expenseStore.preloadStatus = 'done'
+                return true
             } catch {
+                if (version !== preloadVersion) return false
                 expenseStore.preloadStatus = 'error'
+                return false
             }
         }
     }
 
-    const preloadSettlement = async (): Promise<void> => {
+    const preloadSettlement = async (version: number): Promise<void> => {
         const groupId = groupStore.activeGroupId
         if (!groupId) return
+        if (version !== preloadVersion) return
 
         await Promise.all([
             settlementStore.fetchNetBalances(groupId),
@@ -47,23 +58,29 @@ export function useBackgroundPreload() {
     }
 
     const startPreload = (): void => {
+        const version = ++preloadVersion
         scheduleIdleTask(async () => {
-            await preloadExpenses()
-            await preloadSettlement()
+            const ok = await preloadExpenses(version)
+            if (ok && version === preloadVersion) {
+                await preloadSettlement(version)
+            }
         })
     }
 
     const refresh = async (): Promise<void> => {
+        const version = ++preloadVersion
         expenseStore.preloadStatus = 'loading'
         try {
             await expenseStore.fetchExpenses()
+            if (version !== preloadVersion) return
             expenseStore.preloadStatus = 'done'
 
             const groupId = groupStore.activeGroupId
             if (groupId) {
-                await preloadSettlement()
+                await preloadSettlement(version)
             }
         } catch {
+            if (version !== preloadVersion) return
             expenseStore.preloadStatus = 'error'
         }
     }
