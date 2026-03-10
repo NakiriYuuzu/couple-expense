@@ -354,6 +354,8 @@ export const useSettlementStore = defineStore('settlement', () => {
                     expenseCount: row.snapshot_data.expenseCount,
                     totalExpense: row.snapshot_data.totalExpense,
                     totalUnsettled,
+                    // 月快照可能來自舊的小數資料，因此在前端整數化後若已歸零，
+                    // 以整數化後的結果優先視為 settled，避免 UI 顯示殘留小數債務
                     status: totalUnsettled === 0
                         ? 'settled'
                         : row.status as MonthlyDebtSnapshot['status']

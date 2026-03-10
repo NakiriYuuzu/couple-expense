@@ -1,6 +1,6 @@
-const sanitizeAmount = (amount: number) => Number.isFinite(amount) ? amount : 0
+const ensureFiniteAmount = (amount: number) => Number.isFinite(amount) ? amount : 0
 
-const fixNegativeZero = (amount: number) => Object.is(amount, -0) ? 0 : amount
+const normalizeNegativeZero = (amount: number) => Object.is(amount, -0) ? 0 : amount
 
 function distributeDifference(
     baseValues: number[],
@@ -9,7 +9,7 @@ function distributeDifference(
     step: 1 | -1
 ): number[] {
     if (difference === 0 || adjustments.length === 0) {
-        return baseValues.map(fixNegativeZero)
+        return baseValues.map(normalizeNegativeZero)
     }
 
     const result = [...baseValues]
@@ -20,17 +20,17 @@ function distributeDifference(
         result[target.index] = (result[target.index] ?? 0) + step
     }
 
-    return result.map(fixNegativeZero)
+    return result.map(normalizeNegativeZero)
 }
 
 export function normalizeSignedAmounts(
     amounts: number[],
-    targetTotal = Math.round(amounts.reduce((sum, amount) => sum + sanitizeAmount(amount), 0))
+    targetTotal = Math.round(amounts.reduce((sum, amount) => sum + ensureFiniteAmount(amount), 0))
 ): number[] {
     if (amounts.length === 0) return []
 
     const normalized = amounts.map((amount, index) => {
-        const safeAmount = sanitizeAmount(amount)
+        const safeAmount = ensureFiniteAmount(amount)
         const base = safeAmount < 0 ? Math.ceil(safeAmount) : Math.floor(safeAmount)
 
         return {
@@ -61,17 +61,17 @@ export function normalizeSignedAmounts(
         )
     }
 
-    return baseValues.map(fixNegativeZero)
+    return baseValues.map(normalizeNegativeZero)
 }
 
 export function normalizePositiveAmounts(
     amounts: number[],
-    targetTotal = Math.round(amounts.reduce((sum, amount) => sum + Math.max(0, sanitizeAmount(amount)), 0))
+    targetTotal = Math.round(amounts.reduce((sum, amount) => sum + Math.max(0, ensureFiniteAmount(amount)), 0))
 ): number[] {
     if (amounts.length === 0) return []
 
     const normalized = amounts.map((amount, index) => {
-        const safeAmount = Math.max(0, sanitizeAmount(amount))
+        const safeAmount = Math.max(0, ensureFiniteAmount(amount))
         const base = Math.floor(safeAmount)
 
         return {
@@ -85,7 +85,7 @@ export function normalizePositiveAmounts(
     const difference = targetTotal - baseValues.reduce((sum, amount) => sum + amount, 0)
 
     if (difference <= 0) {
-        return baseValues.map(fixNegativeZero)
+        return baseValues.map(normalizeNegativeZero)
     }
 
     return distributeDifference(
@@ -100,10 +100,10 @@ export function normalizeNetBalances(amounts: number[]): number[] {
     if (amounts.length === 0) return []
 
     const positives = amounts
-        .map((amount, index) => ({ index, amount: Math.max(0, sanitizeAmount(amount)) }))
+        .map((amount, index) => ({ index, amount: Math.max(0, ensureFiniteAmount(amount)) }))
         .filter(item => item.amount > 0)
     const negatives = amounts
-        .map((amount, index) => ({ index, amount: Math.max(0, -sanitizeAmount(amount)) }))
+        .map((amount, index) => ({ index, amount: Math.max(0, -ensureFiniteAmount(amount)) }))
         .filter(item => item.amount > 0)
 
     const positiveTotal = positives.reduce((sum, item) => sum + item.amount, 0)
@@ -129,5 +129,5 @@ export function normalizeNetBalances(amounts: number[]): number[] {
         result[item.index] = -1 * (normalizedNegatives[index] ?? 0)
     })
 
-    return result.map(fixNegativeZero)
+    return result.map(normalizeNegativeZero)
 }

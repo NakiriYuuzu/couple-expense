@@ -30,13 +30,13 @@ BEGIN
         v_di := NULL;
 
         FOR i IN 1 .. array_length(v_user_ids, 1) LOOP
-            IF v_balances[i] >= 0.5 THEN
+            IF v_balances[i] >= 0.5 THEN  -- 四捨五入後會變成 1 TWD 以上的正餘額才保留
                 IF v_ci IS NULL OR v_balances[i] > v_balances[v_ci] THEN
                     v_ci := i;
                 END IF;
             END IF;
 
-            IF v_balances[i] <= -0.5 THEN
+            IF v_balances[i] <= -0.5 THEN -- 絕對值小於 0.5 的負餘額四捨五入後視為已結清
                 IF v_di IS NULL OR v_balances[i] < v_balances[v_di] THEN
                     v_di := i;
                 END IF;
@@ -49,7 +49,7 @@ BEGIN
         v_debt := -v_balances[v_di];
         v_transfer := ROUND(LEAST(v_credit, v_debt), 0);
 
-        EXIT WHEN v_transfer < 1;
+        EXIT WHEN v_transfer < 1; -- 低於 1 TWD 不建立轉帳建議，避免再次出現小數債務
 
         from_user := v_user_ids[v_di];
         to_user := v_user_ids[v_ci];
