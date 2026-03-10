@@ -16,8 +16,9 @@ export function useNetBalances() {
 
     // Determine balance status for a given amount
     const getBalanceStatus = (amount: number): 'owed' | 'owes' | 'settled' => {
-        if (amount > 0.01) return 'owed'
-        if (amount < -0.01) return 'owes'
+        const normalizedAmount = Math.round(amount)
+        if (normalizedAmount > 0) return 'owed'
+        if (normalizedAmount < 0) return 'owes'
         return 'settled'
     }
 

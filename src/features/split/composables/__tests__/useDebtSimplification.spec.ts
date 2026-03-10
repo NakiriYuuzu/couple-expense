@@ -86,27 +86,25 @@ describe('simplifyDebts', () => {
         result.forEach(d => expect(d.toUser.userId).toBe('A'))
     })
 
-    it('amounts are rounded to 2 decimal places', () => {
-        // 100 / 3 = 33.333… — test that output is rounded
+    it('rounds debts to whole dollars for TWD', () => {
         const balances = [
-            makeBalance('A', -33.333),
-            makeBalance('B', 33.333)
+            makeBalance('A', -33.6),
+            makeBalance('B', -33.6),
+            makeBalance('C', 67.2)
         ]
         const result = simplifyDebts(balances)
 
-        if (result.length > 0) {
-            const decimals = result[0]!.amount.toString().split('.')[1] ?? ''
-            expect(decimals.length).toBeLessThanOrEqual(2)
-        }
+        expect(result).toHaveLength(2)
+        expect(result.reduce((sum, debt) => sum + debt.amount, 0)).toBe(67)
+        result.forEach(debt => expect(Number.isInteger(debt.amount)).toBe(true))
     })
 
-    it('ignores near-zero amounts (less than 0.01)', () => {
+    it('ignores balances that round to zero', () => {
         const balances = [
-            makeBalance('A', -0.005),
-            makeBalance('B', 0.005)
+            makeBalance('A', -0.4),
+            makeBalance('B', 0.4)
         ]
         const result = simplifyDebts(balances)
-        // Amount 0.005 rounds below threshold; no debt should be emitted
         expect(result).toHaveLength(0)
     })
 
@@ -155,13 +153,8 @@ describe('simplifyDebts', () => {
             ]
             const result = simplifyDebts(balances)
 
-            // All transferred amounts must be rounded to 2 decimal places
-            result.forEach(d => {
-                const decimals = d.amount.toString().split('.')[1] ?? ''
-                expect(decimals.length).toBeLessThanOrEqual(2)
-            })
-            // No debt should be less than 0.01
-            result.forEach(d => expect(d.amount).toBeGreaterThanOrEqual(0.01))
+            result.forEach(d => expect(Number.isInteger(d.amount)).toBe(true))
+            result.forEach(d => expect(d.amount).toBeGreaterThanOrEqual(1))
         })
     })
 })

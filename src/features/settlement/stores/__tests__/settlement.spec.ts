@@ -104,11 +104,11 @@ describe('useSettlementStore', () => {
             expect(store.hasOutstandingDebts).toBe(true)
         })
 
-        it('returns false when all balances are within +-0.01', () => {
+        it('returns false when all balances round to zero', () => {
             const store = useSettlementStore()
             store.netBalances = [
-                { userId: 'u1', displayName: 'Alice', avatarUrl: null, netBalance: 0.005 },
-                { userId: 'u2', displayName: 'Bob', avatarUrl: null, netBalance: -0.003 }
+                { userId: 'u1', displayName: 'Alice', avatarUrl: null, netBalance: 0.4 },
+                { userId: 'u2', displayName: 'Bob', avatarUrl: null, netBalance: -0.4 }
             ]
             expect(store.hasOutstandingDebts).toBe(false)
         })
@@ -177,8 +177,9 @@ describe('useSettlementStore', () => {
     describe('fetchNetBalances', () => {
         it('maps RPC response to NetBalance objects with user profiles', async () => {
             const rpcData = [
-                { user_id: 'u1', net_balance: 100 },
-                { user_id: 'u2', net_balance: -100 }
+                { user_id: 'u1', net_balance: 33.6 },
+                { user_id: 'u2', net_balance: 33.6 },
+                { user_id: 'u3', net_balance: -67.2 }
             ]
 
             rpc.mockResolvedValueOnce({ data: rpcData, error: null })
@@ -186,7 +187,8 @@ describe('useSettlementStore', () => {
             profileSelectChain.in.mockResolvedValueOnce({
                 data: [
                     { id: 'u1', display_name: 'Alice', avatar_url: 'alice.png' },
-                    { id: 'u2', display_name: 'Bob', avatar_url: null }
+                    { id: 'u2', display_name: 'Bob', avatar_url: null },
+                    { id: 'u3', display_name: 'Carol', avatar_url: null }
                 ],
                 error: null
             })
@@ -196,8 +198,9 @@ describe('useSettlementStore', () => {
 
             expect(rpc).toHaveBeenCalledWith('get_group_balances', { p_group_id: 'group-1' })
             expect(store.netBalances).toEqual([
-                { userId: 'u1', displayName: 'Alice', avatarUrl: 'alice.png', netBalance: 100 },
-                { userId: 'u2', displayName: 'Bob', avatarUrl: null, netBalance: -100 }
+                { userId: 'u1', displayName: 'Alice', avatarUrl: 'alice.png', netBalance: 34 },
+                { userId: 'u2', displayName: 'Bob', avatarUrl: null, netBalance: 33 },
+                { userId: 'u3', displayName: 'Carol', avatarUrl: null, netBalance: -67 }
             ])
             expect(store.error).toBeNull()
         })
@@ -221,7 +224,8 @@ describe('useSettlementStore', () => {
     describe('fetchSimplifiedDebts', () => {
         it('maps RPC response to SimplifiedDebt objects with user profiles', async () => {
             const rpcData = [
-                { from_user: 'u1', to_user: 'u2', amount: 75 }
+                { from_user: 'u1', to_user: 'u2', amount: 33.6 },
+                { from_user: 'u3', to_user: 'u2', amount: 33.2 }
             ]
 
             rpc.mockResolvedValueOnce({ data: rpcData, error: null })
@@ -229,7 +233,8 @@ describe('useSettlementStore', () => {
             profileSelectChain.in.mockResolvedValueOnce({
                 data: [
                     { id: 'u1', display_name: 'Alice', avatar_url: null },
-                    { id: 'u2', display_name: 'Bob', avatar_url: 'bob.png' }
+                    { id: 'u2', display_name: 'Bob', avatar_url: 'bob.png' },
+                    { id: 'u3', display_name: 'Carol', avatar_url: null }
                 ],
                 error: null
             })
@@ -238,11 +243,18 @@ describe('useSettlementStore', () => {
             await store.fetchSimplifiedDebts('group-1')
 
             expect(rpc).toHaveBeenCalledWith('get_simplified_debts', { p_group_id: 'group-1' })
-            expect(store.simplifiedDebts).toEqual([{
-                fromUser: { userId: 'u1', displayName: 'Alice', avatarUrl: null },
-                toUser: { userId: 'u2', displayName: 'Bob', avatarUrl: 'bob.png' },
-                amount: 75
-            }])
+            expect(store.simplifiedDebts).toEqual([
+                {
+                    fromUser: { userId: 'u1', displayName: 'Alice', avatarUrl: null },
+                    toUser: { userId: 'u2', displayName: 'Bob', avatarUrl: 'bob.png' },
+                    amount: 34
+                },
+                {
+                    fromUser: { userId: 'u3', displayName: 'Carol', avatarUrl: null },
+                    toUser: { userId: 'u2', displayName: 'Bob', avatarUrl: 'bob.png' },
+                    amount: 33
+                }
+            ])
             expect(store.error).toBeNull()
         })
 
@@ -418,6 +430,54 @@ describe('useSettlementStore', () => {
 
             expect(rpc).toHaveBeenCalledTimes(2)
             expect(store.monthDebtCache['2025-06']!.netBalances).toHaveLength(1)
+        })
+
+        it('normalizes month debts to whole-dollar values', async () => {
+            rpc
+                .mockResolvedValueOnce({
+                    data: [
+                        { user_id: 'u1', net_balance: 33.6 },
+                        { user_id: 'u2', net_balance: -33.6 }
+                    ],
+                    error: null
+                })
+                .mockResolvedValueOnce({
+                    data: [
+                        { from_user: 'u2', to_user: 'u1', amount: 33.6 }
+                    ],
+                    error: null
+                })
+
+            profileSelectChain.in.mockResolvedValue({
+                data: [
+                    { id: 'u1', display_name: 'Alice', avatar_url: null },
+                    { id: 'u2', display_name: 'Bob', avatar_url: null }
+                ],
+                error: null
+            })
+
+            selectChain.lt.mockResolvedValueOnce({
+                data: [{ amount: 100 }],
+                error: null
+            })
+
+            const store = useSettlementStore()
+            await store.fetchMonthDebts('group-1', '2025-06', true)
+
+            expect(store.monthDebtCache['2025-06']).toMatchObject({
+                netBalances: [
+                    { userId: 'u1', netBalance: 34 },
+                    { userId: 'u2', netBalance: -34 }
+                ],
+                simplifiedDebts: [
+                    {
+                        fromUser: { userId: 'u2' },
+                        toUser: { userId: 'u1' },
+                        amount: 34
+                    }
+                ],
+                totalUnsettled: 34
+            })
         })
     })
 
