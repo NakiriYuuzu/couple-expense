@@ -54,7 +54,7 @@ describe('simplifyDebts', () => {
 
         // Total owed must equal total debt
         const totalOut = result.reduce((s, d) => s + d.amount, 0)
-        expect(totalOut).toBeCloseTo(200, 2)
+        expect(totalOut).toBe(200)
         expect(result.length).toBeLessThanOrEqual(3)
     })
 
@@ -82,31 +82,29 @@ describe('simplifyDebts', () => {
 
         // Each debtor should have exactly one transfer to A
         const totalPaid = result.reduce((s, d) => s + d.amount, 0)
-        expect(totalPaid).toBeCloseTo(200, 2)
-        result.forEach(d => expect(d.toUser.userId).toBe('A'))
+        expect(totalPaid).toBe(200)
+        result.forEach(d => { expect(d.toUser.userId).toBe('A') })
     })
 
-    it('amounts are rounded to 2 decimal places', () => {
-        // 100 / 3 = 33.333… — test that output is rounded
+    it('rounds debts to whole dollars for TWD', () => {
         const balances = [
-            makeBalance('A', -33.333),
-            makeBalance('B', 33.333)
+            makeBalance('A', -33.6),
+            makeBalance('B', -33.6),
+            makeBalance('C', 67.2)
         ]
         const result = simplifyDebts(balances)
 
-        if (result.length > 0) {
-            const decimals = result[0]!.amount.toString().split('.')[1] ?? ''
-            expect(decimals.length).toBeLessThanOrEqual(2)
-        }
+        expect(result).toHaveLength(2)
+        expect(result.reduce((sum, debt) => sum + debt.amount, 0)).toBe(67)
+        result.forEach(debt => { expect(Number.isInteger(debt.amount)).toBe(true) })
     })
 
-    it('ignores near-zero amounts (less than 0.01)', () => {
+    it('ignores balances that round to zero', () => {
         const balances = [
-            makeBalance('A', -0.005),
-            makeBalance('B', 0.005)
+            makeBalance('A', -0.4),
+            makeBalance('B', 0.4)
         ]
         const result = simplifyDebts(balances)
-        // Amount 0.005 rounds below threshold; no debt should be emitted
         expect(result).toHaveLength(0)
     })
 
@@ -141,9 +139,9 @@ describe('simplifyDebts', () => {
             const result = simplifyDebts(balances)
 
             const totalTransferred = result.reduce((s, d) => s + d.amount, 0)
-            expect(totalTransferred).toBeCloseTo(5, 2)
+            expect(totalTransferred).toBe(5)
             // All amounts should be positive
-            result.forEach(d => expect(d.amount).toBeGreaterThan(0))
+            result.forEach(d => { expect(d.amount).toBeGreaterThan(0) })
         })
 
         it('produces no spurious debt from near-zero accumulation', () => {
@@ -155,13 +153,8 @@ describe('simplifyDebts', () => {
             ]
             const result = simplifyDebts(balances)
 
-            // All transferred amounts must be rounded to 2 decimal places
-            result.forEach(d => {
-                const decimals = d.amount.toString().split('.')[1] ?? ''
-                expect(decimals.length).toBeLessThanOrEqual(2)
-            })
-            // No debt should be less than 0.01
-            result.forEach(d => expect(d.amount).toBeGreaterThanOrEqual(0.01))
+            result.forEach(d => { expect(Number.isInteger(d.amount)).toBe(true) })
+            result.forEach(d => { expect(d.amount).toBeGreaterThanOrEqual(1) })
         })
     })
 })

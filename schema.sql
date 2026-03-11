@@ -178,6 +178,7 @@ CREATE TABLE group_expense.legacy_users (
 --
 -- group_expense.get_simplified_debts(p_group_id uuid)
 --   RETURNS TABLE(from_user uuid, to_user uuid, amount numeric)
+--   Amounts are rounded to whole TWD (ROUND(x, 0)); transfers < 1 TWD are omitted.
 --
 -- group_expense.settle_debt(p_group_id uuid, p_paid_to uuid, p_amount numeric, p_notes text)
 --   RETURNS uuid
@@ -188,9 +189,11 @@ CREATE TABLE group_expense.legacy_users (
 --
 -- group_expense.get_monthly_balances(p_group_id uuid, p_year_month text)
 --   RETURNS TABLE(user_id uuid, net_balance numeric)
+--   Filters out balances with ABS < 0.5 (round to zero in TWD).
 --
 -- group_expense.get_monthly_simplified_debts(p_group_id uuid, p_year_month text)
 --   RETURNS TABLE(from_user uuid, to_user uuid, amount numeric)
+--   Amounts are rounded to whole TWD (ROUND(x, 0)); transfers < 1 TWD are omitted.
 --
 -- group_expense.create_monthly_snapshot(p_group_id uuid, p_year_month text)
 --   RETURNS uuid

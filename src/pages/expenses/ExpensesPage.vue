@@ -267,7 +267,7 @@ usePullToRefresh({
         <TopBar :title="t('nav.expenses')" />
 
         <!-- 搜尋區域 -->
-        <div class="sticky top-[64px] z-40 px-4 py-3">
+        <div class="sticky top-[64px] z-40 px-4 py-3 bg-background/80 backdrop-blur-xl">
             <div class="flex gap-2 glass rounded-full p-1.5">
                 <!-- 搜尋輸入框 -->
                 <div class="flex-1 relative">
@@ -407,7 +407,7 @@ usePullToRefresh({
 
         <!-- 篩選 Dialog -->
         <Dialog v-model:open="isFilterDialogOpen">
-            <DialogContent class="sm:max-w-md glass-elevated">
+            <DialogContent class="sm:max-w-md bg-card">
                 <DialogHeader>
                     <DialogTitle>{{ t('search.filterConditions') }}</DialogTitle>
                     <DialogDescription>

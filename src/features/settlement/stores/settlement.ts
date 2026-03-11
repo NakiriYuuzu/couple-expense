@@ -3,8 +3,37 @@ import { ref, computed } from 'vue'
 import { supabase } from '@/shared/lib/supabase'
 import type { SettlementRow, UserProfileRow } from '@/shared/lib/database.types'
 import type { NetBalance, SimplifiedDebt, SettlementHistoryItem, MonthlyDebtSnapshot } from '@/entities/settlement/types'
+import { normalizeNetBalances, normalizePositiveAmounts } from '@/shared/lib/integerDebt'
 
 type UserProfileLookup = Pick<UserProfileRow, 'display_name' | 'avatar_url'>
+
+// Normalization helpers — apply integer rounding at the data boundary
+
+const normalizeNetBalanceRows = <T extends { net_balance: number }>(rows: T[]): T[] => {
+    const normalized = normalizeNetBalances(rows.map(row => row.net_balance))
+    return rows.map((row, index) => ({
+        ...row,
+        net_balance: normalized[index] ?? 0
+    }))
+}
+
+const normalizeAmountRows = <T extends { amount: number }>(rows: T[]): T[] => {
+    const normalized = normalizePositiveAmounts(rows.map(row => row.amount))
+    return rows
+        .map((row, index) => ({
+            ...row,
+            amount: normalized[index] ?? 0
+        }))
+        .filter(row => row.amount > 0)
+}
+
+const normalizeSnapshotNetBalances = <T extends { netBalance: number }>(rows: T[]): T[] => {
+    const normalized = normalizeNetBalances(rows.map(row => row.netBalance))
+    return rows.map((row, index) => ({
+        ...row,
+        netBalance: normalized[index] ?? 0
+    }))
+}
 
 export const useSettlementStore = defineStore('settlement', () => {
     // State
@@ -20,9 +49,9 @@ export const useSettlementStore = defineStore('settlement', () => {
     const monthDebtCache = ref<Record<string, MonthlyDebtSnapshot>>({})
     const profileCache = ref<Map<string, UserProfileLookup>>(new Map())
 
-    // Computed
+    // Computed — netBalances is already normalized by fetchNetBalances, no need to re-normalize
     const hasOutstandingDebts = computed(() =>
-        netBalances.value.some(b => Math.abs(b.netBalance) > 0.01)
+        netBalances.value.some(b => Math.abs(b.netBalance) > 0)
     )
 
     const totalGroupDebt = computed(() =>
@@ -80,7 +109,9 @@ export const useSettlementStore = defineStore('settlement', () => {
 
             if (rpcError) throw rpcError
 
-            const rows = (data ?? []) as Array<{ user_id: string; net_balance: number }>
+            const rows = normalizeNetBalanceRows(
+                (data ?? []) as Array<{ user_id: string; net_balance: number }>
+            )
             const userIds = rows.map(r => r.user_id)
             const profilesMap = await fetchUserProfilesMap(userIds)
 
@@ -112,7 +143,9 @@ export const useSettlementStore = defineStore('settlement', () => {
 
             if (rpcError) throw rpcError
 
-            const rows = (data ?? []) as Array<{ from_user: string; to_user: string; amount: number }>
+            const rows = normalizeAmountRows(
+                (data ?? []) as Array<{ from_user: string; to_user: string; amount: number }>
+            )
             const allUserIds = [
                 ...new Set(rows.flatMap(r => [r.from_user, r.to_user]))
             ]
@@ -269,34 +302,42 @@ export const useSettlementStore = defineStore('settlement', () => {
 
             const profilesMap = await fetchUserProfilesMap([...allUserIds])
 
-            monthlySnapshots.value = rows.map(row => ({
-                id: row.id,
-                groupId,
-                yearMonth: row.year_month,
-                netBalances: row.snapshot_data.netBalances.map(nb => ({
-                    userId: nb.userId,
-                    displayName: profilesMap.get(nb.userId)?.display_name ?? null,
-                    avatarUrl: profilesMap.get(nb.userId)?.avatar_url ?? null,
-                    netBalance: nb.netBalance
-                })),
-                simplifiedDebts: row.snapshot_data.simplifiedDebts.map(sd => ({
-                    fromUser: {
-                        userId: sd.fromUser,
-                        displayName: profilesMap.get(sd.fromUser)?.display_name ?? null,
-                        avatarUrl: profilesMap.get(sd.fromUser)?.avatar_url ?? null
-                    },
-                    toUser: {
-                        userId: sd.toUser,
-                        displayName: profilesMap.get(sd.toUser)?.display_name ?? null,
-                        avatarUrl: profilesMap.get(sd.toUser)?.avatar_url ?? null
-                    },
-                    amount: sd.amount
-                })),
-                expenseCount: row.snapshot_data.expenseCount,
-                totalExpense: row.snapshot_data.totalExpense,
-                totalUnsettled: row.total_unsettled,
-                status: row.status as MonthlyDebtSnapshot['status']
-            }))
+            monthlySnapshots.value = rows.map(row => {
+                const normalizedNetBal = normalizeSnapshotNetBalances(row.snapshot_data.netBalances)
+                const normalizedDebts = normalizeAmountRows(row.snapshot_data.simplifiedDebts)
+                const totalUnsettled = normalizedDebts.reduce((sum, debt) => sum + debt.amount, 0)
+
+                return {
+                    id: row.id,
+                    groupId,
+                    yearMonth: row.year_month,
+                    netBalances: normalizedNetBal.map(nb => ({
+                        userId: nb.userId,
+                        displayName: profilesMap.get(nb.userId)?.display_name ?? null,
+                        avatarUrl: profilesMap.get(nb.userId)?.avatar_url ?? null,
+                        netBalance: nb.netBalance
+                    })),
+                    simplifiedDebts: normalizedDebts.map(sd => ({
+                        fromUser: {
+                            userId: sd.fromUser,
+                            displayName: profilesMap.get(sd.fromUser)?.display_name ?? null,
+                            avatarUrl: profilesMap.get(sd.fromUser)?.avatar_url ?? null
+                        },
+                        toUser: {
+                            userId: sd.toUser,
+                            displayName: profilesMap.get(sd.toUser)?.display_name ?? null,
+                            avatarUrl: profilesMap.get(sd.toUser)?.avatar_url ?? null
+                        },
+                        amount: sd.amount
+                    })),
+                    expenseCount: row.snapshot_data.expenseCount,
+                    totalExpense: row.snapshot_data.totalExpense,
+                    totalUnsettled,
+                    status: totalUnsettled === 0
+                        ? 'settled'
+                        : row.status as MonthlyDebtSnapshot['status']
+                }
+            })
         } catch (err) {
             console.error('獲取月結快照失敗:', err)
             error.value = err instanceof Error ? err.message : '獲取月結快照失敗'
@@ -346,8 +387,12 @@ export const useSettlementStore = defineStore('settlement', () => {
             if (balancesResult.error) throw balancesResult.error
             if (debtsResult.error) throw debtsResult.error
 
-            const balanceRows = (balancesResult.data ?? []) as Array<{ user_id: string; net_balance: number }>
-            const debtRows = (debtsResult.data ?? []) as Array<{ from_user: string; to_user: string; amount: number }>
+            const balanceRows = normalizeNetBalanceRows(
+                (balancesResult.data ?? []) as Array<{ user_id: string; net_balance: number }>
+            )
+            const debtRows = normalizeAmountRows(
+                (debtsResult.data ?? []) as Array<{ from_user: string; to_user: string; amount: number }>
+            )
 
             const allUserIds = [
                 ...new Set([
@@ -399,7 +444,7 @@ export const useSettlementStore = defineStore('settlement', () => {
                 expenseCount: expenses.length,
                 totalExpense,
                 totalUnsettled,
-                status: totalUnsettled < 0.01 ? 'settled'
+                status: totalUnsettled === 0 ? 'settled'
                     : totalUnsettled < totalExpense * 0.5 ? 'partial'
                     : 'unsettled'
             }

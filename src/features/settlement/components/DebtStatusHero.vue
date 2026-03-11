@@ -30,7 +30,7 @@ const heroState = computed(() => {
     const owesTotal = owes.reduce((sum, d) => sum + d.amount, 0)
     const owedTotal = owed.reduce((sum, d) => sum + d.amount, 0)
 
-    if (owesTotal > 0.01) {
+    if (owesTotal > 0) {
         const sorted = [...owes].sort((a, b) => b.amount - a.amount)
         const primary = sorted[0]
         if (!primary) return null
@@ -43,7 +43,7 @@ const heroState = computed(() => {
         }
     }
 
-    if (owedTotal > 0.01) {
+    if (owedTotal > 0) {
         const sorted = [...owed].sort((a, b) => b.amount - a.amount)
         const primary = sorted[0]
         if (!primary) return null
@@ -61,7 +61,7 @@ const heroState = computed(() => {
 
 const isAllSettled = computed(() => {
     if (!props.snapshot) return false
-    return props.snapshot.totalUnsettled < 0.01
+    return props.snapshot.totalUnsettled === 0
 })
 
 const getInitial = (name: string | null) => name?.charAt(0).toUpperCase() ?? '?'
