@@ -83,7 +83,7 @@ describe('simplifyDebts', () => {
         // Each debtor should have exactly one transfer to A
         const totalPaid = result.reduce((s, d) => s + d.amount, 0)
         expect(totalPaid).toBe(200)
-        result.forEach(d => expect(d.toUser.userId).toBe('A'))
+        result.forEach(d => { expect(d.toUser.userId).toBe('A') })
     })
 
     it('rounds debts to whole dollars for TWD', () => {
@@ -96,7 +96,7 @@ describe('simplifyDebts', () => {
 
         expect(result).toHaveLength(2)
         expect(result.reduce((sum, debt) => sum + debt.amount, 0)).toBe(67)
-        result.forEach(debt => expect(Number.isInteger(debt.amount)).toBe(true))
+        result.forEach(debt => { expect(Number.isInteger(debt.amount)).toBe(true) })
     })
 
     it('ignores balances that round to zero', () => {
@@ -141,7 +141,7 @@ describe('simplifyDebts', () => {
             const totalTransferred = result.reduce((s, d) => s + d.amount, 0)
             expect(totalTransferred).toBe(5)
             // All amounts should be positive
-            result.forEach(d => expect(d.amount).toBeGreaterThan(0))
+            result.forEach(d => { expect(d.amount).toBeGreaterThan(0) })
         })
 
         it('produces no spurious debt from near-zero accumulation', () => {
@@ -153,8 +153,8 @@ describe('simplifyDebts', () => {
             ]
             const result = simplifyDebts(balances)
 
-            result.forEach(d => expect(Number.isInteger(d.amount)).toBe(true))
-            result.forEach(d => expect(d.amount).toBeGreaterThanOrEqual(1))
+            result.forEach(d => { expect(Number.isInteger(d.amount)).toBe(true) })
+            result.forEach(d => { expect(d.amount).toBeGreaterThanOrEqual(1) })
         })
     })
 })

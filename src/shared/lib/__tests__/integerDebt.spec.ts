@@ -65,13 +65,15 @@ describe('normalizeNetBalances', () => {
     it('handles single positive balance', () => {
         const result = normalizeNetBalances([100.7])
         // With no negatives, targetTotal = round((100.7+0)/2) = 50
-        // floor(100.7) = 100 > 50 so no rounding up => [100]
-        expect(result).toEqual([100])
+        // Shrinks floor(100.7) = 100 down to target 50
+        expect(result).toEqual([50])
     })
 
     it('handles single negative balance', () => {
         const result = normalizeNetBalances([-50.3])
-        expect(result).toEqual([-50])
+        // With no positives, targetTotal = round((0+50.3)/2) = 25
+        // Shrinks floor(50.3) = 50 down to target 25
+        expect(result).toEqual([-25])
     })
 
     it('handles many small values preserving sum', () => {

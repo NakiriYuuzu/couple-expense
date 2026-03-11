@@ -43,15 +43,24 @@ export function normalizePositiveAmounts(
     const baseValues = normalized.map(item => item.base)
     const difference = targetTotal - baseValues.reduce((sum, amount) => sum + amount, 0)
 
-    if (difference <= 0) {
+    if (difference === 0) {
         return baseValues.map(normalizeNegativeZero)
+    }
+
+    if (difference > 0) {
+        return distributeDifference(
+            baseValues,
+            [...normalized].sort((a, b) => b.remainder - a.remainder || a.index - b.index),
+            difference,
+            1
+        )
     }
 
     return distributeDifference(
         baseValues,
-        [...normalized].sort((a, b) => b.remainder - a.remainder || a.index - b.index),
-        difference,
-        1
+        [...normalized].sort((a, b) => a.remainder - b.remainder || a.index - b.index),
+        Math.abs(difference),
+        -1
     )
 }
 

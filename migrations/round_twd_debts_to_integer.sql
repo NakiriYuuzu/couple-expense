@@ -37,18 +37,23 @@ BEGIN
         RETURN;
     END IF;
 
+    -- Pre-round each balance to integer before greedy pairing
+    FOR i IN 1 .. array_length(v_balances, 1) LOOP
+        v_balances[i] := ROUND(v_balances[i], 0);
+    END LOOP;
+
     LOOP
         v_ci := NULL;
         v_di := NULL;
 
         FOR i IN 1 .. array_length(v_user_ids, 1) LOOP
-            IF v_balances[i] >= 0.5 THEN
+            IF v_balances[i] >= 1 THEN
                 IF v_ci IS NULL OR v_balances[i] > v_balances[v_ci] THEN
                     v_ci := i;
                 END IF;
             END IF;
 
-            IF v_balances[i] <= -0.5 THEN
+            IF v_balances[i] <= -1 THEN
                 IF v_di IS NULL OR v_balances[i] < v_balances[v_di] THEN
                     v_di := i;
                 END IF;
@@ -59,7 +64,7 @@ BEGIN
 
         v_credit := v_balances[v_ci];
         v_debt := -v_balances[v_di];
-        v_transfer := ROUND(LEAST(v_credit, v_debt), 0);
+        v_transfer := LEAST(v_credit, v_debt);
 
         EXIT WHEN v_transfer < 1;
 
@@ -106,10 +111,10 @@ BEGIN
         FROM group_expense.get_monthly_balances(p_group_id, p_year_month) mb
     LOOP
         IF v_balances.net_balance <= -0.5 THEN
-            v_debtors := array_append(v_debtors, ABS(v_balances.net_balance));
+            v_debtors := array_append(v_debtors, ROUND(ABS(v_balances.net_balance), 0));
             v_debtor_ids := array_append(v_debtor_ids, v_balances.user_id);
         ELSIF v_balances.net_balance >= 0.5 THEN
-            v_creditors := array_append(v_creditors, v_balances.net_balance);
+            v_creditors := array_append(v_creditors, ROUND(v_balances.net_balance, 0));
             v_creditor_ids := array_append(v_creditor_ids, v_balances.user_id);
         END IF;
     END LOOP;
@@ -117,7 +122,7 @@ BEGIN
     v_i := 1;
     v_j := 1;
     WHILE v_i <= array_length(v_debtors, 1) AND v_j <= array_length(v_creditors, 1) LOOP
-        v_payment := ROUND(LEAST(v_debtors[v_i], v_creditors[v_j]), 0);
+        v_payment := LEAST(v_debtors[v_i], v_creditors[v_j]);
 
         IF v_payment >= 1 THEN
             from_user := v_debtor_ids[v_i];
@@ -129,8 +134,8 @@ BEGIN
         v_debtors[v_i] := v_debtors[v_i] - v_payment;
         v_creditors[v_j] := v_creditors[v_j] - v_payment;
 
-        IF v_debtors[v_i] < 0.5 THEN v_i := v_i + 1; END IF;
-        IF v_creditors[v_j] < 0.5 THEN v_j := v_j + 1; END IF;
+        IF v_debtors[v_i] < 1 THEN v_i := v_i + 1; END IF;
+        IF v_creditors[v_j] < 1 THEN v_j := v_j + 1; END IF;
     END LOOP;
 END;
 $$;
