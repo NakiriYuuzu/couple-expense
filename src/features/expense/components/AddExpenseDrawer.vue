@@ -2,7 +2,7 @@
     <Drawer v-model:open="isOpen">
         <DrawerContent
             :id="drawerContentId"
-            class="max-h-[90vh] flex flex-col glass-elevated !border-0 !border-t border-glass-border-strong"
+            class="max-h-[90vh] flex flex-col bg-card !border-0 !border-t border-glass-border-strong"
         >
 
             <!-- Header -->
@@ -289,7 +289,7 @@
             </div>
 
             <!-- Footer actions (fixed at bottom) -->
-            <div class="px-4 py-4 glass-heavy shrink-0">
+            <div class="px-4 py-4 bg-card border-t border-border shrink-0">
                 <div class="flex gap-3">
                     <!-- Cancel / Back -->
                     <template v-if="currentStep === 1">

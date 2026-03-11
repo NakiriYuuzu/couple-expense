@@ -83,16 +83,16 @@ const selectMonth = (month: string) => {
 const getInitial = (name: string | null) => name?.charAt(0).toUpperCase() ?? '?'
 
 const balanceClass = (amount: number): string => {
-    if (amount > 0.01) return 'text-green-600 dark:text-green-400'
-    if (amount < -0.01) return 'text-red-500 dark:text-red-400'
+    if (amount > 0) return 'text-green-600 dark:text-green-400'
+    if (amount < 0) return 'text-red-500 dark:text-red-400'
     return 'text-muted-foreground'
 }
 
 const formatBalance = (amount: number): string => {
     const abs = Math.abs(amount)
     const formatted = `NT$ ${Math.round(abs).toLocaleString()}`
-    if (amount > 0.01) return `+${formatted}`
-    if (amount < -0.01) return `-${formatted}`
+    if (amount > 0) return `+${formatted}`
+    if (amount < 0) return `-${formatted}`
     return 'NT$ 0'
 }
 
@@ -103,6 +103,8 @@ const isSettleDrawerOpen = ref(false)
 const settleTargetUser = ref<{ userId: string; displayName: string | null; avatarUrl: string | null } | null>(null)
 const settleSuggestedAmount = ref(0)
 const settleYearMonth = ref<string | null>(null)
+const editSettlementId = ref<string | null>(null)
+const editNotes = ref<string | null>(null)
 const settlementHistoryRef = ref<InstanceType<typeof SettlementHistory> | null>(null)
 
 const handleSettle = (debt: SimplifiedDebt) => {
@@ -110,6 +112,8 @@ const handleSettle = (debt: SimplifiedDebt) => {
     settleTargetUser.value = isFromCurrentUser ? debt.toUser : debt.fromUser
     settleSuggestedAmount.value = debt.amount
     settleYearMonth.value = selectedMonth.value
+    editSettlementId.value = null
+    editNotes.value = null
     isSettleDrawerOpen.value = true
 }
 
@@ -232,16 +236,16 @@ const handleHistoryChanged = async () => {
                         <p class="text-xs text-muted-foreground">{{ t('overview.unsettledAmount') }}</p>
                         <p
                             class="text-xl font-bold mt-0.5"
-                            :class="selectedSnapshot.totalUnsettled > 0.01
+                            :class="selectedSnapshot.totalUnsettled > 0
                                 ? 'text-red-500 dark:text-red-400'
                                 : 'text-green-600 dark:text-green-400'"
                         >
                             {{ formatCurrency(selectedSnapshot.totalUnsettled) }}
                         </p>
-                        <p class="text-xs mt-0.5" :class="selectedSnapshot.totalUnsettled > 0.01
+                        <p class="text-xs mt-0.5" :class="selectedSnapshot.totalUnsettled > 0
                             ? 'text-red-400/70 dark:text-red-500/70'
                             : 'text-green-500/70 dark:text-green-400/70'">
-                            {{ selectedSnapshot.totalUnsettled > 0.01
+                            {{ selectedSnapshot.totalUnsettled > 0
                                 ? t('overview.unsettled')
                                 : t('overview.settled')
                             }}
@@ -280,6 +284,7 @@ const handleHistoryChanged = async () => {
                             debt.fromUser.userId === currentUserId
                             || debt.toUser.userId === currentUserId
                         "
+                        :is-debtor="debt.fromUser.userId === currentUserId"
                         @settle="handleSettle(debt)"
                     />
                 </div>
@@ -337,6 +342,8 @@ const handleHistoryChanged = async () => {
                             settleTargetUser = item.paidTo
                             settleSuggestedAmount = item.amount
                             settleYearMonth = null
+                            editSettlementId = item.id
+                            editNotes = item.notes ?? null
                             isSettleDrawerOpen = true
                         }"
                         @changed="handleHistoryChanged"
@@ -353,6 +360,8 @@ const handleHistoryChanged = async () => {
             :to-user="settleTargetUser"
             :suggested-amount="settleSuggestedAmount"
             :year-month="settleYearMonth"
+            :edit-settlement-id="editSettlementId"
+            :edit-notes="editNotes"
             @settled="handleSettled"
         />
     </div>

@@ -186,7 +186,7 @@ onMounted(loadHistory)
                     </span>
 
                     <!-- Dropdown menu (only for own settlements) -->
-                    <DropdownMenu v-if="isOwnSettlement(item)">
+                    <DropdownMenu v-if="isOwnSettlement(item)" :modal="false">
                         <DropdownMenuTrigger as-child>
                             <Button
                                 variant="ghost"

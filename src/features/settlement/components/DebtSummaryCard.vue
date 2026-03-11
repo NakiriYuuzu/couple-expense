@@ -17,6 +17,7 @@ interface Props {
     toUser: UserInfo
     amount: number
     isCurrentUser: boolean
+    isDebtor: boolean
 }
 
 const props = defineProps<Props>()
@@ -79,9 +80,9 @@ const formatAmount = (amount: number): string => {
                 {{ formatAmount(props.amount) }}
             </span>
 
-            <!-- Settle button -->
+            <!-- Settle button (only when current user owes money) -->
             <Button
-                v-if="props.isCurrentUser"
+                v-if="props.isDebtor"
                 size="sm"
                 variant="outline"
                 class="shrink-0 h-8 px-3 text-xs font-medium border-brand-primary/40 text-brand-primary hover:bg-brand-primary hover:text-white press-feedback cursor-pointer"

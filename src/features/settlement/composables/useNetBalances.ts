@@ -14,10 +14,11 @@ export function useNetBalances() {
         return 'NT$ 0'
     }
 
-    // Determine balance status for a given amount
+    // Determine balance status for a given amount (integer TWD)
     const getBalanceStatus = (amount: number): 'owed' | 'owes' | 'settled' => {
-        if (amount > 0.01) return 'owed'
-        if (amount < -0.01) return 'owes'
+        const rounded = Math.round(amount)
+        if (rounded > 0) return 'owed'
+        if (rounded < 0) return 'owes'
         return 'settled'
     }
 

@@ -88,7 +88,7 @@ describe('useSettlementStore', () => {
             expect(store.hasOutstandingDebts).toBe(false)
         })
 
-        it('returns true when a balance exceeds 0.01 threshold', () => {
+        it('returns true when a balance exceeds zero', () => {
             const store = useSettlementStore()
             store.netBalances = [
                 { userId: 'u1', displayName: 'Alice', avatarUrl: null, netBalance: 50 }
@@ -96,7 +96,7 @@ describe('useSettlementStore', () => {
             expect(store.hasOutstandingDebts).toBe(true)
         })
 
-        it('returns true when a negative balance exceeds -0.01 threshold', () => {
+        it('returns true when a negative balance exists', () => {
             const store = useSettlementStore()
             store.netBalances = [
                 { userId: 'u1', displayName: 'Bob', avatarUrl: null, netBalance: -25 }
@@ -104,11 +104,11 @@ describe('useSettlementStore', () => {
             expect(store.hasOutstandingDebts).toBe(true)
         })
 
-        it('returns false when all balances are within +-0.01', () => {
+        it('returns false when all balances are zero', () => {
             const store = useSettlementStore()
             store.netBalances = [
-                { userId: 'u1', displayName: 'Alice', avatarUrl: null, netBalance: 0.005 },
-                { userId: 'u2', displayName: 'Bob', avatarUrl: null, netBalance: -0.003 }
+                { userId: 'u1', displayName: 'Alice', avatarUrl: null, netBalance: 0 },
+                { userId: 'u2', displayName: 'Bob', avatarUrl: null, netBalance: 0 }
             ]
             expect(store.hasOutstandingDebts).toBe(false)
         })
@@ -175,10 +175,11 @@ describe('useSettlementStore', () => {
     // ─── fetchNetBalances ────────────────────────────────────────────────────
 
     describe('fetchNetBalances', () => {
-        it('maps RPC response to NetBalance objects with user profiles', async () => {
+        it('normalizes RPC response to integer NetBalance objects', async () => {
             const rpcData = [
-                { user_id: 'u1', net_balance: 100 },
-                { user_id: 'u2', net_balance: -100 }
+                { user_id: 'u1', net_balance: 33.6 },
+                { user_id: 'u2', net_balance: 33.6 },
+                { user_id: 'u3', net_balance: -67.2 }
             ]
 
             rpc.mockResolvedValueOnce({ data: rpcData, error: null })
@@ -186,7 +187,8 @@ describe('useSettlementStore', () => {
             profileSelectChain.in.mockResolvedValueOnce({
                 data: [
                     { id: 'u1', display_name: 'Alice', avatar_url: 'alice.png' },
-                    { id: 'u2', display_name: 'Bob', avatar_url: null }
+                    { id: 'u2', display_name: 'Bob', avatar_url: null },
+                    { id: 'u3', display_name: 'Carol', avatar_url: null }
                 ],
                 error: null
             })
@@ -196,8 +198,9 @@ describe('useSettlementStore', () => {
 
             expect(rpc).toHaveBeenCalledWith('get_group_balances', { p_group_id: 'group-1' })
             expect(store.netBalances).toEqual([
-                { userId: 'u1', displayName: 'Alice', avatarUrl: 'alice.png', netBalance: 100 },
-                { userId: 'u2', displayName: 'Bob', avatarUrl: null, netBalance: -100 }
+                { userId: 'u1', displayName: 'Alice', avatarUrl: 'alice.png', netBalance: 34 },
+                { userId: 'u2', displayName: 'Bob', avatarUrl: null, netBalance: 33 },
+                { userId: 'u3', displayName: 'Carol', avatarUrl: null, netBalance: -67 }
             ])
             expect(store.error).toBeNull()
         })
@@ -219,9 +222,10 @@ describe('useSettlementStore', () => {
     // ─── fetchSimplifiedDebts ────────────────────────────────────────────────
 
     describe('fetchSimplifiedDebts', () => {
-        it('maps RPC response to SimplifiedDebt objects with user profiles', async () => {
+        it('normalizes RPC response to integer SimplifiedDebt objects', async () => {
             const rpcData = [
-                { from_user: 'u1', to_user: 'u2', amount: 75 }
+                { from_user: 'u1', to_user: 'u2', amount: 33.6 },
+                { from_user: 'u3', to_user: 'u2', amount: 33.2 }
             ]
 
             rpc.mockResolvedValueOnce({ data: rpcData, error: null })
@@ -229,7 +233,8 @@ describe('useSettlementStore', () => {
             profileSelectChain.in.mockResolvedValueOnce({
                 data: [
                     { id: 'u1', display_name: 'Alice', avatar_url: null },
-                    { id: 'u2', display_name: 'Bob', avatar_url: 'bob.png' }
+                    { id: 'u2', display_name: 'Bob', avatar_url: 'bob.png' },
+                    { id: 'u3', display_name: 'Carol', avatar_url: null }
                 ],
                 error: null
             })
@@ -238,11 +243,18 @@ describe('useSettlementStore', () => {
             await store.fetchSimplifiedDebts('group-1')
 
             expect(rpc).toHaveBeenCalledWith('get_simplified_debts', { p_group_id: 'group-1' })
-            expect(store.simplifiedDebts).toEqual([{
-                fromUser: { userId: 'u1', displayName: 'Alice', avatarUrl: null },
-                toUser: { userId: 'u2', displayName: 'Bob', avatarUrl: 'bob.png' },
-                amount: 75
-            }])
+            expect(store.simplifiedDebts).toEqual([
+                {
+                    fromUser: { userId: 'u1', displayName: 'Alice', avatarUrl: null },
+                    toUser: { userId: 'u2', displayName: 'Bob', avatarUrl: 'bob.png' },
+                    amount: 34
+                },
+                {
+                    fromUser: { userId: 'u3', displayName: 'Carol', avatarUrl: null },
+                    toUser: { userId: 'u2', displayName: 'Bob', avatarUrl: 'bob.png' },
+                    amount: 33
+                }
+            ])
             expect(store.error).toBeNull()
         })
 
@@ -313,8 +325,6 @@ describe('useSettlementStore', () => {
             const store = useSettlementStore()
 
             const fetchPromise = store.fetchNetBalances('group-1')
-            // After starting but before awaiting, loading should be true
-            // (Since the mock resolves immediately, we check loading after)
             await fetchPromise
 
             expect(store.loading).toBe(false)
@@ -337,7 +347,6 @@ describe('useSettlementStore', () => {
 
     describe('monthDebtCache', () => {
         it('caches results and skips fetch when already cached', async () => {
-            // First call — two RPC calls for balances + debts, then expense query
             rpc
                 .mockResolvedValueOnce({
                     data: [{ user_id: 'u1', net_balance: 50 }],
@@ -356,7 +365,6 @@ describe('useSettlementStore', () => {
                 error: null
             })
 
-            // Expense query for calculating totalExpense
             selectChain.lt.mockResolvedValueOnce({
                 data: [{ amount: 100 }],
                 error: null
@@ -419,13 +427,94 @@ describe('useSettlementStore', () => {
             expect(rpc).toHaveBeenCalledTimes(2)
             expect(store.monthDebtCache['2025-06']!.netBalances).toHaveLength(1)
         })
+
+        it('normalizes month debts to whole-dollar values', async () => {
+            rpc
+                .mockResolvedValueOnce({
+                    data: [
+                        { user_id: 'u1', net_balance: 33.6 },
+                        { user_id: 'u2', net_balance: -33.6 }
+                    ],
+                    error: null
+                })
+                .mockResolvedValueOnce({
+                    data: [
+                        { from_user: 'u2', to_user: 'u1', amount: 33.6 }
+                    ],
+                    error: null
+                })
+
+            profileSelectChain.in.mockResolvedValue({
+                data: [
+                    { id: 'u1', display_name: 'Alice', avatar_url: null },
+                    { id: 'u2', display_name: 'Bob', avatar_url: null }
+                ],
+                error: null
+            })
+
+            selectChain.lt.mockResolvedValueOnce({
+                data: [{ amount: 100 }],
+                error: null
+            })
+
+            const store = useSettlementStore()
+            await store.fetchMonthDebts('group-1', '2025-06', true)
+
+            expect(store.monthDebtCache['2025-06']).toMatchObject({
+                netBalances: [
+                    { userId: 'u1', netBalance: 34 },
+                    { userId: 'u2', netBalance: -34 }
+                ],
+                simplifiedDebts: [
+                    {
+                        fromUser: { userId: 'u2' },
+                        toUser: { userId: 'u1' },
+                        amount: 34
+                    }
+                ],
+                totalUnsettled: 34
+            })
+        })
+
+        it('marks month as settled when totalUnsettled is 0', async () => {
+            rpc
+                .mockResolvedValueOnce({
+                    data: [
+                        { user_id: 'u1', net_balance: 0 },
+                        { user_id: 'u2', net_balance: 0 }
+                    ],
+                    error: null
+                })
+                .mockResolvedValueOnce({
+                    data: [],
+                    error: null
+                })
+
+            profileSelectChain.in.mockResolvedValue({
+                data: [
+                    { id: 'u1', display_name: 'Alice', avatar_url: null },
+                    { id: 'u2', display_name: 'Bob', avatar_url: null }
+                ],
+                error: null
+            })
+
+            selectChain.lt.mockResolvedValueOnce({
+                data: [{ amount: 100 }],
+                error: null
+            })
+
+            const store = useSettlementStore()
+            await store.fetchMonthDebts('group-1', '2025-06', true)
+
+            expect(store.monthDebtCache['2025-06']!.status).toBe('settled')
+            expect(store.monthDebtCache['2025-06']!.totalUnsettled).toBe(0)
+        })
     })
 
     // ─── profileCache ────────────────────────────────────────────────────────
 
     describe('profileCache', () => {
         it('caches user profiles and skips re-fetch for known IDs', async () => {
-            // First fetch — new IDs
             rpc.mockResolvedValueOnce({
                 data: [
                     { user_id: 'u1', net_balance: 100 },
