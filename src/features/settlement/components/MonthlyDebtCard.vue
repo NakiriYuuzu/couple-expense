@@ -125,6 +125,7 @@ const handleSettle = (debt: SimplifiedDebt) => {
                             debt.fromUser.userId === currentUserId
                             || debt.toUser.userId === currentUserId
                         "
+                        :is-debtor="debt.fromUser.userId === currentUserId"
                         @settle="handleSettle(debt)"
                     />
                 </div>
@@ -155,9 +156,9 @@ const handleSettle = (debt: SimplifiedDebt) => {
                             <span
                                 class="text-sm font-medium"
                                 :class="{
-                                    'text-green-600 dark:text-green-400': balance.netBalance > 0.01,
-                                    'text-red-600 dark:text-red-400': balance.netBalance < -0.01,
-                                    'text-muted-foreground': Math.abs(balance.netBalance) <= 0.01
+                                    'text-green-600 dark:text-green-400': balance.netBalance > 0,
+                                    'text-red-600 dark:text-red-400': balance.netBalance < 0,
+                                    'text-muted-foreground': balance.netBalance === 0
                                 }"
                             >
                                 {{ balance.netBalance > 0 ? '+' : '' }}{{ formatCurrency(balance.netBalance) }}

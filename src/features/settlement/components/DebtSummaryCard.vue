@@ -17,10 +17,12 @@ interface Props {
     toUser: UserInfo
     amount: number
     isCurrentUser: boolean
-    isDebtor: boolean
+    isDebtor?: boolean
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+    isDebtor: false
+})
 
 const emit = defineEmits<{
     settle: []

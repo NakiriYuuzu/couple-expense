@@ -202,6 +202,6 @@ BEGIN
     SELECT ac.uid, COALESCE(SUM(ac.balance_change), 0)::numeric
     FROM all_changes ac
     GROUP BY ac.uid
-    HAVING ABS(SUM(ac.balance_change)) > 0.5;
+    HAVING ABS(SUM(ac.balance_change)) >= 0.5;
 END;
 $$;
