@@ -465,7 +465,7 @@ const isInGroup = groupStore.isInAnyGroup
 // 根據 scope 選擇對應的支出資料
 const scopedExpenses = computed(() => {
     return props.scope === 'personal'
-        ? expenseStore.personalExpenses
+        ? expenseStore.mySpendingExpenses
         : expenseStore.groupExpenses
 })
 

@@ -133,7 +133,7 @@ const currentAccountId = computed(() => accountManagerStore.currentAccountId)
 const personalBudgetUsage = computed(() => {
     const budget = groupStore.personalBudget
     if (!budget || budget <= 0) return 0
-    return Math.min((expenseStore.personalStats.month / budget) * 100, 100)
+    return Math.min((expenseStore.mySpendingStats.month / budget) * 100, 100)
 })
 
 const personalBudgetFormSchema = toTypedSchema(z.object({
@@ -657,7 +657,7 @@ const handleRemoveAccount = (accountId: string) => {
                         <Label>{{ t('settings.currentUsage') }}</Label>
                         <Progress :model-value="personalBudgetUsage" class="h-2" />
                         <div class="flex justify-between text-xs text-muted-foreground">
-                            <span>NT$ {{ expenseStore.personalStats.month.toLocaleString() }}</span>
+                            <span>NT$ {{ expenseStore.mySpendingStats.month.toLocaleString() }}</span>
                             <span>{{ personalBudgetUsage.toFixed(0) }}%</span>
                         </div>
                     </div>
