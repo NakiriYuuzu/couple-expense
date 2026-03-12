@@ -51,6 +51,7 @@
                 :icon="expense.icon"
                 :user="expense.user"
                 :show-user="showUser"
+                :group-name="expense.groupName"
                 :split-method="expense.splitMethod"
                 :is-settled="expense.isSettled"
                 @click="handleExpenseClick"

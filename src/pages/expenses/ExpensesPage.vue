@@ -22,7 +22,10 @@ import { useCategories, CategoryUtils } from '@/features/expense/composables/use
 import type { Expense } from '@/features/expense/stores/expense'
 import type { DisplayExpense } from '@/entities/expense/types'
 import { toast } from 'vue-sonner'
-import { User, Users, Calendar as CalendarIcon, Search, SlidersHorizontal, Plus } from 'lucide-vue-next'
+import { User, Users, Calendar as CalendarIcon, Search, SlidersHorizontal, Plus, RefreshCw } from 'lucide-vue-next'
+import RecurringExpenseDrawer from '@/features/expense/components/RecurringExpenseDrawer.vue'
+import RecurringExpenseList from '@/features/expense/components/RecurringExpenseList.vue'
+import type { RecurringExpense } from '@/entities/expense/types'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -33,10 +36,20 @@ const groupStore = useGroupStore()
 
 const {
     personalExpenses,
+    allMyExpenses,
     groupExpenses
 } = storeToRefs(expenseStore)
 
 const isInGroup = computed(() => groupStore.isInAnyGroup)
+
+// 群組 ID → 名稱映射（供個人 tab 顯示群組 badge 使用）
+const groupNameMap = computed(() => {
+    const map = new Map<string, string>()
+    for (const g of groupStore.groups) {
+        map.set(g.id, g.name)
+    }
+    return map
+})
 
 // 持久化 Tab 選擇（localStorage），URL query 可覆蓋
 const savedTab = useStorage<string>('expenses-active-tab', 'personal')
@@ -113,10 +126,11 @@ watch(activeTab, (newTab) => {
 })
 
 // 懶計算：只取當前 tab 的支出來源
+// 個人 tab 顯示使用者所有消費（含群組），群組 tab 顯示活躍群組消費
 const activeExpenses = computed(() =>
     activeTab.value === 'group'
         ? groupExpenses.value
-        : personalExpenses.value
+        : allMyExpenses.value
 )
 
 // 快取 DisplayExpense 轉換（避免每次 computed 重算時重建所有物件）
@@ -132,6 +146,7 @@ const displayExpenseMap = computed(() => {
             icon: CategoryUtils.getIconKey(e.category),
             user: e.user,
             groupId: e.group_id,
+            groupName: e.group_id ? (groupNameMap.value.get(e.group_id) ?? null) : null,
             splitMethod: e.split_method,
             isSettled: e.is_settled
         })
@@ -245,6 +260,20 @@ const handleExpenseClick = (expense: DisplayExpense) => {
     }
 }
 
+// 定期消費抽屜狀態
+const isRecurringDrawerOpen = ref(false)
+const editingRecurring = ref<RecurringExpense | null>(null)
+
+function openAddRecurring() {
+    editingRecurring.value = null
+    isRecurringDrawerOpen.value = true
+}
+
+function openEditRecurring(item: RecurringExpense) {
+    editingRecurring.value = item
+    isRecurringDrawerOpen.value = true
+}
+
 // 下拉刷新
 usePullToRefresh({
     onRefresh: async () => {
@@ -301,7 +330,7 @@ usePullToRefresh({
         <main class="px-4 pb-28">
             <!-- Tab 切換 -->
             <Tabs v-model="activeTab" class="mt-4">
-                <TabsList class="grid w-full grid-cols-2 rounded-full glass-light p-[2px]">
+                <TabsList class="grid w-full grid-cols-3 rounded-full glass-light p-[2px]">
                     <TabsTrigger
                         value="personal"
                         class="flex items-center gap-2 rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200 press-feedback"
@@ -316,6 +345,13 @@ usePullToRefresh({
                     >
                         <Users class="h-4 w-4" />
                         {{ t('expense.group') }}
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="recurring"
+                        class="flex items-center gap-2 rounded-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all duration-200 press-feedback"
+                    >
+                        <RefreshCw class="h-4 w-4" />
+                        {{ t('recurring.title') }}
                     </TabsTrigger>
                 </TabsList>
 
@@ -402,8 +438,29 @@ usePullToRefresh({
                         </Button>
                     </div>
                 </TabsContent>
+
+                <!-- 定期消費 Tab -->
+                <TabsContent value="recurring" class="mt-4">
+                    <div class="flex justify-end mb-3">
+                        <Button
+                            size="sm"
+                            class="rounded-full gap-2 press-feedback"
+                            @click="openAddRecurring"
+                        >
+                            <Plus class="h-4 w-4" />
+                            {{ t('recurring.add') }}
+                        </Button>
+                    </div>
+                    <RecurringExpenseList @edit="openEditRecurring" />
+                </TabsContent>
             </Tabs>
         </main>
+
+        <!-- 定期消費抽屜 -->
+        <RecurringExpenseDrawer
+            v-model:open="isRecurringDrawerOpen"
+            :edit-item="editingRecurring"
+        />
 
         <!-- 篩選 Dialog -->
         <Dialog v-model:open="isFilterDialogOpen">

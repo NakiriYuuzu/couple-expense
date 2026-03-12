@@ -3,12 +3,15 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useExpenseStore, type Expense } from '../expense'
 import { useGroupStore } from '@/features/group/stores/group'
 
-const { single, insertSelect, insert, upsert, from } = vi.hoisted(() => ({
+const { single, insertSelect, insert, upsert, from, order, eq, inFilter } = vi.hoisted(() => ({
     single: vi.fn(),
     insertSelect: vi.fn(),
     insert: vi.fn(),
     upsert: vi.fn(),
-    from: vi.fn()
+    from: vi.fn(),
+    order: vi.fn(),
+    eq: vi.fn(),
+    inFilter: vi.fn()
 }))
 
 // Mock supabase — no real network calls
@@ -387,6 +390,213 @@ describe('useExpenseStore', () => {
             const store = useExpenseStore()
             store.preloadStatus = 'loading'
             expect(store.fullHistoryLoaded).toBe(false)
+        })
+    })
+
+    // ─── fetchExpenses (personal mode) ────────────────────────────────────────
+
+    describe('fetchExpenses — personal mode', () => {
+        function makeRawExpense(overrides: Partial<Expense> = {}): Expense {
+            return {
+                id: crypto.randomUUID(),
+                user_id: 'user-1',
+                group_id: null,
+                title: 'Test',
+                amount: 100,
+                category: 'food',
+                icon: null,
+                date: '2026-03-10',
+                currency: 'TWD',
+                split_method: null,
+                paid_by: null,
+                notes: null,
+                is_settled: false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                ...overrides
+            }
+        }
+
+        function setupFetchMock(rows: Expense[]) {
+            // Track eq calls so we can assert personal-mode query shape
+            const eqMock = vi.fn().mockReturnThis()
+            const orderMock = vi.fn().mockResolvedValue({ data: rows, error: null })
+
+            from.mockImplementation((table: string) => {
+                if (table === 'expenses') {
+                    return {
+                        select: vi.fn().mockReturnThis(),
+                        eq: eqMock,
+                        in: vi.fn().mockReturnThis(),
+                        is: vi.fn().mockReturnThis(),
+                        or: vi.fn().mockReturnThis(),
+                        order: orderMock,
+                        insert,
+                        update: vi.fn().mockReturnThis(),
+                        delete: vi.fn().mockReturnThis(),
+                        single
+                    }
+                }
+                if (table === 'user_profiles') {
+                    return {
+                        select: vi.fn().mockReturnThis(),
+                        eq: vi.fn().mockReturnThis(),
+                        in: vi.fn().mockResolvedValue({ data: [], error: null }),
+                        single
+                    }
+                }
+                return {
+                    select: vi.fn().mockReturnThis(),
+                    eq: vi.fn().mockReturnThis(),
+                    in: vi.fn().mockReturnThis(),
+                    order: vi.fn().mockResolvedValue({ data: [], error: null }),
+                    single
+                }
+            })
+
+            return { eqMock, orderMock }
+        }
+
+        it('queries by user_id (not group filter) in personal mode', async () => {
+            const { eqMock } = setupFetchMock([])
+            const store = useExpenseStore()
+            // Personal mode: pass null explicitly
+            await store.fetchExpenses(null)
+            expect(eqMock).toHaveBeenCalledWith('user_id', 'user-1')
+        })
+
+        it('loads group expenses into store when in personal mode', async () => {
+            const personalExpense = makeRawExpense({ group_id: null })
+            const groupExpense = makeRawExpense({ group_id: 'g1' })
+            setupFetchMock([personalExpense, groupExpense])
+
+            const store = useExpenseStore()
+            await store.fetchExpenses(null)
+
+            expect(store.expenses).toHaveLength(2)
+            const groupIds = store.expenses.map(e => e.group_id)
+            expect(groupIds).toContain(null)
+            expect(groupIds).toContain('g1')
+        })
+
+        it('stores both personal and group expenses in expenses array', async () => {
+            const personal = makeRawExpense({ id: 'p1', group_id: null, amount: 200 })
+            const grouped = makeRawExpense({ id: 'g1-exp', group_id: 'g1', amount: 500 })
+            setupFetchMock([personal, grouped])
+
+            const store = useExpenseStore()
+            await store.fetchExpenses(null)
+
+            expect(store.expenses.find(e => e.id === 'p1')).toBeDefined()
+            expect(store.expenses.find(e => e.id === 'g1-exp')).toBeDefined()
+        })
+
+        it('returns empty expenses when server returns no data', async () => {
+            setupFetchMock([])
+            const store = useExpenseStore()
+            await store.fetchExpenses(null)
+            expect(store.expenses).toHaveLength(0)
+        })
+    })
+
+    // ─── personalExpenses after fetchExpenses ──────────────────────────────────
+
+    describe('personalExpenses — filters correctly after personal-mode fetch', () => {
+        it('excludes group expenses from personalExpenses even when loaded in personal mode', () => {
+            const store = useExpenseStore()
+            store.currentUserId = 'user-1'
+            store.expenses = [
+                makeExpense({ group_id: null, user_id: 'user-1', amount: 100 }),
+                makeExpense({ group_id: 'g1', user_id: 'user-1', amount: 500 }),
+                makeExpense({ group_id: 'g2', user_id: 'user-1', amount: 300 })
+            ]
+            // personalExpenses must only include group_id === null
+            expect(store.personalExpenses).toHaveLength(1)
+            expect(store.personalExpenses[0]!.group_id).toBeNull()
+            expect(store.personalExpenses[0]!.amount).toBe(100)
+        })
+    })
+
+    // ─── allMyExpenses ─────────────────────────────────────────────────────────
+
+    describe('allMyExpenses', () => {
+        it('includes both personal and group expenses belonging to current user', () => {
+            const store = useExpenseStore()
+            store.currentUserId = 'user-1'
+            store.expenses = [
+                makeExpense({ group_id: null, user_id: 'user-1' }),
+                makeExpense({ group_id: 'g1', user_id: 'user-1' }),
+                makeExpense({ group_id: null, user_id: 'user-2' })
+            ]
+            expect(store.allMyExpenses).toHaveLength(2)
+            expect(store.allMyExpenses.every(e => e.user_id === 'user-1')).toBe(true)
+        })
+
+        it('returns empty array when currentUserId is null', () => {
+            const store = useExpenseStore()
+            store.currentUserId = null
+            store.expenses = [
+                makeExpense({ user_id: 'user-1', group_id: null }),
+                makeExpense({ user_id: 'user-1', group_id: 'g1' })
+            ]
+            expect(store.allMyExpenses).toHaveLength(0)
+        })
+
+        it('includes group expenses (group_id !== null) for current user', () => {
+            const store = useExpenseStore()
+            store.currentUserId = 'user-1'
+            store.expenses = [
+                makeExpense({ group_id: 'team-a', user_id: 'user-1', amount: 800 }),
+                makeExpense({ group_id: 'team-b', user_id: 'user-1', amount: 200 })
+            ]
+            expect(store.allMyExpenses).toHaveLength(2)
+            expect(store.allMyExpenses.every(e => e.group_id !== null)).toBe(true)
+        })
+
+        it('does not include other users expenses', () => {
+            const store = useExpenseStore()
+            store.currentUserId = 'user-1'
+            store.expenses = [
+                makeExpense({ user_id: 'user-2', group_id: null }),
+                makeExpense({ user_id: 'user-3', group_id: 'g1' })
+            ]
+            expect(store.allMyExpenses).toHaveLength(0)
+        })
+    })
+
+    // ─── stats scope is not affected by personal/group split ──────────────────
+
+    describe('stats — covers all loaded expenses regardless of scope', () => {
+        it('stats.today sums both personal and group expenses loaded today', () => {
+            const store = useExpenseStore()
+            const today = new Date().toISOString().split('T')[0]!
+            store.expenses = [
+                makeExpense({ group_id: null, amount: 100, date: today }),
+                makeExpense({ group_id: 'g1', amount: 400, date: today })
+            ]
+            expect(store.stats.today).toBe(500)
+        })
+
+        it('stats.month sums both personal and group expenses this month', () => {
+            const store = useExpenseStore()
+            const thisMonth = new Date().toISOString().split('T')[0]!
+            store.expenses = [
+                makeExpense({ group_id: null, amount: 300, date: thisMonth }),
+                makeExpense({ group_id: 'g2', amount: 700, date: thisMonth })
+            ]
+            expect(store.stats.month).toBe(1000)
+        })
+
+        it('personalStats only counts personal expenses', () => {
+            const store = useExpenseStore()
+            store.currentUserId = 'user-1'
+            const today = new Date().toISOString().split('T')[0]!
+            store.expenses = [
+                makeExpense({ group_id: null, user_id: 'user-1', amount: 200, date: today }),
+                makeExpense({ group_id: 'g1', user_id: 'user-1', amount: 800, date: today })
+            ]
+            // personalStats should only include the group_id === null expense
+            expect(store.personalStats.today).toBe(200)
         })
     })
 })

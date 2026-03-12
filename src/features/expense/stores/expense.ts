@@ -4,6 +4,7 @@ import { supabase } from '@/shared/lib/supabase'
 import type { ExpenseRow, ExpenseInsert, SplitMethod, CurrencyType } from '@/shared/lib/database.types'
 import type { CategoryId, ExpenseUser } from '@/entities/expense/types'
 import { useGroupStore } from '@/features/group/stores/group'
+import { useSplitStore } from '@/features/split/stores/split'
 
 const VALID_CATEGORIES: ReadonlySet<string> = new Set([
     'food', 'pet', 'shopping', 'transport', 'home', 'other'
@@ -138,6 +139,11 @@ export const useExpenseStore = defineStore('expense', () => {
         )
     )
 
+    // 計算屬性：使用者的所有支出（包含個人與群組消費）
+    const allMyExpenses = computed(() =>
+        expenses.value.filter(e => e.user_id === currentUserId.value)
+    )
+
     // 計算屬性：群組支出（屬於目前活躍群組）
     const groupExpenses = computed(() => {
         const groupStore = useGroupStore()
@@ -149,6 +155,43 @@ export const useExpenseStore = defineStore('expense', () => {
     // 計算屬性：個人支出統計
     const personalStats = computed<ExpenseStats>(() =>
         calculateStatsForExpenses(personalExpenses.value)
+    )
+
+    // 計算屬性：使用者的實際支出（個人全額 + 群組分帳份額）
+    const mySpendingExpenses = computed(() => {
+        const splitStore = useSplitStore()
+        const userId = currentUserId.value
+        if (!userId) return []
+
+        const result: Expense[] = []
+        const seen = new Set<string>()
+
+        // 1. 個人消費：使用完整金額
+        for (const e of expenses.value) {
+            if (e.group_id === null && e.user_id === userId) {
+                result.push(e)
+                seen.add(e.id)
+            }
+        }
+
+        // 2. 群組消費：使用分帳份額
+        for (const e of expenses.value) {
+            if (e.group_id !== null && !seen.has(e.id)) {
+                const splits = splitStore.getSplitsForExpense(e.id)
+                const mySplit = splits.find(s => s.user_id === userId)
+                if (mySplit) {
+                    result.push({ ...e, amount: mySplit.amount })
+                    seen.add(e.id)
+                }
+            }
+        }
+
+        return result
+    })
+
+    // 計算屬性：使用者的實際支出統計
+    const mySpendingStats = computed<ExpenseStats>(() =>
+        calculateStatsForExpenses(mySpendingExpenses.value)
     )
 
     // 計算屬性：群組支出統計
@@ -257,12 +300,11 @@ export const useExpenseStore = defineStore('expense', () => {
                 }
                 expensesData = data || []
             } else {
-                // 個人模式：只查詢自己的個人支出（group_id IS NULL）
+                // 個人模式：查詢自己的所有支出（包含群組消費）
                 const { data, error: supabaseError } = await supabase
                     .from('expenses')
                     .select('*')
                     .eq('user_id', userId)
-                    .is('group_id', null)
                     .order('date', { ascending: false })
 
                 if (supabaseError) {
@@ -280,6 +322,16 @@ export const useExpenseStore = defineStore('expense', () => {
             const usersMap = await fetchUsersMap(allUserIds)
 
             expenses.value = expensesData.map(row => mapRowToExpense(row, usersMap))
+
+            // 批次載入群組消費的 splits（用於計算個人分帳份額）
+            const groupExpenseIds = expensesData
+                .filter(e => e.group_id !== null)
+                .map(e => e.id)
+
+            if (groupExpenseIds.length > 0) {
+                const splitStore = useSplitStore()
+                await splitStore.fetchSplitsForExpenses(groupExpenseIds)
+            }
         } catch (err) {
             console.error('獲取支出記錄失敗:', err)
             error.value = err instanceof Error ? err.message : '未知錯誤'
@@ -665,10 +717,13 @@ export const useExpenseStore = defineStore('expense', () => {
         // 統計數據
         stats,
         personalStats,
+        mySpendingStats,
         groupStats,
 
         // 個人/群組支出
         personalExpenses,
+        mySpendingExpenses,
+        allMyExpenses,
         groupExpenses,
         personalExpensesByDate,
         groupExpensesByDate,

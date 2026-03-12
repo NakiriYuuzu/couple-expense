@@ -1,24 +1,5 @@
 <template>
     <div class="animate-fade-up">
-        <!-- 統計卡片區域 -->
-        <div class="grid gap-4 sm:grid-cols-2 mb-8">
-            <!-- 月總消費卡片 -->
-            <div class="glass-elevated rounded-2xl overflow-hidden p-4 sm:p-6 animate-fade-up stagger-1 hover-transition">
-                <p class="text-sm font-medium text-muted-foreground">{{ t('stats.monthlyTotal') }}</p>
-                <p class="mt-2 text-2xl sm:text-3xl font-bold text-foreground">NT$ {{ monthlyTotal.toLocaleString() }}</p>
-            </div>
-
-            <!-- 今日消費/平均每日卡片 -->
-            <div class="glass-elevated rounded-2xl overflow-hidden p-4 sm:p-6 animate-fade-up stagger-2 hover-transition">
-                <p class="text-sm font-medium text-muted-foreground">
-                    {{ isCurrentMonth ? t('stats.todayExpense') : t('stats.dailyAverage') }}
-                </p>
-                <p class="mt-2 text-2xl sm:text-3xl font-bold text-foreground">
-                    NT$ {{ isCurrentMonth ? todayTotal.toLocaleString() : Math.round(monthlyTotal / (currentMonthExpenses.length || 1)).toLocaleString() }}
-                </p>
-            </div>
-        </div>
-
         <!-- 日曆區域 -->
         <div class="animate-fade-up">
             <h2 class="mb-4 text-lg font-semibold text-foreground">{{ t('stats.calendarView') }}</h2>
@@ -209,13 +190,12 @@ const isInGroup = groupStore.isInAnyGroup
 // 根據 scope 選擇對應的支出資料
 const scopedExpenses = computed(() => {
     return props.scope === 'personal'
-        ? expenseStore.personalExpenses
+        ? expenseStore.mySpendingExpenses
         : expenseStore.groupExpenses
 })
 
 // 當前日期
 const todayDate = new Date()
-const todayDateStr = todayDate.toISOString().split('T')[0]
 
 // 選中的日期（用於日曆組件）
 const selectedDate = ref<DateValue>(today(getLocalTimeZone()))
@@ -253,35 +233,6 @@ const availableYears = computed(() => {
     years.add(todayDate.getFullYear())
     return Array.from(years).sort((a, b) => b - a)
 })
-
-// 是否為當前月份
-const isCurrentMonth = computed(() => {
-    return selectedDate.value.year === todayDate.getFullYear() &&
-        selectedDate.value.month === (todayDate.getMonth() + 1)
-})
-
-// 當前選中月份的費用
-const currentMonthExpenses = computed(() => {
-    const monthStr = `${selectedDate.value.year}-${selectedDate.value.month.toString().padStart(2, '0')}`
-    return scopedExpenses.value.filter(expense => expense.date.startsWith(monthStr))
-})
-
-// 月度總消費
-const monthlyTotal = computed(() => {
-    return currentMonthExpenses.value.reduce((sum, expense) => {
-        return sum + expense.amount
-    }, 0)
-})
-
-
-// 今日總消費
-const todayTotal = computed(() => {
-    const todayExpenses = scopedExpenses.value.filter(expense => expense.date === todayDateStr)
-    return todayExpenses.reduce((sum, expense) => {
-        return sum + expense.amount
-    }, 0)
-})
-
 
 // 獲取指定日期的總消費（用於日曆顯示）
 const getDayTotal = (day: DateValue) => {

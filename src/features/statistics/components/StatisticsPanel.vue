@@ -45,7 +45,7 @@ const navigatePeriod = (direction: -1 | 1) => {
 // Scoped expenses
 const scopedExpenses = computed(() => {
     if (isPersonalMode.value) {
-        return expenseStore.personalExpenses
+        return expenseStore.mySpendingExpenses
     }
     return expenseStore.groupExpenses
 })
@@ -313,9 +313,6 @@ const formatYAxisTick = (value: number) => {
                 </div>
             </div>
 
-            <!-- Calendar View -->
-            <CalendarView :scope="scope" />
-
             <!-- Category Breakdown -->
             <div
                 v-if="categoryStats.length > 0"
@@ -362,6 +359,9 @@ const formatYAxisTick = (value: number) => {
                     </div>
                 </div>
             </div>
+
+            <!-- Calendar View -->
+            <CalendarView :scope="scope" />
         </template>
     </div>
 </template>

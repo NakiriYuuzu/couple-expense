@@ -3,6 +3,9 @@ import { Toaster } from '@/shared/components/ui/sonner'
 import 'vue-sonner/style.css'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { toast } from 'vue-sonner'
+import { useRegisterSW } from 'virtual:pwa-register/vue'
+import { useI18n } from 'vue-i18n'
 import BottomNavigation from '@/shared/components/BottomNavigation.vue'
 import AddExpenseDrawer from '@/features/expense/components/AddExpenseDrawer.vue'
 import { routes } from '@/app/router/routes/index.ts'
@@ -12,6 +15,7 @@ import { useGroupStore } from '@/features/group/stores/group'
 import { useBackgroundPreload } from '@/shared/composables/useBackgroundPreload'
 import type { AddExpenseEvent } from '@/entities/expense/types'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const expenseStore = useExpenseStore()
@@ -144,6 +148,24 @@ watch(() => groupStore.activeGroupId, () => {
     if (authStore.isLoggedIn) {
         startPreload()
     }
+})
+
+// PWA 更新提示
+const { needRefresh, updateServiceWorker } = useRegisterSW({ immediate: true })
+
+watch(needRefresh, (val) => {
+    if (!val) return
+    toast.info(t('pwa.updateAvailable'), {
+        duration: Infinity,
+        action: {
+            label: t('pwa.updateNow'),
+            onClick: () => updateServiceWorker(true)
+        },
+        cancel: {
+            label: t('pwa.dismiss'),
+            onClick: () => { needRefresh.value = false }
+        }
+    })
 })
 
 // 應用初始化

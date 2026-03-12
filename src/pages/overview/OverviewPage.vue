@@ -9,42 +9,6 @@ const { t } = useI18n()
 
 const activePanel = ref<'statistics' | 'debts'>('statistics')
 
-const touchStartX = ref(0)
-const touchDeltaX = ref(0)
-const isSwiping = ref(false)
-const SWIPE_THRESHOLD = 50
-
-const handleTouchStart = (e: TouchEvent) => {
-    const firstTouch = e.touches[0]
-    if (!firstTouch) return
-
-    touchStartX.value = firstTouch.clientX
-    touchDeltaX.value = 0
-    isSwiping.value = true
-}
-
-const handleTouchMove = (e: TouchEvent) => {
-    if (!isSwiping.value) return
-    const firstTouch = e.touches[0]
-    if (!firstTouch) return
-
-    touchDeltaX.value = firstTouch.clientX - touchStartX.value
-}
-
-const handleTouchEnd = () => {
-    if (!isSwiping.value) return
-    isSwiping.value = false
-
-    if (Math.abs(touchDeltaX.value) > SWIPE_THRESHOLD) {
-        if (touchDeltaX.value < 0 && activePanel.value === 'statistics') {
-            activePanel.value = 'debts'
-        } else if (touchDeltaX.value > 0 && activePanel.value === 'debts') {
-            activePanel.value = 'statistics'
-        }
-    }
-    touchDeltaX.value = 0
-}
-
 const switchPanel = (panel: 'statistics' | 'debts') => {
     activePanel.value = panel
 }
@@ -92,13 +56,8 @@ const switchPanel = (panel: 'statistics' | 'debts') => {
             </button>
         </div>
 
-        <!-- Swipeable Panel Container -->
-        <div
-            class="overflow-hidden"
-            @touchstart.passive="handleTouchStart"
-            @touchmove.passive="handleTouchMove"
-            @touchend="handleTouchEnd"
-        >
+        <!-- Panel Container -->
+        <div class="overflow-hidden">
             <StatisticsPanel v-if="activePanel === 'statistics'" />
             <DebtPanel v-else />
         </div>

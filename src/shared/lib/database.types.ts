@@ -380,6 +380,59 @@ export interface Database {
                 }
                 Relationships: []
             }
+            recurring_expenses: {
+                Row: {
+                    id: string
+                    user_id: string
+                    group_id: string | null
+                    title: string
+                    amount: number
+                    category: CategoryType
+                    recurrence_day: number
+                    next_due_date: string
+                    is_active: boolean
+                    notes: string | null
+                    created_at: string
+                    updated_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    group_id?: string | null
+                    title: string
+                    amount: number
+                    category?: CategoryType
+                    recurrence_day: number
+                    next_due_date: string
+                    is_active?: boolean
+                    notes?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    group_id?: string | null
+                    title?: string
+                    amount?: number
+                    category?: CategoryType
+                    recurrence_day?: number
+                    next_due_date?: string
+                    is_active?: boolean
+                    notes?: string | null
+                    created_at?: string
+                    updated_at?: string
+                }
+                Relationships: [
+                    {
+                        foreignKeyName: 'recurring_expenses_group_id_fkey'
+                        columns: ['group_id']
+                        isOneToOne: false
+                        referencedRelation: 'groups'
+                        referencedColumns: ['id']
+                    }
+                ]
+            }
         }
         Views: {
             [_ in never]: never
@@ -505,6 +558,10 @@ export interface Database {
                 }
                 Returns: undefined
             }
+            process_recurring_expenses: {
+                Args: Record<string, never>
+                Returns: number
+            }
         }
         Enums: {
             expense_category: CategoryType
@@ -556,3 +613,8 @@ export type UserProfileUpdate = Database['group_expense']['Tables']['user_profil
 export type UserSettingsRow = Database['group_expense']['Tables']['user_settings']['Row']
 export type UserSettingsInsert = Database['group_expense']['Tables']['user_settings']['Insert']
 export type UserSettingsUpdate = Database['group_expense']['Tables']['user_settings']['Update']
+
+// RecurringExpense type aliases
+export type RecurringExpenseRow = Database['group_expense']['Tables']['recurring_expenses']['Row']
+export type RecurringExpenseInsert = Database['group_expense']['Tables']['recurring_expenses']['Insert']
+export type RecurringExpenseUpdate = Database['group_expense']['Tables']['recurring_expenses']['Update']

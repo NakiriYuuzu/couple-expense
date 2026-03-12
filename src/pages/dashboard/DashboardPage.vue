@@ -7,7 +7,6 @@ import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
 import TopBar from '@/shared/components/TopBar.vue'
 import ExpenseItem from '@/features/expense/components/ExpenseItem.vue'
-import GroupSwitcher from '@/features/group/components/GroupSwitcher.vue'
 import { useExpenseStore } from '@/shared/stores'
 import { useGroupStore } from '@/features/group/stores/group'
 import { useSettlementStore } from '@/features/settlement/stores/settlement'
@@ -27,7 +26,7 @@ const settlementStore = useSettlementStore()
 const {
     personalExpenses,
     groupExpenses,
-    personalStats,
+    mySpendingStats,
     groupStats
 } = storeToRefs(expenseStore)
 
@@ -35,7 +34,6 @@ const {
     activeGroupId,
     activeGroup,
     isPersonalContext,
-    isInAnyGroup,
     userProfile
 } = storeToRefs(groupStore)
 
@@ -75,7 +73,7 @@ const formatAmount = (amount: number) => {
 // 計算個人預算使用百分比
 const personalBudgetPercentage = computed(() => {
     if (!personalBudget.value || personalBudget.value <= 0) return 0
-    return Math.min(100, Math.round((personalStats.value.month / personalBudget.value) * 100))
+    return Math.min(100, Math.round((mySpendingStats.value.month / personalBudget.value) * 100))
 })
 
 // 你在此群組的支出份額（user_id === currentUserId）
@@ -193,12 +191,7 @@ const budgetRingStrokeDasharray = computed(() => {
 
 <template>
     <div class="min-h-screen bg-background glass-page-bg">
-        <!-- TopBar 整合 GroupSwitcher（若有加入任何群組才顯示切換器） -->
-        <TopBar :title="topBarTitle">
-            <template v-if="isInAnyGroup" #action>
-                <GroupSwitcher />
-            </template>
-        </TopBar>
+        <TopBar :title="topBarTitle" />
 
         <main class="px-4 pb-28">
             <!-- Greeting -->
@@ -213,11 +206,11 @@ const budgetRingStrokeDasharray = computed(() => {
                 <section class="mt-4 animate-fade-up stagger-2">
                     <div class="glass-elevated rounded-2xl p-5">
                         <p class="text-xs text-muted-foreground uppercase tracking-wider">{{ t('dashboard.monthTotal') }}</p>
-                        <p class="text-3xl font-bold text-foreground mt-1 font-heading">{{ formatAmount(personalStats.month) }}</p>
+                        <p class="text-3xl font-bold text-foreground mt-1 font-heading">{{ formatAmount(mySpendingStats.month) }}</p>
                         <div class="flex items-center gap-4 mt-3 pt-3 border-t border-glass-border">
                             <div>
                                 <p class="text-[10px] text-muted-foreground uppercase tracking-wider">{{ t('dashboard.todayTotal') }}</p>
-                                <p class="text-base font-semibold text-foreground mt-0.5">{{ formatAmount(personalStats.today) }}</p>
+                                <p class="text-base font-semibold text-foreground mt-0.5">{{ formatAmount(mySpendingStats.today) }}</p>
                             </div>
                         </div>
                     </div>
@@ -283,7 +276,7 @@ const budgetRingStrokeDasharray = computed(() => {
                                     <span class="text-sm font-medium text-muted-foreground">{{ t('dashboard.personalBudgetProgress') }}</span>
                                 </div>
                                 <div class="text-sm text-muted-foreground space-y-0.5">
-                                    <p>{{ formatAmount(personalStats.month) }} / {{ formatAmount(personalBudget) }}</p>
+                                    <p>{{ formatAmount(mySpendingStats.month) }} / {{ formatAmount(personalBudget) }}</p>
                                 </div>
                             </div>
                     </div>

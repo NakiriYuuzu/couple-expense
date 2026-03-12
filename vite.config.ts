@@ -61,7 +61,7 @@ export default defineConfig(({mode}) =>{
 			...(httpsSetup.useBuiltIn ? [mkcert()] : []),
             removeConsole(),
             VitePWA({
-                injectRegister: 'auto',
+                injectRegister: null,
                 registerType: 'autoUpdate',
                 manifest: {
                     name: '記帳App',

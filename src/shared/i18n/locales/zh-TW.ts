@@ -210,6 +210,10 @@ const zhTW = {
             home: '居家',
             other: '其他'
         },
+        // 群組來源標示
+        fromGroup: '來自 {name}',
+        notes: '備註',
+        notesPlaceholder: '輸入備註（選填）',
         // ExpenseGroup 相關
         deleteAll: '全部刪除',
         confirmDeleteTitle: '確認刪除',
@@ -523,6 +527,13 @@ const zhTW = {
         permissionDenied: '權限不足'
     },
 
+    // PWA 更新
+    pwa: {
+        updateAvailable: '有新版本可用',
+        updateNow: '立即更新',
+        dismiss: '稍後再說'
+    },
+
     // 家庭設定（保留向後相容）
     family: {
         title: '家庭設定',
@@ -573,6 +584,34 @@ const zhTW = {
         saveError: '儲存失敗，請稍後再試',
         leaveSuccess: '已離開家庭',
         leaveError: '離開失敗，請稍後再試'
+    },
+
+    // 訂閱制 / 定期消費
+    recurring: {
+        title: '定期消費',
+        add: '新增定期消費',
+        edit: '編輯定期消費',
+        empty: '尚無定期消費',
+        emptyDesc: '新增定期消費，自動在每月指定日期產生消費記錄',
+        recurrenceDay: '每月幾號',
+        recurrenceDayPlaceholder: '輸入 1-31',
+        nextDueDate: '下次到期日',
+        isActive: '已啟用',
+        isInactive: '已停用',
+        activate: '啟用',
+        deactivate: '停用',
+        deleteConfirm: '確定要刪除這個定期消費嗎？',
+        createSuccess: '定期消費已建立',
+        createError: '建立失敗，請稍後再試',
+        updateSuccess: '定期消費已更新',
+        updateError: '更新失敗，請稍後再試',
+        deleteSuccess: '定期消費已刪除',
+        deleteError: '刪除失敗，請稍後再試',
+        toggleSuccess: '狀態已更新',
+        toggleError: '更新失敗，請稍後再試',
+        monthlyAmount: '月費',
+        dueOn: '每月 {day} 日',
+        nextDue: '下次：{date}'
     }
 }
 

@@ -3,6 +3,7 @@ import persist from 'pinia-plugin-persistedstate'
 
 // Feature stores
 export * from '@/features/expense/stores/expense'
+export * from '@/features/expense/stores/recurring'
 export * from '@/features/auth/stores/auth'
 export * from '@/features/group/stores/group'
 export * from '@/features/split/stores/split'

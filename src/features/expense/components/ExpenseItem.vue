@@ -17,6 +17,7 @@ interface Props {
     icon: string
     user?: ExpenseUser
     showUser?: boolean
+    groupName?: string | null
     splitMethod?: SplitMethod | null
     isSettled?: boolean
 }
@@ -60,9 +61,18 @@ const iconColorClass = computed(() => categoryTailwind.value.text)
 
                 <!-- 標題和使用者 -->
                 <div class="flex-1">
-                    <p class="text-sm font-medium text-card-foreground">
-                        {{ title }}
-                    </p>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <p class="text-sm font-medium text-card-foreground">
+                            {{ title }}
+                        </p>
+                        <!-- 來自群組的 badge -->
+                        <span
+                            v-if="groupName"
+                            class="glass-light text-[10px] font-medium text-muted-foreground px-1.5 py-0.5 rounded-full border border-glass-border"
+                        >
+                            {{ t('expense.fromGroup', { name: groupName }) }}
+                        </span>
+                    </div>
                     <!-- 使用者名稱 -->
                     <p v-if="showUser && user" class="text-[11px] text-muted-foreground mt-0.5">
                         {{ user.display_name || t('expense.unknownUser') }}

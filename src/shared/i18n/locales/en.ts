@@ -210,6 +210,10 @@ const en = {
             home: 'Home',
             other: 'Other'
         },
+        // Group source label
+        fromGroup: 'From {name}',
+        notes: 'Notes',
+        notesPlaceholder: 'Enter notes (optional)',
         // ExpenseGroup related
         deleteAll: 'Delete All',
         confirmDeleteTitle: 'Confirm Delete',
@@ -521,6 +525,13 @@ const en = {
         permissionDenied: 'Permission denied'
     },
 
+    // PWA update
+    pwa: {
+        updateAvailable: 'A new version is available',
+        updateNow: 'Update now',
+        dismiss: 'Dismiss'
+    },
+
     // Family Settings (kept for backward compatibility)
     family: {
         title: 'Family Settings',
@@ -571,6 +582,34 @@ const en = {
         saveError: 'Failed to save, please try again',
         leaveSuccess: 'Left family',
         leaveError: 'Failed to leave, please try again'
+    },
+
+    // Recurring expenses / subscriptions
+    recurring: {
+        title: 'Recurring',
+        add: 'Add Recurring',
+        edit: 'Edit Recurring',
+        empty: 'No recurring expenses',
+        emptyDesc: 'Add recurring expenses to auto-generate records on the specified day each month',
+        recurrenceDay: 'Day of month',
+        recurrenceDayPlaceholder: 'Enter 1-31',
+        nextDueDate: 'Next due date',
+        isActive: 'Active',
+        isInactive: 'Inactive',
+        activate: 'Activate',
+        deactivate: 'Deactivate',
+        deleteConfirm: 'Are you sure you want to delete this recurring expense?',
+        createSuccess: 'Recurring expense created',
+        createError: 'Failed to create, please try again',
+        updateSuccess: 'Recurring expense updated',
+        updateError: 'Failed to update, please try again',
+        deleteSuccess: 'Recurring expense deleted',
+        deleteError: 'Failed to delete, please try again',
+        toggleSuccess: 'Status updated',
+        toggleError: 'Failed to update status, please try again',
+        monthlyAmount: 'Monthly',
+        dueOn: 'Day {day} each month',
+        nextDue: 'Next: {date}'
     }
 }
 export default en
