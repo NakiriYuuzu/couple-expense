@@ -90,6 +90,9 @@ export const useExpenseStore = defineStore('expense', () => {
     // 當前使用者 ID（用於過濾個人支出）
     const currentUserId = ref<string | null>(null)
 
+    // 個人模式下，使用者被分配 split 的 expense_id 集合（用於 allMyExpenses 兜底判斷）
+    const mySplitExpenseIds = ref<Set<string>>(new Set())
+
     // 預載狀態
     const preloadStatus = ref<'idle' | 'loading' | 'done' | 'error'>('idle')
 
@@ -139,10 +142,22 @@ export const useExpenseStore = defineStore('expense', () => {
         )
     )
 
-    // 計算屬性：使用者的所有支出（包含個人與群組消費）
-    const allMyExpenses = computed(() =>
-        expenses.value.filter(e => e.user_id === currentUserId.value)
-    )
+    // 計算屬性：使用者的所有支出（包含個人、自建群組消費、及群組中他人建立但分配給自己的消費）
+    const allMyExpenses = computed(() => {
+        const userId = currentUserId.value
+        if (!userId) return []
+        const splitStore = useSplitStore()
+        return expenses.value.filter(e => {
+            if (e.user_id === userId) return true
+            // 優先使用 Phase 1 快取的 split expense_id 集合作為兜底
+            if (mySplitExpenseIds.value.has(e.id)) return true
+            if (e.group_id !== null) {
+                const splits = splitStore.getSplitsForExpense(e.id)
+                return splits.some(s => s.user_id === userId)
+            }
+            return false
+        })
+    })
 
     // 計算屬性：群組支出（屬於目前活躍群組）
     const groupExpenses = computed(() => {
@@ -300,17 +315,46 @@ export const useExpenseStore = defineStore('expense', () => {
                 }
                 expensesData = data || []
             } else {
-                // 個人模式：查詢自己的所有支出（包含群組消費）
-                const { data, error: supabaseError } = await supabase
-                    .from('expenses')
-                    .select('*')
-                    .eq('user_id', userId)
-                    .order('date', { ascending: false })
+                // 個人模式：查詢自己的所有支出 + 群組中他人建立但分配給自己的支出
+                // Phase 1: 並行查詢自己建立的支出 & 自己被分配的 splits
+                const [ownResult, splitsResult] = await Promise.all([
+                    supabase
+                        .from('expenses')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .order('date', { ascending: false }),
+                    supabase
+                        .from('expense_splits')
+                        .select('expense_id')
+                        .eq('user_id', userId)
+                ])
 
-                if (supabaseError) {
-                    throw supabaseError
+                if (ownResult.error) throw ownResult.error
+                if (splitsResult.error) throw splitsResult.error
+
+                const ownExpenses = ownResult.data || []
+                const ownIds = new Set(ownExpenses.map(e => e.id))
+
+                // 記錄使用者被分配 split 的 expense_id，供 allMyExpenses 兜底使用
+                const splitExpenseIds = new Set((splitsResult.data || []).map(s => s.expense_id))
+                mySplitExpenseIds.value = splitExpenseIds
+
+                // Phase 2: 找出自己有 split 但不在自己建立的支出中的 expense_id
+                const missingIds = [...splitExpenseIds].filter(id => !ownIds.has(id))
+
+                if (missingIds.length > 0) {
+                    const { data: extraExpenses, error: extraError } = await supabase
+                        .from('expenses')
+                        .select('*')
+                        .in('id', [...new Set(missingIds)])
+
+                    if (extraError) throw extraError
+
+                    expensesData = [...ownExpenses, ...(extraExpenses || [])]
+                        .sort((a, b) => b.date.localeCompare(a.date))
+                } else {
+                    expensesData = ownExpenses
                 }
-                expensesData = data || []
             }
 
             if (expensesData.length === 0) {
