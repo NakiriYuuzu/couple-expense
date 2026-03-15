@@ -63,6 +63,10 @@
   --color-expense: var(--expense);
   --color-expense-foreground: var(--expense-foreground);
 
+  /* Debt color mappings */
+  --color-debt: var(--debt);
+  --color-debt-bg: var(--debt-bg);
+
   /* Category color mappings */
   --color-category-food: var(--category-food);
   --color-category-food-bg: var(--category-food-bg);
@@ -168,6 +172,10 @@
   --expense: oklch(0.52 0.24 29.234);
   --expense-foreground: oklch(0.985 0 0);
 
+  /* Debt color */
+  --debt: oklch(0.750 0.170 60);
+  --debt-bg: oklch(0.960 0.040 60);
+
   /* Category icon colors */
   --category-food: oklch(0.705 0.198 41.32);
   --category-food-bg: oklch(0.96 0.05 41.32);
@@ -261,6 +269,10 @@
   --income: oklch(0.728 0.168 142.495);
   --expense: oklch(0.78 0.2 29.234);
   --expense-foreground: oklch(0.18 0.025 278);
+
+  /* Debt color - Dark mode */
+  --debt: oklch(0.820 0.190 60);
+  --debt-bg: oklch(0.280 0.035 60);
 
   /* Category icon colors - Dark mode */
   --category-food: oklch(0.785 0.218 41.32);

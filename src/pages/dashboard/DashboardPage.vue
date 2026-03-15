@@ -25,6 +25,7 @@ const settlementStore = useSettlementStore()
 
 const {
     personalExpenses,
+    personalStats,
     groupExpenses,
     mySpendingStats,
     groupStats
@@ -46,6 +47,24 @@ const currentUserId = computed(() => userProfile.value?.id ?? null)
 const topBarTitle = computed(() => {
     if (isPersonalContext.value) return t('nav.dashboard')
     return activeGroup.value?.name ?? t('nav.dashboard')
+})
+
+// 個人欠款金額（群組分帳份額）
+const personalDebtMonth = computed(() => {
+    const total = mySpendingStats.value.month
+    const personal = personalStats.value.month
+    return Math.max(0, total - personal)
+})
+
+// 個人消費與欠款佔比（用於比例條）
+const personalPct = computed(() => {
+    const total = mySpendingStats.value.month
+    if (total <= 0) return 100
+    return Math.round((personalStats.value.month / total) * 100)
+})
+
+const debtPct = computed(() => {
+    return 100 - personalPct.value
 })
 
 // 個人預算
@@ -207,6 +226,23 @@ const budgetRingStrokeDasharray = computed(() => {
                     <div class="glass-elevated rounded-2xl p-5">
                         <p class="text-xs text-muted-foreground uppercase tracking-wider">{{ t('dashboard.monthTotal') }}</p>
                         <p class="text-3xl font-bold text-foreground mt-1 font-heading">{{ formatAmount(mySpendingStats.month) }}</p>
+
+                        <!-- 消費與欠款比例條 -->
+                        <div
+                            v-if="mySpendingStats.month > 0"
+                            class="mt-3 h-2 rounded-full bg-muted overflow-hidden flex"
+                        >
+                            <div
+                                class="h-full transition-all duration-300"
+                                :style="{ width: personalPct + '%', backgroundColor: 'var(--brand-primary)' }"
+                            />
+                            <div
+                                v-if="personalDebtMonth > 0"
+                                class="h-full transition-all duration-300"
+                                :style="{ width: debtPct + '%', backgroundColor: 'var(--debt)' }"
+                            />
+                        </div>
+
                         <div class="flex items-center gap-4 mt-3 pt-3 border-t border-glass-border">
                             <div>
                                 <p class="text-[10px] text-muted-foreground uppercase tracking-wider">{{ t('dashboard.todayTotal') }}</p>
@@ -216,10 +252,36 @@ const budgetRingStrokeDasharray = computed(() => {
                     </div>
                 </section>
 
+                <!-- 個人消費 & 個人欠款 -->
+                <section class="mt-4 animate-fade-up stagger-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="glass rounded-2xl p-4">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span
+                                    class="w-2.5 h-2.5 rounded-full shrink-0"
+                                    style="background-color: var(--brand-primary)"
+                                />
+                                <p class="text-xs text-muted-foreground">{{ t('dashboard.personalSpending') }}</p>
+                            </div>
+                            <p class="text-lg font-bold text-foreground mt-1 font-heading">{{ formatAmount(personalStats.month) }}</p>
+                        </div>
+                        <div class="glass rounded-2xl p-4">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span
+                                    class="w-2.5 h-2.5 rounded-full shrink-0"
+                                    style="background-color: var(--debt)"
+                                />
+                                <p class="text-xs text-muted-foreground">{{ t('dashboard.personalDebt') }}</p>
+                            </div>
+                            <p class="text-lg font-bold text-foreground mt-1 font-heading">{{ formatAmount(personalDebtMonth) }}</p>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- 預算環形圖 -->
                 <section
                     v-if="personalBudget"
-                    class="mt-4 animate-fade-up stagger-3"
+                    class="mt-4 animate-fade-up stagger-4"
                 >
                     <div class="glass rounded-2xl p-4 flex items-center gap-5">
                             <!-- SVG Donut -->
@@ -283,7 +345,7 @@ const budgetRingStrokeDasharray = computed(() => {
                 </section>
 
                 <!-- 最近個人支出 -->
-                <section class="mt-4 animate-fade-up stagger-4">
+                <section class="mt-4 animate-fade-up stagger-5">
                     <div class="glass rounded-2xl p-4">
                             <div v-if="recentPersonalExpenses.length > 0">
                                 <p class="text-sm font-medium text-muted-foreground mb-3">{{ t('dashboard.recentExpenses') }}</p>

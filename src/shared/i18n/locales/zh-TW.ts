@@ -51,6 +51,8 @@ const zhTW = {
         noPersonalExpenses: '尚無個人支出記錄',
         noFamilyExpenses: '尚無家庭支出記錄',
         noGroupExpenses: '尚無群組支出記錄',
+        personalSpending: '個人消費',
+        personalDebt: '個人欠款',
         myShare: '我的份額',
         debtSummary: '餘額摘要',
         viewBalances: '查看全部',
