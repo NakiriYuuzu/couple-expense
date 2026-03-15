@@ -22,7 +22,7 @@ import { useCategories, CategoryUtils } from '@/features/expense/composables/use
 import type { Expense } from '@/features/expense/stores/expense'
 import type { DisplayExpense } from '@/entities/expense/types'
 import { toast } from 'vue-sonner'
-import { User, Users, Calendar as CalendarIcon, Search, SlidersHorizontal, Plus, RefreshCw } from 'lucide-vue-next'
+import { User, Users, Calendar as CalendarIcon, Search, SlidersHorizontal, Plus, RefreshCw, Wallet, HandCoins } from 'lucide-vue-next'
 import RecurringExpenseDrawer from '@/features/expense/components/RecurringExpenseDrawer.vue'
 import RecurringExpenseList from '@/features/expense/components/RecurringExpenseList.vue'
 import type { RecurringExpense } from '@/entities/expense/types'
@@ -58,6 +58,10 @@ const resolvedTab = urlTab || savedTab.value || 'personal'
 const activeTab = ref<string>(resolvedTab === 'group' && !groupStore.isInAnyGroup ? 'personal' : resolvedTab)
 
 const isPreloading = computed(() => expenseStore.preloadStatus === 'loading' || expenseStore.preloadStatus === 'idle')
+
+// 個人 Tab 的支出類型子篩選：全部 / 個人 / 欠款
+type ExpenseTypeFilter = 'all' | 'personal' | 'debt'
+const expenseTypeFilter = ref<ExpenseTypeFilter>('all')
 
 // 搜尋查詢（300ms debounce 減少每次按鍵觸發的計算）
 const searchQuery = ref('')
@@ -127,11 +131,18 @@ watch(activeTab, (newTab) => {
 
 // 懶計算：只取當前 tab 的支出來源
 // 個人 tab 顯示使用者所有消費（含群組），群組 tab 顯示活躍群組消費
-const activeExpenses = computed(() =>
-    activeTab.value === 'group'
-        ? groupExpenses.value
-        : allMyExpenses.value
-)
+const activeExpenses = computed(() => {
+    if (activeTab.value === 'group') return groupExpenses.value
+
+    const expenses = allMyExpenses.value
+    if (expenseTypeFilter.value === 'personal') {
+        return expenses.filter(e => e.group_id === null)
+    }
+    if (expenseTypeFilter.value === 'debt') {
+        return expenses.filter(e => e.group_id !== null)
+    }
+    return expenses
+})
 
 // 快取 DisplayExpense 轉換（避免每次 computed 重算時重建所有物件）
 const displayExpenseMap = computed(() => {
@@ -357,6 +368,33 @@ usePullToRefresh({
 
                 <!-- 個人支出列表 -->
                 <TabsContent value="personal" class="mt-4">
+                    <!-- 支出類型子篩選 -->
+                    <div class="flex gap-2 mb-4">
+                        <button
+                            v-for="filter in ([
+                                { value: 'all', label: t('dashboard.filterAll'), icon: null },
+                                { value: 'personal', label: t('dashboard.filterPersonal'), icon: Wallet },
+                                { value: 'debt', label: t('dashboard.filterDebt'), icon: HandCoins }
+                            ] as const)"
+                            :key="filter.value"
+                            type="button"
+                            :class="[
+                                'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium transition-all duration-200 press-feedback',
+                                expenseTypeFilter === filter.value
+                                    ? 'bg-primary text-primary-foreground shadow-sm'
+                                    : 'glass text-muted-foreground hover:text-foreground'
+                            ]"
+                            @click="expenseTypeFilter = filter.value"
+                        >
+                            <component
+                                v-if="filter.icon"
+                                :is="filter.icon"
+                                class="h-3.5 w-3.5"
+                            />
+                            {{ filter.label }}
+                        </button>
+                    </div>
+
                     <!-- Skeleton 載入中 -->
                     <div v-if="isPreloading" class="space-y-4">
                         <div v-for="i in 3" :key="i" class="glass rounded-2xl p-4 space-y-3">
