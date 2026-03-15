@@ -90,6 +90,9 @@ export const useExpenseStore = defineStore('expense', () => {
     // 當前使用者 ID（用於過濾個人支出）
     const currentUserId = ref<string | null>(null)
 
+    // 個人模式下，使用者被分配 split 的 expense_id 集合（用於 allMyExpenses 兜底判斷）
+    const mySplitExpenseIds = ref<Set<string>>(new Set())
+
     // 預載狀態
     const preloadStatus = ref<'idle' | 'loading' | 'done' | 'error'>('idle')
 
@@ -146,6 +149,8 @@ export const useExpenseStore = defineStore('expense', () => {
         const splitStore = useSplitStore()
         return expenses.value.filter(e => {
             if (e.user_id === userId) return true
+            // 優先使用 Phase 1 快取的 split expense_id 集合作為兜底
+            if (mySplitExpenseIds.value.has(e.id)) return true
             if (e.group_id !== null) {
                 const splits = splitStore.getSplitsForExpense(e.id)
                 return splits.some(s => s.user_id === userId)
@@ -330,10 +335,12 @@ export const useExpenseStore = defineStore('expense', () => {
                 const ownExpenses = ownResult.data || []
                 const ownIds = new Set(ownExpenses.map(e => e.id))
 
+                // 記錄使用者被分配 split 的 expense_id，供 allMyExpenses 兜底使用
+                const splitExpenseIds = new Set((splitsResult.data || []).map(s => s.expense_id))
+                mySplitExpenseIds.value = splitExpenseIds
+
                 // Phase 2: 找出自己有 split 但不在自己建立的支出中的 expense_id
-                const missingIds = (splitsResult.data || [])
-                    .map(s => s.expense_id)
-                    .filter(id => !ownIds.has(id))
+                const missingIds = [...splitExpenseIds].filter(id => !ownIds.has(id))
 
                 if (missingIds.length > 0) {
                     const { data: extraExpenses, error: extraError } = await supabase
