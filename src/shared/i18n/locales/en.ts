@@ -51,6 +51,8 @@ const en = {
         noPersonalExpenses: 'No personal expenses yet',
         noFamilyExpenses: 'No family expenses yet',
         noGroupExpenses: 'No group expenses yet',
+        personalSpending: 'Personal Spending',
+        personalDebt: 'My Debts',
         myShare: 'My Share',
         debtSummary: 'Balance Summary',
         viewBalances: 'View All',
