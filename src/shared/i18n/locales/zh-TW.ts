@@ -372,7 +372,13 @@ const zhTW = {
         deleteConfirmTitle: '刪除結算記錄',
         deleteConfirmDesc: '確定要刪除這筆結算記錄嗎？刪除後帳務餘額將重新計算。',
         deleteSuccess: '已刪除結算記錄',
-        deleteFailed: '刪除失敗'
+        deleteFailed: '刪除失敗',
+        // 單筆費用結算
+        settleExpense: '結清此筆',
+        expenseSettleConfirmTitle: '結清此筆費用',
+        expenseSettleConfirmDesc: '將為每位欠款的成員建立還款紀錄，並把此筆費用標記為已結算。確定要結清嗎？',
+        expenseSettleSuccess: '已結清此筆，建立 {count} 筆還款紀錄',
+        expenseSettleFailed: '結清失敗，請稍後再試'
     },
 
     // 總覽頁面

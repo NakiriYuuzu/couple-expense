@@ -6,7 +6,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Pencil, Trash2, User, Calendar, DollarSign, Loader2 } from 'lucide-vue-next'
+import { Pencil, Trash2, User, Calendar, DollarSign, Loader2, HandCoins } from 'lucide-vue-next'
 import TopBar from '@/shared/components/TopBar.vue'
 import { Button } from '@/shared/components/ui/button'
 import { Badge } from '@/shared/components/ui/badge'
@@ -43,6 +43,7 @@ import SplitBadge from '@/features/split/components/SplitBadge.vue'
 import SplitConfigurator from '@/features/split/components/SplitConfigurator.vue'
 import { useExpenseStore } from '@/shared/stores'
 import { useSplitStore } from '@/shared/stores'
+import { useSettlementStore } from '@/features/settlement/stores/settlement'
 import { useGroupStore } from '@/features/group/stores/group'
 import { useCategories, CategoryUtils, type CategoryId } from '@/features/expense/composables/useCategories'
 import type { SplitMethod } from '@/entities/split/types'
@@ -58,6 +59,7 @@ const { categories } = useCategories()
 const expenseId = route.params.id as string
 const expenseStore = useExpenseStore()
 const splitStore = useSplitStore()
+const settlementStore = useSettlementStore()
 const groupStore = useGroupStore()
 
 // 從已載入的 expenses 中找到這筆
@@ -261,6 +263,42 @@ const saveEditExpense = handleEditSubmit(async (validatedValues) => {
 
 const cancelEditExpense = () => {
     isEditDialogOpen.value = false
+}
+
+// 是否可以結算此筆費用（群組支出且尚未結算）
+const canSettleExpense = computed(() =>
+    !!expense.value?.group_id && !expense.value?.is_settled
+)
+
+const isSettlingExpense = ref(false)
+
+// 結算此筆費用：建立債務人 → 付款人的 settlement，並標記 expense 與所有 splits 為已結算
+const handleSettleExpense = async () => {
+    if (!expense.value || !expense.value.group_id) return
+    if (expense.value.is_settled) return
+
+    isSettlingExpense.value = true
+    try {
+        const yearMonth = expense.value.date.slice(0, 7)
+        const created = await settlementStore.settleExpense(
+            expense.value.id,
+            expense.value.group_id,
+            yearMonth
+        )
+
+        // RPC 已將 expense 與 splits 標記為已結算，這裡只需重整本地狀態
+        await Promise.all([
+            expenseStore.updateExpense(expense.value.id, { is_settled: true }),
+            splitStore.fetchSplitsForExpense(expense.value.id)
+        ])
+
+        toast.success(t('settlement.expenseSettleSuccess', { count: created }))
+    } catch (err) {
+        console.error('結算費用失敗:', err)
+        toast.error(t('settlement.expenseSettleFailed'))
+    } finally {
+        isSettlingExpense.value = false
+    }
 }
 
 // 刪除費用
@@ -498,6 +536,36 @@ watch(splits, () => {
                         </li>
                     </ul>
                 </div>
+
+                <!-- 結算此筆（僅群組支出且尚未結算時顯示） -->
+                <AlertDialog v-if="canSettleExpense">
+                    <AlertDialogTrigger as-child>
+                        <Button
+                            class="w-full press-feedback bg-brand-primary hover:bg-brand-primary/90 text-brand-primary-foreground"
+                            :disabled="isSettlingExpense"
+                        >
+                            <HandCoins class="h-4 w-4 mr-2" />
+                            {{ isSettlingExpense
+                                ? t('common.processing', '處理中...')
+                                : t('settlement.settleExpense', '結清此筆')
+                            }}
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>{{ t('settlement.expenseSettleConfirmTitle', '結清此筆費用') }}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                {{ t('settlement.expenseSettleConfirmDesc', '將為每位欠款的成員建立還款紀錄，並把此筆費用標記為已結算。確定要結清嗎？') }}
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>{{ t('common.cancel', '取消') }}</AlertDialogCancel>
+                            <AlertDialogAction @click="handleSettleExpense">
+                                {{ t('settlement.confirmSettle', '確認還款') }}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
 
                 <!-- 操作區域 -->
                 <div class="flex gap-3">

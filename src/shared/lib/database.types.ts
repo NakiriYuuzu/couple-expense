@@ -558,6 +558,13 @@ export interface Database {
                 }
                 Returns: undefined
             }
+            settle_expense: {
+                Args: {
+                    p_expense_id: string
+                    p_notes?: string
+                }
+                Returns: number
+            }
             process_recurring_expenses: {
                 Args: Record<string, never>
                 Returns: number
