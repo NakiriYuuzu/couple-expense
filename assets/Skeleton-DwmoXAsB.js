@@ -1,0 +1,1 @@
+import{$ as e,At as t,B as n,I as r,Ot as i,g as a}from"./supabase-CSTO7vps.js";var o=n({__name:`Skeleton`,props:{class:{type:[Boolean,null,String,Object,Array]}},setup(n){let o=n;return(n,s)=>(e(),r(`div`,{"data-slot":`skeleton`,class:t(i(a)(`animate-pulse rounded-md bg-primary/10`,o.class))},null,2))}});export{o as t};

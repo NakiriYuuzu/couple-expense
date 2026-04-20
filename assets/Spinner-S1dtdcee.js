@@ -1,0 +1,1 @@
+import{$ as e,At as t,B as n,Ot as r,P as i,g as a}from"./supabase-CSTO7vps.js";import{P as o}from"./index-B5IBCctZ.js";var s=n({__name:`Spinner`,props:{class:{type:[Boolean,null,String,Object,Array]}},setup(n){let s=n;return(n,c)=>(e(),i(r(o),{role:`status`,"aria-label":`Loading`,class:t(r(a)(`size-4 animate-spin`,s.class))},null,8,[`class`]))}});export{s as t};

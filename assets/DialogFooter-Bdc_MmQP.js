@@ -1,0 +1,1 @@
+import{$ as e,At as t,B as n,I as r,Ot as i,g as a,nt as o}from"./supabase-CSTO7vps.js";var s=n({__name:`DialogFooter`,props:{class:{type:[Boolean,null,String,Object,Array]}},setup(n){let s=n;return(n,c)=>(e(),r(`div`,{"data-slot":`dialog-footer`,class:t(i(a)(`flex flex-col-reverse gap-2 sm:flex-row sm:justify-end`,s.class))},[o(n.$slots,`default`)],2))}});export{s as t};
