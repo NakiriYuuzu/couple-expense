@@ -568,6 +568,42 @@ export const useSettlementStore = defineStore('settlement', () => {
         }
     }
 
+    // Action: settle an entire expense in one shot (RPC: settle_expense)
+    const settleExpense = async (
+        expenseId: string,
+        groupId: string,
+        expenseYearMonth: string,
+        notes?: string
+    ): Promise<number> => {
+        try {
+            loadingCount.value++
+            error.value = null
+
+            const { data, error: rpcError } = await supabase
+                .rpc('settle_expense', {
+                    p_expense_id: expenseId,
+                    p_notes: notes
+                })
+
+            if (rpcError) throw rpcError
+
+            await Promise.all([
+                fetchNetBalances(groupId),
+                fetchSimplifiedDebts(groupId),
+                fetchMonthDebts(groupId, expenseYearMonth, true),
+                fetchMonthlySnapshots(groupId)
+            ])
+
+            return (data as number | null) ?? 0
+        } catch (err) {
+            console.error('結算費用失敗:', err)
+            error.value = err instanceof Error ? err.message : '結算費用失敗'
+            throw err
+        } finally {
+            loadingCount.value--
+        }
+    }
+
     // Action: clear all settlement data
     const clearSettlementData = (): void => {
         netBalances.value = []
@@ -614,6 +650,7 @@ export const useSettlementStore = defineStore('settlement', () => {
         fetchSettlementHistory,
         getSettlementHistory,
         createSettlement,
+        settleExpense,
         updateSettlement,
         deleteSettlement,
         clearSettlementData,

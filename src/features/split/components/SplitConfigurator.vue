@@ -111,8 +111,11 @@
                             <span class="text-xs text-muted-foreground">NT$</span>
                             <input
                                 type="number"
-                                :value="p.amount"
+                                inputmode="decimal"
+                                :value="p.amount ? p.amount : ''"
                                 :disabled="!p.isIncluded"
+                                placeholder="0"
+                                @focus="handleNumericFocus"
                                 @input="updateExactAmount(index, $event)"
                                 class="w-20 h-8 text-right text-sm border border-border rounded-md px-2 bg-background focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-40"
                                 min="0"
@@ -124,8 +127,11 @@
                         <template v-else-if="splitMethod === 'percentage'">
                             <input
                                 type="number"
-                                :value="p.percentage ?? 0"
+                                inputmode="decimal"
+                                :value="p.percentage ? p.percentage : ''"
                                 :disabled="!p.isIncluded"
+                                placeholder="0"
+                                @focus="handleNumericFocus"
                                 @input="updatePercentage(index, $event)"
                                 class="w-16 h-8 text-right text-sm border border-border rounded-md px-2 bg-background focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-40"
                                 min="0"
@@ -142,8 +148,10 @@
                         <template v-else-if="splitMethod === 'shares'">
                             <input
                                 type="number"
+                                inputmode="numeric"
                                 :value="p.shares ?? 1"
                                 :disabled="!p.isIncluded"
+                                @focus="handleNumericFocus"
                                 @input="updateShares(index, $event)"
                                 class="w-14 h-8 text-right text-sm border border-border rounded-md px-2 bg-background focus:outline-none focus:ring-1 focus:ring-brand-primary disabled:opacity-40"
                                 min="1"
@@ -401,6 +409,13 @@ const toggleParticipant = (index: number, included: boolean | 'indeterminate') =
     )
     localParticipants.value = updated
     emit('update:participants', updated)
+}
+
+// Select-on-focus so users can type a new value directly without first
+// clearing the existing default (e.g., 0 / 1).
+const handleNumericFocus = (event: FocusEvent) => {
+    const target = event.target as HTMLInputElement | null
+    target?.select()
 }
 
 const updateExactAmount = (index: number, event: Event) => {

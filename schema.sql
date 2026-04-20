@@ -211,3 +211,10 @@ CREATE TABLE group_expense.legacy_users (
 -- group_expense.delete_settlement(p_settlement_id uuid)
 --   RETURNS void
 --   Only the payer (paid_by = auth.uid()) can delete.
+--
+-- group_expense.settle_expense(p_expense_id uuid, p_notes text)
+--   RETURNS integer
+--   Settles a single expense in one action: creates a settlement row for each
+--   non-payer split (debtor → payer, year_month from expense.date), marks all
+--   splits and the expense as is_settled = true. Returns the number of
+--   settlement rows created (0 when already settled — idempotent).

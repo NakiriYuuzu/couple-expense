@@ -372,7 +372,13 @@ const en = {
         deleteConfirmTitle: 'Delete Settlement',
         deleteConfirmDesc: 'Are you sure you want to delete this settlement? Balances will be recalculated.',
         deleteSuccess: 'Settlement deleted',
-        deleteFailed: 'Failed to delete settlement'
+        deleteFailed: 'Failed to delete settlement',
+        // Single-expense settlement
+        settleExpense: 'Settle This Expense',
+        expenseSettleConfirmTitle: 'Settle This Expense',
+        expenseSettleConfirmDesc: 'A repayment record will be created for each member who owes a share, and this expense will be marked as settled. Continue?',
+        expenseSettleSuccess: 'Expense settled — {count} repayment record(s) created',
+        expenseSettleFailed: 'Failed to settle this expense, please try again'
     },
 
     // Overview page
