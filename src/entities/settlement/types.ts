@@ -44,6 +44,17 @@ export interface SettlementHistoryItem {
     settledAt: string
 }
 
+// Status aligned with DB CHECK (group_expense.monthly_debt_snapshots.status)
+export type MonthlyDebtStatus = 'settled' | 'partial' | 'unsettled'
+
+// Raw jsonb shape stored in monthly_debt_snapshots.snapshot_data (backend contract)
+export interface SnapshotData {
+    netBalances: Array<{ userId: string; netBalance: number }>
+    simplifiedDebts: Array<{ fromUser: string; toUser: string; amount: number }>
+    expenseCount: number
+    totalExpense: number
+}
+
 // Monthly debt snapshot from pg_cron or real-time calculation
 export interface MonthlyDebtSnapshot {
     id: string | null          // null for current month (real-time)
@@ -54,7 +65,7 @@ export interface MonthlyDebtSnapshot {
     expenseCount: number
     totalExpense: number
     totalUnsettled: number
-    status: 'in_progress' | 'settled' | 'partial' | 'unsettled'
+    status: MonthlyDebtStatus
 }
 
 // Summary for collapsed month card
@@ -62,5 +73,5 @@ export interface MonthlyDebtSummary {
     yearMonth: string
     totalUnsettled: number
     debtCount: number
-    status: 'in_progress' | 'settled' | 'partial' | 'unsettled'
+    status: MonthlyDebtStatus
 }

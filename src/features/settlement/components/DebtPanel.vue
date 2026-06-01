@@ -179,7 +179,7 @@ const handleHistoryChanged = async () => {
                     <ChevronLeft class="h-4 w-4" />
                 </button>
                 <span class="text-sm font-semibold min-w-[80px] text-center">
-                    {{ selectedYear }} {{ t('overview.yearUnit') }}
+                    {{ selectedYear }}{{ t('overview.yearUnit') }}
                 </span>
                 <button
                     class="p-1.5 rounded-full glass cursor-pointer press-feedback transition-opacity"
