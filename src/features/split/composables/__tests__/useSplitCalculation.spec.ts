@@ -237,8 +237,9 @@ describe('useSplitCalculation', () => {
             expect(isBalanced.value).toBe(true)
         })
 
-        it('assigns rounding remainder to last participant', () => {
-            // 100 / 3 shares does not divide evenly; implementation absorbs remainder
+        it('distributes rounding remainder by largest remainder', () => {
+            // 100 / 3 shares does not divide evenly; largest-remainder method (matches percentage)
+            // gives the leftover cent to the first sorted participant, total reconciles exactly
             const total = ref(100)
             const participants = ref([
                 makeParticipant('A', 0, true, undefined, 1),
@@ -249,12 +250,11 @@ describe('useSplitCalculation', () => {
 
             const { calculatedSplits, splitTotal } = useSplitCalculation(total, participants, method)
 
-            // First two participants get the per-share rounded amount
-            expect(calculatedSplits.value[0]!.amount).toBeCloseTo(33.33, 2)
+            // First participant absorbs the remainder cent; the rest get the per-share floor
+            expect(calculatedSplits.value[0]!.amount).toBeCloseTo(33.34, 2)
             expect(calculatedSplits.value[1]!.amount).toBeCloseTo(33.33, 2)
-            // Last participant absorbs floating-point remainder
-            // splitTotal may be 99.99 due to JS floating-point; isBalanced uses <0.01 threshold
-            expect(Math.abs(splitTotal.value - 100)).toBeLessThan(0.02)
+            expect(calculatedSplits.value[2]!.amount).toBeCloseTo(33.33, 2)
+            expect(splitTotal.value).toBeCloseTo(100, 2)
         })
     })
 
