@@ -82,7 +82,7 @@
                     <!-- Checkbox -->
                     <Checkbox
                         :checked="p.isIncluded"
-                        @update:checked="(v) => toggleParticipant(index, v)"
+                        @update:checked="(v: boolean) => toggleParticipant(index, v)"
                         class="data-[state=checked]:bg-brand-primary data-[state=checked]:border-brand-primary"
                     />
 

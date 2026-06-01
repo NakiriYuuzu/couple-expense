@@ -90,8 +90,8 @@ const categoryStats = computed(() => {
         if (!stats[e.category]) {
             stats[e.category] = { total: 0, count: 0 }
         }
-        stats[e.category].total += e.amount
-        stats[e.category].count++
+        stats[e.category]!.total += e.amount
+        stats[e.category]!.count++
     }
     return Object.entries(stats)
         .map(([category, data]) => ({

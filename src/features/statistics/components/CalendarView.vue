@@ -264,7 +264,7 @@ const handleDayClick = (day: DateValue) => {
 }
 
 const formatDate = (dateStr: string) => {
-    const [year, month, day] = dateStr.split('-')
+    const [year = '', month = '', day = ''] = dateStr.split('-')
     return `${year} 年 ${parseInt(month)} 月 ${parseInt(day)} 日`
 }
 

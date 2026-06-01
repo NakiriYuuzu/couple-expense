@@ -17,7 +17,7 @@ const { t } = useI18n()
 const scrollContainerRef = ref<HTMLElement | null>(null)
 
 const formatMonth = (yearMonth: string): string => {
-    const month = yearMonth.split('-')[1]
+    const month = yearMonth.split('-')[1]!
     const monthNum = parseInt(month, 10)
     if (yearMonth === props.currentMonth) {
         return t('overview.currentMonth')
@@ -26,7 +26,7 @@ const formatMonth = (yearMonth: string): string => {
 }
 
 const formatYear = (yearMonth: string): string => {
-    return yearMonth.split('-')[0]
+    return yearMonth.split('-')[0]!
 }
 
 const needsYearLabel = (yearMonth: string, index: number): boolean => {

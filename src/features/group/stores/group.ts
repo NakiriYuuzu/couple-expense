@@ -143,7 +143,7 @@ export const useGroupStore = defineStore('group', () => {
                 if (!newMembersByGroup[member.group_id]) {
                     newMembersByGroup[member.group_id] = []
                 }
-                newMembersByGroup[member.group_id].push(member)
+                newMembersByGroup[member.group_id]!.push(member)
             }
             membersByGroup.value = newMembersByGroup
 
@@ -272,7 +272,7 @@ export const useGroupStore = defineStore('group', () => {
 
             const { data, error: updateError } = await supabase
                 .from('group_settings')
-                .update(updates)
+                .update(updates as never) // supabase-js 型別橋接：updates 已於 entities 層 typed
                 .eq('group_id', activeGroupId.value)
                 .select()
                 .single()

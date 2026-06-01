@@ -175,6 +175,8 @@ describe('useGroupStore', () => {
                     budget_start_day: 1,
                     category_budgets: { food: 5000 },
                     currency: 'TWD',
+                    default_split_method: 'equal',
+                    simplify_debts: true,
                     created_at: '',
                     updated_at: ''
                 }
@@ -193,6 +195,8 @@ describe('useGroupStore', () => {
                     budget_start_day: 1,
                     category_budgets: {},
                     currency: 'TWD',
+                    default_split_method: 'equal',
+                    simplify_debts: true,
                     created_at: '',
                     updated_at: ''
                 }
