@@ -148,18 +148,10 @@ export const useAccountManagerStore = defineStore('accountManager', () => {
       })
       
       if (error) throw error
-      
-      // 更新當前帳號
-      currentAccountId.value = accountId
-      
-      // 更新最後活躍時間
-      const account = storedAccounts.value.find(acc => acc.id === accountId)
-      if (account) {
-        account.lastActiveAt = new Date().toISOString()
-      }
-      
-      saveToStorage()
-      
+
+      // 不在重導向前樂觀寫入 currentAccountId / lastActiveAt：
+      // login_hint 僅是提示，實際登入者未必等於 targetAccount。
+      // 交由 OAuth 回跳後 auth.ts 的 SIGNED_IN / INITIAL_SESSION 以真實 user.id 設定。
       return { success: true }
     } catch (error) {
       console.error('切換帳號失敗:', error)

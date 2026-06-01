@@ -61,7 +61,11 @@ const zhTW = {
         viewBalances: '查看全部',
         youOwe: '你欠',
         owesYou: '欠你',
-        owes: '欠'
+        owes: '欠',
+        greetingMorning: '早安',
+        greetingAfternoon: '午安',
+        greetingEvening: '晚安',
+        greeting: '{greeting}，{name}'
     },
 
     // 支出列表
@@ -400,7 +404,6 @@ const zhTW = {
         areaChartMonthTick: '{value} 月',
         categoryBreakdown: '類別明細',
         // Debt panel
-        inProgress: '進行中',
         settled: '已結清',
         partiallyUnsettled: '部分未結清',
         unsettled: '未結清',

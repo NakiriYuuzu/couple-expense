@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { supabase, auth as authHelper } from '@/shared/lib/supabase'
 import type { User, Session } from '@supabase/supabase-js'
 import { useAccountManagerStore } from './accountManager'
+import { useGroupStore } from '@/features/group/stores/group'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -18,32 +19,34 @@ export const useAuthStore = defineStore('auth', () => {
   const initAuth = async () => {
     try {
       loading.value = true
-      
-      // 獲取當前會話
+
+      // 先註冊監聽，再補抓現有 session（detectSessionInUrl 下 OAuth 回跳的
+      // 早期 SIGNED_IN / INITIAL_SESSION 事件才不會在註冊前被漏接）
+      supabase.auth.onAuthStateChange((event, sessionData) => {
+        console.log('Auth state changed:', event, sessionData)
+
+        session.value = sessionData
+        user.value = sessionData?.user || null
+
+        // 更新多帳號管理器（INITIAL_SESSION 也納入，補抓錯過的 SIGNED_IN）
+        const accountManager = useAccountManagerStore()
+        if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && sessionData?.user) {
+          accountManager.addOrUpdateAccount(sessionData.user)
+        }
+
+        if (event === 'SIGNED_OUT') {
+          // 集中處理跨 store 清理，避免登出後跨帳號狀態殘留
+          error.value = null
+          useGroupStore().clearGroupData()
+        }
+      })
+
+      // 補抓當前會話（若 INITIAL_SESSION 已先行設定，這裡為冪等覆寫）
       const { data: sessionData } = await supabase.auth.getSession()
       if (sessionData.session) {
         session.value = sessionData.session
         user.value = sessionData.session.user
       }
-
-      // 監聽認證狀態變化
-      supabase.auth.onAuthStateChange((event, sessionData) => {
-        console.log('Auth state changed:', event, sessionData)
-        
-        session.value = sessionData
-        user.value = sessionData?.user || null
-        
-        // 更新多帳號管理器
-        const accountManager = useAccountManagerStore()
-        if (event === 'SIGNED_IN' && sessionData?.user) {
-          accountManager.addOrUpdateAccount(sessionData.user)
-        }
-        
-        if (event === 'SIGNED_OUT') {
-          // 清除錯誤狀態
-          error.value = null
-        }
-      })
     } catch (err) {
       console.error('初始化認證失敗:', err)
       error.value = err instanceof Error ? err.message : '初始化認證失敗'

@@ -19,6 +19,7 @@ import { useExpenseStore } from '@/shared/stores'
 import { useGroupStore } from '@/features/group/stores/group'
 import { usePullToRefresh } from '@/shared/composables/usePullToRefresh'
 import { useCategories, CategoryUtils } from '@/features/expense/composables/useCategories'
+import { formatAmount } from '@/shared/utils'
 import type { Expense } from '@/features/expense/stores/expense'
 import type { DisplayExpense } from '@/entities/expense/types'
 import { toast } from 'vue-sonner'
@@ -151,7 +152,7 @@ const displayExpenseMap = computed(() => {
         map.set(e.id, {
             id: e.id,
             title: e.title,
-            amount: `NT ${Math.round(e.amount)}`,
+            amount: formatAmount(e.amount),
             numericAmount: e.amount,
             category: e.category,
             icon: CategoryUtils.getIconKey(e.category),
