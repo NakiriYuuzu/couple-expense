@@ -17,6 +17,14 @@ function toValidCategory(value: unknown): CategoryId {
     return 'other'
 }
 
+// 將 Date 轉為本地日曆日期字串 'YYYY-MM-DD'（不經 UTC），與 expense.date 基準一致
+function toLocalDateString(date: Date): string {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+}
+
 export interface Expense {
     id: string
     user_id: string
@@ -102,10 +110,12 @@ export const useExpenseStore = defineStore('expense', () => {
     // 輔助函數：計算統計數據（單次遍歷）
     const calculateStatsForExpenses = (expenseList: Expense[]): ExpenseStats => {
         const now = new Date()
-        const todayStr = now.toISOString().split('T')[0]
-        const weekStart = new Date(now)
-        weekStart.setDate(now.getDate() - now.getDay())
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+        // 統一以本地日期字串為基準，與 expense.date（本地日曆 'YYYY-MM-DD'）一致，
+        // 並用字串比較取代 Date 物件比較，避免 UTC/本地基準混用造成跨時區歸錯日/月
+        const todayStr = toLocalDateString(now)
+        const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay())
+        const weekStartStr = toLocalDateString(weekStart)
+        const monthStartStr = `${todayStr.slice(0, 7)}-01`
 
         let today = 0
         let week = 0
@@ -115,10 +125,9 @@ export const useExpenseStore = defineStore('expense', () => {
         }
 
         for (const e of expenseList) {
-            const d = new Date(e.date)
             if (e.date === todayStr) today += e.amount
-            if (d >= weekStart) week += e.amount
-            if (d >= monthStart) {
+            if (e.date >= weekStartStr) week += e.amount
+            if (e.date >= monthStartStr) {
                 month += e.amount
                 byCategory[e.category] = (byCategory[e.category] ?? 0) + e.amount
             }
@@ -179,24 +188,18 @@ export const useExpenseStore = defineStore('expense', () => {
         if (!userId) return []
 
         const result: Expense[] = []
-        const seen = new Set<string>()
 
-        // 1. 個人消費：使用完整金額
+        // 單趟遍歷依 group_id 分流：個人消費取完整金額、群組消費取分帳份額
         for (const e of expenses.value) {
-            if (e.group_id === null && e.user_id === userId) {
-                result.push(e)
-                seen.add(e.id)
-            }
-        }
-
-        // 2. 群組消費：使用分帳份額
-        for (const e of expenses.value) {
-            if (e.group_id !== null && !seen.has(e.id)) {
+            if (e.group_id === null) {
+                if (e.user_id === userId) {
+                    result.push(e)
+                }
+            } else {
                 const splits = splitStore.getSplitsForExpense(e.id)
                 const mySplit = splits.find(s => s.user_id === userId)
                 if (mySplit) {
                     result.push({ ...e, amount: mySplit.amount })
-                    seen.add(e.id)
                 }
             }
         }
@@ -365,9 +368,8 @@ export const useExpenseStore = defineStore('expense', () => {
             const allUserIds = [...new Set(expensesData.map(e => e.user_id))]
             const usersMap = await fetchUsersMap(allUserIds)
 
-            expenses.value = expensesData.map(row => mapRowToExpense(row, usersMap))
-
-            // 批次載入群組消費的 splits（用於計算個人分帳份額）
+            // 先 await 批次載入群組消費的 splits，再設定 expenses.value，
+            // 避免兩個 await 之間 split 快取未就緒造成 mySpendingStats 暫時漏算份額
             const groupExpenseIds = expensesData
                 .filter(e => e.group_id !== null)
                 .map(e => e.id)
@@ -376,52 +378,12 @@ export const useExpenseStore = defineStore('expense', () => {
                 const splitStore = useSplitStore()
                 await splitStore.fetchSplitsForExpenses(groupExpenseIds)
             }
+
+            expenses.value = expensesData.map(row => mapRowToExpense(row, usersMap))
         } catch (err) {
             console.error('獲取支出記錄失敗:', err)
             error.value = err instanceof Error ? err.message : '未知錯誤'
             throw err
-        } finally {
-            loading.value = false
-        }
-    }
-
-    // 只獲取特定群組的支出（不含個人支出）
-    const fetchGroupExpenses = async (groupId: string) => {
-        try {
-            loading.value = true
-            error.value = null
-
-            const { data, error: supabaseError } = await supabase
-                .from('expenses')
-                .select('*')
-                .eq('group_id', groupId)
-                .order('date', { ascending: false })
-
-            if (supabaseError) {
-                throw supabaseError
-            }
-
-            const expensesData: ExpenseRow[] = data || []
-
-            if (expensesData.length === 0) {
-                // 只清除屬於這個群組的支出，保留其他資料
-                expenses.value = expenses.value.filter(e => e.group_id !== groupId)
-                return
-            }
-
-            const allUserIds = [...new Set(expensesData.map(e => e.user_id))]
-            const usersMap = await fetchUsersMap(allUserIds)
-
-            const groupExpensesMapped = expensesData.map(row => mapRowToExpense(row, usersMap))
-
-            // 合併：移除舊的群組支出，加入新取得的
-            const withoutThisGroup = expenses.value.filter(e => e.group_id !== groupId)
-            expenses.value = [...withoutThisGroup, ...groupExpensesMapped].sort(
-                (a, b) => b.date.localeCompare(a.date)
-            )
-        } catch (err) {
-            console.error('獲取群組支出記錄失敗:', err)
-            error.value = err instanceof Error ? err.message : '未知錯誤'
         } finally {
             loading.value = false
         }
@@ -486,8 +448,27 @@ export const useExpenseStore = defineStore('expense', () => {
                         .upsert(splitRows, { onConflict: 'expense_id,user_id' })
 
                     if (splitError) {
+                        // 補償：splits 寫入失敗時刪除剛建立的 expense，避免產生無 split 的孤兒費用
+                        // （後端 atomic add_group_expense RPC 為更理想的長期解，見 needsCrossGroup）
+                        await supabase.from('expenses').delete().eq('id', data.id)
                         throw splitError
                     }
+
+                    // 回填 split 快取，讓 mySpendingExpenses/mySpendingStats 立即納入自己的分攤份額
+                    const splitStore = useSplitStore()
+                    splitStore.setSplitsForExpense(
+                        data.id,
+                        splitRows.map(row => ({
+                            id: `${row.expense_id}:${row.user_id}`,
+                            expense_id: row.expense_id,
+                            user_id: row.user_id,
+                            amount: row.amount,
+                            percentage: row.percentage,
+                            shares: row.shares,
+                            is_settled: row.is_settled,
+                            created_at: new Date().toISOString()
+                        }))
+                    )
                 }
 
                 const { data: userProfile } = await supabase
@@ -746,7 +727,7 @@ export const useExpenseStore = defineStore('expense', () => {
 
     // 格式化金額顯示
     const formatAmount = (amount: number) => {
-        return `-NT ${amount.toFixed(0)}`
+        return `-NT$ ${amount.toFixed(0)}`
     }
 
     return {
@@ -777,7 +758,6 @@ export const useExpenseStore = defineStore('expense', () => {
 
         // 方法
         fetchExpenses,
-        fetchGroupExpenses,
         addExpense,
         updateExpense,
         deleteExpense,

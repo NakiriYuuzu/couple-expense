@@ -173,6 +173,7 @@ import { getLocalTimeZone, today } from '@internationalized/date'
 import type { DateValue } from '@internationalized/date'
 import type { Expense } from '@/features/expense/stores/expense'
 import { CategoryUtils } from '@/features/expense/composables/useCategories'
+import { formatAmount } from '@/shared/utils'
 
 // Props
 const props = withDefaults(defineProps<{
@@ -208,7 +209,7 @@ const convertStoreExpense = (storeExpense: Expense) => {
     return {
         id: storeExpense.id,
         title: storeExpense.title,
-        amount: `NT ${Math.round(storeExpense.amount)}`,
+        amount: formatAmount(storeExpense.amount),
         category: storeExpense.category,
         icon: CategoryUtils.getIconKey(storeExpense.category),
         user: storeExpense.user
@@ -263,7 +264,7 @@ const handleDayClick = (day: DateValue) => {
 }
 
 const formatDate = (dateStr: string) => {
-    const [year, month, day] = dateStr.split('-')
+    const [year = '', month = '', day = ''] = dateStr.split('-')
     return `${year} 年 ${parseInt(month)} 月 ${parseInt(day)} 日`
 }
 

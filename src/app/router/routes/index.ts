@@ -5,7 +5,7 @@ import { type RouteRecordRaw } from 'vue-router'
  * @example
  * ```ts
  * import {routes} from '@/router/routes'
- * routes.index.name // 這樣就可以取得路由的 name
+ * routes.dashboard.name // 這樣就可以取得路由的 name
  * ```
  */
 export const routes = {

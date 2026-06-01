@@ -1,11 +1,37 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { z } from 'zod'
 import { supabase } from '@/shared/lib/supabase'
 import type { SettlementRow, UserProfileRow } from '@/shared/lib/database.types'
-import type { NetBalance, SimplifiedDebt, SettlementHistoryItem, MonthlyDebtSnapshot } from '@/entities/settlement/types'
+import type { NetBalance, SimplifiedDebt, SettlementHistoryItem, MonthlyDebtSnapshot, MonthlyDebtStatus, SnapshotData } from '@/entities/settlement/types'
 import { normalizeNetBalances, normalizePositiveAmounts } from '@/shared/lib/integerDebt'
 
 type UserProfileLookup = Pick<UserProfileRow, 'display_name' | 'avatar_url'>
+
+// Runtime schema for the jsonb snapshot_data returned by get_monthly_snapshots.
+// Guards against backend contract drift — parse failures are skipped, not thrown.
+// Built from the SnapshotData contract so schema and type stay in sync.
+const snapshotDataSchema: z.ZodType<SnapshotData> = z.object({
+    netBalances: z.array(z.object({
+        userId: z.string(),
+        netBalance: z.number()
+    })),
+    simplifiedDebts: z.array(z.object({
+        fromUser: z.string(),
+        toUser: z.string(),
+        amount: z.number()
+    })),
+    expenseCount: z.number(),
+    totalExpense: z.number()
+})
+
+// Single source of truth for month status — keeps real-time and historical
+// snapshot paths consistent (status aligned with DB CHECK: settled/partial/unsettled).
+const deriveSnapshotStatus = (totalUnsettled: number, totalExpense: number): MonthlyDebtStatus => {
+    if (totalUnsettled === 0) return 'settled'
+    if (totalUnsettled < totalExpense * 0.5) return 'partial'
+    return 'unsettled'
+}
 
 // Normalization helpers — apply integer rounding at the data boundary
 
@@ -251,10 +277,15 @@ export const useSettlementStore = defineStore('settlement', () => {
 
             if (rpcError) throw rpcError
 
-            // Refresh balances and debts after settlement
+            // Invalidate every month's real-time cache — a settlement can target
+            // any month, so stale per-month snapshots must be recomputed on demand.
+            monthDebtCache.value = {}
+
+            // Refresh balances, debts and monthly snapshots after settlement
             await Promise.all([
                 fetchNetBalances(groupId),
-                fetchSimplifiedDebts(groupId)
+                fetchSimplifiedDebts(groupId),
+                fetchMonthlySnapshots(groupId)
             ])
         } catch (err) {
             console.error('建立結算記錄失敗:', err)
@@ -276,18 +307,24 @@ export const useSettlementStore = defineStore('settlement', () => {
 
             if (rpcError) throw rpcError
 
-            const rows = (data ?? []) as unknown as Array<{
+            const rawRows = (data ?? []) as Array<{
                 id: string
                 year_month: string
-                snapshot_data: {
-                    netBalances: Array<{ userId: string; netBalance: number }>
-                    simplifiedDebts: Array<{ fromUser: string; toUser: string; amount: number }>
-                    expenseCount: number
-                    totalExpense: number
-                }
+                snapshot_data: unknown
                 total_unsettled: number
                 status: string
             }>
+
+            // Runtime-validate each row's snapshot_data; skip rows that fail the
+            // contract so a single drifted row cannot break the whole month list.
+            const rows = rawRows.flatMap(row => {
+                const parsed = snapshotDataSchema.safeParse(row.snapshot_data)
+                if (!parsed.success) {
+                    console.error(`月結快照資料結構異常，已略過 (${row.year_month}):`, parsed.error.issues)
+                    return []
+                }
+                return [{ ...row, snapshot_data: parsed.data }]
+            })
 
             const allUserIds = new Set<string>()
             for (const row of rows) {
@@ -333,9 +370,7 @@ export const useSettlementStore = defineStore('settlement', () => {
                     expenseCount: row.snapshot_data.expenseCount,
                     totalExpense: row.snapshot_data.totalExpense,
                     totalUnsettled,
-                    status: totalUnsettled === 0
-                        ? 'settled'
-                        : row.status as MonthlyDebtSnapshot['status']
+                    status: deriveSnapshotStatus(totalUnsettled, row.snapshot_data.totalExpense)
                 }
             })
         } catch (err) {
@@ -349,6 +384,8 @@ export const useSettlementStore = defineStore('settlement', () => {
     // Action: fetch available months with expenses for a group
     const fetchAvailableMonths = async (groupId: string): Promise<void> => {
         try {
+            error.value = null
+
             const { data, error: rpcError } = await supabase
                 .rpc('get_expense_months', { p_group_id: groupId })
 
@@ -358,6 +395,7 @@ export const useSettlementStore = defineStore('settlement', () => {
                 .map(r => r.year_month)
         } catch (err) {
             console.error('獲取可用月份失敗:', err)
+            error.value = err instanceof Error ? err.message : '獲取可用月份失敗'
         }
     }
 
@@ -444,9 +482,7 @@ export const useSettlementStore = defineStore('settlement', () => {
                 expenseCount: expenses.length,
                 totalExpense,
                 totalUnsettled,
-                status: totalUnsettled === 0 ? 'settled'
-                    : totalUnsettled < totalExpense * 0.5 ? 'partial'
-                    : 'unsettled'
+                status: deriveSnapshotStatus(totalUnsettled, totalExpense)
             }
 
             // Immutable cache update
@@ -526,9 +562,14 @@ export const useSettlementStore = defineStore('settlement', () => {
 
             if (rpcError) throw rpcError
 
+            // Invalidate every month's real-time cache — the edited settlement may
+            // belong to any month, so stale per-month snapshots must be recomputed.
+            monthDebtCache.value = {}
+
             await Promise.all([
                 fetchNetBalances(groupId),
-                fetchSimplifiedDebts(groupId)
+                fetchSimplifiedDebts(groupId),
+                fetchMonthlySnapshots(groupId)
             ])
         } catch (err) {
             console.error('更新結算記錄失敗:', err)
@@ -555,9 +596,14 @@ export const useSettlementStore = defineStore('settlement', () => {
 
             if (rpcError) throw rpcError
 
+            // Invalidate every month's real-time cache — the deleted settlement may
+            // belong to any month, so stale per-month snapshots must be recomputed.
+            monthDebtCache.value = {}
+
             await Promise.all([
                 fetchNetBalances(groupId),
-                fetchSimplifiedDebts(groupId)
+                fetchSimplifiedDebts(groupId),
+                fetchMonthlySnapshots(groupId)
             ])
         } catch (err) {
             console.error('刪除結算記錄失敗:', err)

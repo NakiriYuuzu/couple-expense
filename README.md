@@ -22,7 +22,6 @@ description: 情侶記帳應用程式 - 記錄共同開支，讓愛情更甜蜜
 - **狀態管理**: Pinia
 - **UI 框架**: Reka UI (Radix UI Vue) + Tailwind CSS v4
 - **後端服務**: Supabase (資料庫與認證)
-- **推播通知**: Firebase Cloud Messaging
 - **構建工具**: Vite + Bun
 - **部署**: GitHub Pages (自動部署)
 
@@ -104,7 +103,6 @@ src/
 - [Reka UI](https://reka-ui.com/) - Vue 的 Radix UI 移植版
 - [Tailwind CSS](https://tailwindcss.com/) - 實用優先的 CSS 框架
 - [Supabase](https://supabase.com/) - 開源 Firebase 替代方案
-- [Firebase](https://firebase.google.com/) - 推播通知服務
 
 ## 授權
 

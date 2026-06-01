@@ -70,27 +70,27 @@ export function fromRocDate(rocDateString: string): Date {
         // 處理 yyy/MM/dd 格式
         let matches = cleanString.match(/^(\d+)\/(\d+)\/(\d+)$/);
         if (matches) {
-            year = parseInt(matches[1], 10) + 1911;
-            month = parseInt(matches[2], 10) - 1; // JavaScript的月份從0開始
-            day = parseInt(matches[3], 10);
+            year = parseInt(matches[1]!, 10) + 1911;
+            month = parseInt(matches[2]!, 10) - 1; // JavaScript的月份從0開始
+            day = parseInt(matches[3]!, 10);
             return new Date(year, month, day);
         }
 
         // 處理 yyy-MM-dd 格式
         matches = cleanString.match(/^(\d+)-(\d+)-(\d+)$/);
         if (matches) {
-            year = parseInt(matches[1], 10) + 1911;
-            month = parseInt(matches[2], 10) - 1;
-            day = parseInt(matches[3], 10);
+            year = parseInt(matches[1]!, 10) + 1911;
+            month = parseInt(matches[2]!, 10) - 1;
+            day = parseInt(matches[3]!, 10);
             return new Date(year, month, day);
         }
 
         // 處理 yyy年MM月dd日 格式
         matches = cleanString.match(/^(\d+)年(\d+)月(\d+)日$/);
         if (matches) {
-            year = parseInt(matches[1], 10) + 1911;
-            month = parseInt(matches[2], 10) - 1;
-            day = parseInt(matches[3], 10);
+            year = parseInt(matches[1]!, 10) + 1911;
+            month = parseInt(matches[2]!, 10) - 1;
+            day = parseInt(matches[3]!, 10);
             return new Date(year, month, day);
         }
 

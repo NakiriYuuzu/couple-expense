@@ -61,7 +61,11 @@ const en = {
         viewBalances: 'View All',
         youOwe: 'You owe',
         owesYou: 'owes you',
-        owes: 'owes'
+        owes: 'owes',
+        greetingMorning: 'Good morning',
+        greetingAfternoon: 'Good afternoon',
+        greetingEvening: 'Good evening',
+        greeting: '{greeting}, {name}'
     },
 
     // Expenses List
@@ -398,7 +402,6 @@ const en = {
         areaChartWeekTick: 'Week {value}',
         areaChartMonthTick: '{value} mo',
         categoryBreakdown: 'Category Breakdown',
-        inProgress: 'In Progress',
         settled: 'Settled',
         partiallyUnsettled: 'Partially Unsettled',
         unsettled: 'Unsettled',
@@ -410,8 +413,9 @@ const en = {
         noSnapshotsYet: 'No settlement history yet',
         currentMonth: 'This Month',
         // Redesigned debt panel
+        // yearUnit intentionally empty in English (year shown as bare number, e.g. "2026")
         yearUnit: '',
-        monthUnit: '',
+        monthUnit: ' mo',
         heroYouOwe: 'You owe {name}',
         heroOwesYou: '{name} owes you',
         andMore: 'and {count} more',

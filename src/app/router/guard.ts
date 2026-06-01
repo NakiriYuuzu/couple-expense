@@ -4,6 +4,13 @@ import { routes } from '@/app/router/routes'
 
 /**
  * 客制化個人的 router guard
+ *
+ * 注意：本 guard 僅做認證（requiresAuth + isLoggedIn）導流，
+ * 「不」實作角色授權（meta.roles 未被讀取或比對）。
+ * 真正的存取授權由後端 Supabase RLS / RPC 負責；前端 route guard 可被繞過，
+ * 不應作為授權邊界。若未來要做 client 端 RBAC，需在此補上 meta.roles 比對，
+ * 但仍須以 RLS 為最終把關。
+ *
  * @param to
  * @param from
  * @param next
@@ -18,10 +25,18 @@ export const routerBeforeGuard = async (to: RouteLocationNormalized, from: Route
         waitCount++
     }
 
-    // 如果初始化失敗，允許訪問（降級處理）
+    // 初始化逾時：fail-safe 處理。需驗證的頁面導向 startup（不放行），
+    // 僅對 requiresAuth=false 的頁面直接放行，避免逾時下未登入者短暫進入受保護頁。
     if (!authStore.initialized) {
-        console.warn('Auth initialization timeout, allowing navigation')
-        next()
+        console.warn('Auth initialization timeout')
+        if (to.meta.requiresAuth) {
+            next({
+                name: routes.startup.name,
+                query: { redirect: to.fullPath }
+            })
+        } else {
+            next()
+        }
         return
     }
 

@@ -82,6 +82,14 @@ export const useSplitStore = defineStore('split', () => {
         return splitsByExpense.value[expenseId] ?? []
     }
 
+    // 直接寫入指定費用的分帳快取（供新增支出後同步快取，避免 mySpendingStats 漏算份額）
+    const setSplitsForExpense = (expenseId: string, rows: ExpenseSplitRow[]) => {
+        splitsByExpense.value = {
+            ...splitsByExpense.value,
+            [expenseId]: rows
+        }
+    }
+
     const updateExpenseSplits = async (
         expenseId: string,
         splits: Array<{
@@ -89,7 +97,8 @@ export const useSplitStore = defineStore('split', () => {
             amount: number
             percentage?: number
             shares?: number
-        }>
+        }>,
+        expectedTotal?: number
     ) => {
         try {
             loading.value = true
@@ -103,6 +112,16 @@ export const useSplitStore = defineStore('split', () => {
                 shares: split.shares ?? null,
                 is_settled: false
             }))
+
+            // 守恆防護：傳入 expectedTotal 時，斷言 split 金額加總（整數分）等於總額，
+            // 避免裸表 upsert 寫入不守恆的分帳（後端 CHECK/斷言屬 SQL，見 needsCrossGroup）
+            if (expectedTotal !== undefined && rows.length > 0) {
+                const sumCents = rows.reduce((acc, row) => acc + Math.round(row.amount * 100), 0)
+                const totalCents = Math.round(expectedTotal * 100)
+                if (sumCents !== totalCents) {
+                    throw new Error('分帳金額加總與總額不符')
+                }
+            }
 
             const upsertResult = rows.length > 0
                 ? await supabase
@@ -187,6 +206,7 @@ export const useSplitStore = defineStore('split', () => {
         fetchSplitsForExpenses,
         updateExpenseSplits,
         getSplitsForExpense,
+        setSplitsForExpense,
         clearSplits,
         clearError
     }

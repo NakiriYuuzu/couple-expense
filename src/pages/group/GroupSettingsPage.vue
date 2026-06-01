@@ -210,7 +210,7 @@ const updateBudgetSelectField = (
     if (!value) return
     budgetSettingsForm.setFieldValue(
         field,
-        field === 'budget_start_day' ? Number(value) : value
+        field === 'budget_start_day' ? Number(value) : (value as never)
     )
 }
 

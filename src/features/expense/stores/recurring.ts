@@ -16,6 +16,40 @@ function toValidCategory(value: unknown): CategoryId {
     return 'other'
 }
 
+function formatLocalDate(d: Date): string {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+}
+
+// Compute the next due date from a recurrence day.
+// Mirrors RecurringExpenseDrawer.computeNextDueDate: date-based comparison
+// (midnight-normalized, inclusive of today) with month-end clamping, so a
+// re-activated subscription gets a fresh next_due_date instead of a stale past one.
+function computeNextDueDate(day: number): string {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = today.getMonth()
+    const todayMidnight = new Date(year, month, today.getDate())
+
+    const daysInThisMonth = new Date(year, month + 1, 0).getDate()
+    const clampedDay = Math.min(day, daysInThisMonth)
+    const thisMonthDate = new Date(year, month, clampedDay)
+
+    if (thisMonthDate >= todayMidnight) {
+        return formatLocalDate(thisMonthDate)
+    }
+
+    const nextMonth = month + 1
+    const nextYear = nextMonth > 11 ? year + 1 : year
+    const normalizedMonth = nextMonth > 11 ? 0 : nextMonth
+    const daysInNextMonth = new Date(nextYear, normalizedMonth + 1, 0).getDate()
+    const clampedNextDay = Math.min(day, daysInNextMonth)
+    const nextMonthDate = new Date(nextYear, normalizedMonth, clampedNextDay)
+    return formatLocalDate(nextMonthDate)
+}
+
 function toRecurringExpense(row: Record<string, unknown>): RecurringExpense {
     return {
         id: row.id as string,
@@ -99,7 +133,7 @@ export const useRecurringExpenseStore = defineStore('recurringExpense', () => {
         try {
             const { data, error: err } = await supabase
                 .from('recurring_expenses')
-                .update({ ...payload, updated_at: new Date().toISOString() })
+                .update({ ...payload })
                 .eq('id', id)
                 .select()
                 .single()
@@ -136,7 +170,17 @@ export const useRecurringExpenseStore = defineStore('recurringExpense', () => {
     async function toggleActive(id: string): Promise<boolean> {
         const item = items.value.find(i => i.id === id)
         if (!item) return false
-        return update(id, { is_active: !item.is_active })
+
+        const nextActive = !item.is_active
+        const payload: UpdateRecurringExpenseData = { is_active: nextActive }
+
+        // Re-activating (false → true): realign next_due_date to the upcoming
+        // recurrence_day so the backend producer doesn't backfill stale periods.
+        if (nextActive) {
+            payload.next_due_date = computeNextDueDate(item.recurrence_day)
+        }
+
+        return update(id, payload)
     }
 
     return {

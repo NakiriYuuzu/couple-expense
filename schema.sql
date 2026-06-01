@@ -54,6 +54,13 @@ CREATE TABLE group_expense.expenses (
     group_id uuid,
     title text NOT NULL,
     amount numeric NOT NULL,
+    -- NOTE: category has NO CHECK constraint in the live DB (free-form text).
+    -- The frontend type (database.types.ts) narrows it to a 6-value CategoryType
+    -- union, but the DB may hold any string (legacy rows / other clients / future
+    -- categories). The domain layer guards this via toValidCategory() (expense.ts,
+    -- recurring.ts), which coerces unknown values to 'other'. If you want the type
+    -- to be sound at the DB level, add:
+    --   CHECK (category = ANY (ARRAY['food','pet','shopping','transport','home','other']))
     category text NOT NULL,
     icon text,
     date date NOT NULL DEFAULT CURRENT_DATE,
@@ -137,6 +144,38 @@ CREATE TABLE group_expense.monthly_debt_snapshots (
     UNIQUE(group_id, year_month)
 );
 
+-- Recurring expenses / subscriptions
+-- NOTE: This definition is reconstructed from database.types.ts (Supabase gen types)
+-- to keep this context schema in sync; column types/constraints reflect the live DB
+-- as seen by the frontend. The frontend (recurring.ts) does full CRUD and relies on
+-- recurrence_day / next_due_date / is_active. category has the same free-form caveat
+-- as expenses.category (no CHECK; coerced via toValidCategory in the domain layer).
+CREATE TABLE group_expense.recurring_expenses (
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL,
+    group_id uuid,
+    title text NOT NULL,
+    amount numeric NOT NULL,
+    category text NOT NULL,
+    recurrence_day integer NOT NULL CHECK (recurrence_day >= 1 AND recurrence_day <= 31),
+    next_due_date date NOT NULL,
+    is_active boolean NOT NULL DEFAULT true,
+    notes text,
+    created_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at timestamp with time zone NOT NULL DEFAULT timezone('utc'::text, now()),
+    CONSTRAINT recurring_expenses_pkey PRIMARY KEY (id),
+    CONSTRAINT recurring_expenses_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+    CONSTRAINT recurring_expenses_group_id_fkey FOREIGN KEY (group_id) REFERENCES group_expense.groups(id) ON DELETE SET NULL
+);
+
+-- RLS (verify in Supabase Dashboard — policies live server-side, not in this repo).
+-- recurring.ts fetchAll does a bare `.select('*')` with no user_id/group_id filter,
+-- so it relies entirely on RLS to scope rows to the caller. Expected policy intent:
+--   ENABLE ROW LEVEL SECURITY;
+--   - SELECT/INSERT/UPDATE/DELETE limited to user_id = auth.uid()
+--     (and/or membership of group_id for shared recurring expenses).
+-- Without such a policy, fetchAll could read other users' recurring expenses.
+
 -- Legacy archive tables (V1 data preserved, read-only)
 CREATE TABLE group_expense.legacy_transactions (
     id uuid NOT NULL PRIMARY KEY,
@@ -218,3 +257,9 @@ CREATE TABLE group_expense.legacy_users (
 --   non-payer split (debtor → payer, year_month from expense.date), marks all
 --   splits and the expense as is_settled = true. Returns the number of
 --   settlement rows created (0 when already settled — idempotent).
+--
+-- group_expense.process_recurring_expenses() RETURNS integer
+--   No-arg generator (called server-side, e.g. via scheduled job / edge function):
+--   for each active recurring_expenses row whose next_due_date is due, inserts an
+--   expense and advances next_due_date. Returns the number of expenses generated.
+--   NOTE: not invoked from the frontend; see supabase/functions for any scheduled trigger.

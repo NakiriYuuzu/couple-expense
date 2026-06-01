@@ -13,11 +13,24 @@ function distributeDifference(
     }
 
     const result = [...baseValues]
-    const totalSteps = Math.abs(difference)
+    let remainingSteps = Math.abs(difference)
 
-    for (let i = 0; i < totalSteps; i++) {
-        const target = adjustments[i % adjustments.length]!
-        result[target.index] = (result[target.index] ?? 0) + step
+    // 增量(step=1)可無限制；縮減(step=-1)需保持非負下限，
+    // 避免非零和輸入把 base=0 的 slot 扣成負值造成淨額正負號翻轉。
+    // 縮減時跳過已歸零的 slot，把剩餘步數順延至仍 >0 的 slot。
+    let guard = 0
+    const maxGuard = remainingSteps * adjustments.length + adjustments.length
+    let cursor = 0
+    while (remainingSteps > 0 && guard < maxGuard) {
+        const target = adjustments[cursor % adjustments.length]!
+        cursor++
+        guard++
+
+        const current = result[target.index] ?? 0
+        if (step === -1 && current <= 0) continue
+
+        result[target.index] = current + step
+        remainingSteps--
     }
 
     return result.map(normalizeNegativeZero)

@@ -113,7 +113,7 @@ const editExpenseSchema = computed(() => z.object({
     amount: z.number({
         required_error: t('validation.required'),
         invalid_type_error: t('validation.number')
-    }).positive(t('validation.positiveNumber')),
+    }).int(t('validation.number')).positive(t('validation.positiveNumber')),
     category: z.string()
         .trim()
         .min(1, t('validation.required')),
@@ -232,13 +232,15 @@ const saveEditExpense = handleEditSubmit(async (validatedValues) => {
             }
 
             const calculatedSplits = editSplitConfiguratorRef.value?.calculatedSplits ?? []
+            const splitMethod = editSplitData.value.splitMethod
             const splitPayload = calculatedSplits
                 .filter(participant => participant.isIncluded)
                 .map(participant => ({
                     userId: participant.userId,
                     amount: participant.amount,
-                    percentage: participant.percentage,
-                    shares: participant.shares
+                    // 只持久化該分帳方式實際使用的派生欄位，避免存入與金額不符的近似值
+                    percentage: splitMethod === 'percentage' ? participant.percentage : undefined,
+                    shares: splitMethod === 'shares' ? participant.shares : undefined
                 }))
 
             await expenseStore.updateExpense(expense.value.id, {
@@ -286,11 +288,11 @@ const handleSettleExpense = async () => {
             yearMonth
         )
 
-        // RPC 已將 expense 與 splits 標記為已結算，這裡只需重整本地狀態
-        await Promise.all([
-            expenseStore.updateExpense(expense.value.id, { is_settled: true }),
-            splitStore.fetchSplitsForExpense(expense.value.id)
-        ])
+        // RPC 已將 expense 與 splits 標記為已結算，這裡只需同步本地狀態，
+        // 不再對 expenses 重複寫庫；直接更新本地 store 物件即可即時收起結清按鈕。
+        const localExpense = expenseStore.expenses.find(e => e.id === expense.value!.id)
+        if (localExpense) localExpense.is_settled = true
+        await splitStore.fetchSplitsForExpense(expense.value.id)
 
         toast.success(t('settlement.expenseSettleSuccess', { count: created }))
     } catch (err) {

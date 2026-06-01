@@ -30,10 +30,10 @@ const i18n = createI18n({
     'zh-TW': zhTW,
     'en': en
   },
-  silentTranslationWarn: process.env.NODE_ENV === 'production',
-  silentFallbackWarn: process.env.NODE_ENV === 'production',
-  missingWarn: process.env.NODE_ENV !== 'production',
-  fallbackWarn: process.env.NODE_ENV !== 'production'
+  silentTranslationWarn: import.meta.env.PROD,
+  silentFallbackWarn: import.meta.env.PROD,
+  missingWarn: import.meta.env.DEV,
+  fallbackWarn: import.meta.env.DEV
 })
 
 export default i18n

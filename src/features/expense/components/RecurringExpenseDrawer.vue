@@ -234,11 +234,17 @@ function computeNextDueDate(day: number): string {
     const year = today.getFullYear()
     const month = today.getMonth()
 
+    // Normalize to midnight so the comparison is date-based, not time-based.
+    // Using >= keeps "today" as the current period (aligned with the backend
+    // process_recurring_expenses trigger condition next_due_date <= CURRENT_DATE),
+    // avoiding silently skipping this month when a subscription is created on its due day.
+    const todayMidnight = new Date(year, month, today.getDate())
+
     const daysInThisMonth = new Date(year, month + 1, 0).getDate()
     const clampedDay = Math.min(day, daysInThisMonth)
     const thisMonthDate = new Date(year, month, clampedDay)
 
-    if (thisMonthDate > today) {
+    if (thisMonthDate >= todayMidnight) {
         return formatLocalDate(thisMonthDate)
     }
 

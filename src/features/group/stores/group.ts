@@ -106,6 +106,8 @@ export const useGroupStore = defineStore('group', () => {
                 groups.value = []
                 membersByGroup.value = {}
                 settingsByGroup.value = {}
+                // 此帳號不屬於任何群組，清掉殘留的 activeGroupId（避免帶入前帳號的群組）
+                activeGroupId.value = null
                 return
             }
 
@@ -141,7 +143,7 @@ export const useGroupStore = defineStore('group', () => {
                 if (!newMembersByGroup[member.group_id]) {
                     newMembersByGroup[member.group_id] = []
                 }
-                newMembersByGroup[member.group_id].push(member)
+                newMembersByGroup[member.group_id]!.push(member)
             }
             membersByGroup.value = newMembersByGroup
 
@@ -270,7 +272,7 @@ export const useGroupStore = defineStore('group', () => {
 
             const { data, error: updateError } = await supabase
                 .from('group_settings')
-                .update(updates)
+                .update(updates as never) // supabase-js 型別橋接：updates 已於 entities 層 typed
                 .eq('group_id', activeGroupId.value)
                 .select()
                 .single()
@@ -385,6 +387,18 @@ export const useGroupStore = defineStore('group', () => {
         error.value = null
     }
 
+    // 清空所有群組狀態（登出/切換帳號時呼叫，避免跨帳號殘留）
+    // 注意：setup store 無內建 $reset，需手動重設並移除持久化的 activeGroupId 條目
+    const clearGroupData = () => {
+        groups.value = []
+        activeGroupId.value = null
+        membersByGroup.value = {}
+        settingsByGroup.value = {}
+        userProfile.value = null
+        error.value = null
+        localStorage.removeItem('group')
+    }
+
     return {
         // 狀態
         groups,
@@ -415,7 +429,8 @@ export const useGroupStore = defineStore('group', () => {
         updateUserProfile,
         updatePersonalBudget,
         getCategoryBudget,
-        clearError
+        clearError,
+        clearGroupData
     }
 }, {
     persist: {

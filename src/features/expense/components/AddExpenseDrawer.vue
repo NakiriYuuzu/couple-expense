@@ -447,7 +447,8 @@ interface ExpenseFormData {
 }
 
 const buildTodayDateString = (): string => {
-    return new Date().toISOString().split('T')[0] ?? new Date().toISOString()
+    // 使用本地時區日期，與統計端 (expense store) 的本地日期基準一致，避免時區差一天
+    return today(getLocalTimeZone()).toString()
 }
 
 const buildInitialFormValues = (): ExpenseFormData => ({
@@ -465,7 +466,7 @@ const expenseFormSchema = computed(() => z.object({
     amount: z.number({
         required_error: t('validation.required'),
         invalid_type_error: t('validation.number')
-    }).positive(t('validation.positiveNumber')),
+    }).int(t('validation.number')).positive(t('validation.positiveNumber')),
     category: z.string()
         .trim()
         .min(1, t('validation.required')),
@@ -627,7 +628,7 @@ const submitExpense = handleSubmit(async (validatedValues) => {
         const newExpense: AddExpenseEvent = {
             id: crypto.randomUUID(),
             title: validatedValues.title,
-            amount: `-NT ${Math.round(validatedValues.amount)}`,
+            amount: `-NT$ ${Math.round(validatedValues.amount)}`,
             category: validatedValues.category as CategoryId,
             icon: getIconKey(validatedValues.category as CategoryId),
             date: validatedValues.date,
@@ -640,8 +641,9 @@ const submitExpense = handleSubmit(async (validatedValues) => {
                     .map(p => ({
                         userId: p.userId,
                         amount: p.amount,
-                        percentage: p.percentage,
-                        shares: p.shares
+                        // 只持久化該分帳方式實際使用的派生欄位，避免存入與金額不符的近似值
+                        percentage: splitData.value.splitMethod === 'percentage' ? p.percentage : undefined,
+                        shares: splitData.value.splitMethod === 'shares' ? p.shares : undefined
                     }))
                 : undefined
         }

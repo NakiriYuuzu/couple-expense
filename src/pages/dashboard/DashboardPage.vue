@@ -17,7 +17,7 @@ import type { DisplayExpense } from '@/entities/expense/types'
 import { toast } from 'vue-sonner'
 import { ChevronRight, TrendingUp, TrendingDown, Scale } from 'lucide-vue-next'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
 const expenseStore = useExpenseStore()
 const groupStore = useGroupStore()
@@ -123,7 +123,7 @@ const splitMethodLabel = (method: string | null | undefined): string => {
 const convertExpense = (expense: Expense): DisplayExpense => ({
     id: expense.id,
     title: expense.title,
-    amount: `NT ${Math.round(expense.amount)}`,
+    amount: formatAmount(expense.amount),
     category: expense.category,
     icon: CategoryUtils.getIconKey(expense.category),
     user: expense.user,
@@ -176,14 +176,14 @@ usePullToRefresh({
 // 問候語：根據當前時間回傳早安/午安/晚安
 const greetingText = computed(() => {
     const hour = new Date().getHours()
-    if (hour < 12) return '早安'
-    if (hour < 18) return '午安'
-    return '晚安'
+    if (hour < 12) return t('dashboard.greetingMorning')
+    if (hour < 18) return t('dashboard.greetingAfternoon')
+    return t('dashboard.greetingEvening')
 })
 
-// 今日日期：格式化為 zh-TW 格式
+// 今日日期：依當前 locale 格式化
 const todayDateText = computed(() => {
-    return new Date().toLocaleDateString('zh-TW', {
+    return new Date().toLocaleDateString(locale.value, {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -215,7 +215,7 @@ const budgetRingStrokeDasharray = computed(() => {
         <main class="px-4 pb-28">
             <!-- Greeting -->
             <section class="mt-4 animate-fade-up stagger-1">
-                <p class="text-sm text-muted-foreground">{{ greetingText }}，{{ userProfile?.display_name ?? '' }}</p>
+                <p class="text-sm text-muted-foreground">{{ t('dashboard.greeting', { greeting: greetingText, name: userProfile?.display_name ?? '' }) }}</p>
                 <p class="text-xs text-muted-foreground/70 mt-0.5">{{ todayDateText }}</p>
             </section>
 

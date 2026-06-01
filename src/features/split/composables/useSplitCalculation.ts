@@ -78,22 +78,34 @@ export function useSplitCalculation(
             case 'shares': {
                 const totalShares = included.reduce((sum, p) => sum + (p.shares ?? 1), 0)
                 if (totalShares === 0) return included.map(p => ({ ...p, amount: 0 }))
-                // 整數分計算 + 最後一人吸收餘數
+                // 整數分計算，捨入餘數採最大餘數法（largest remainder），與 percentage 一致
                 const items = included.map(p => {
                     const shares = p.shares ?? 1
+                    const rawCents = totalCents * shares / totalShares
                     return {
                         participant: p,
-                        cents: Math.floor(totalCents * shares / totalShares)
+                        shares,
+                        floored: Math.floor(rawCents),
+                        frac: rawCents - Math.floor(rawCents)
                     }
                 })
-                const allocated = items.reduce((s, r) => s + r.cents, 0)
-                // 餘數給最後一人
-                if (items.length > 0) {
-                    items[items.length - 1]!.cents += totalCents - allocated
+                const allocated = items.reduce((s, r) => s + r.floored, 0)
+                let remainder = totalCents - allocated
+                // 依小數部分由大到小分配剩餘 cents，跳過 shares=0 的參與者
+                if (remainder > 0) {
+                    const indices = items
+                        .map((item, idx) => ({ frac: item.frac, shares: item.shares, idx }))
+                        .filter(entry => entry.shares > 0)
+                        .sort((a, b) => b.frac - a.frac || a.idx - b.idx)
+                    for (const entry of indices) {
+                        if (remainder <= 0) break
+                        items[entry.idx]!.floored += 1
+                        remainder--
+                    }
                 }
                 return items.map(item => ({
                     ...item.participant,
-                    amount: item.cents / 100
+                    amount: item.floored / 100
                 }))
             }
             default:
