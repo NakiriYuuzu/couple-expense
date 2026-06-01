@@ -84,7 +84,7 @@ const checkAuthSession = async () => {
                 router.replace(redirectPath)
             } else {
                 // 否則跳轉到主頁
-                router.replace({ name: routes.index.name })
+                router.replace({ name: routes.dashboard.name })
             }
             return
         }
@@ -126,7 +126,7 @@ supabase.auth.onAuthStateChange((event, session) => {
             router.replace(redirectPath)
         } else {
             // 否則跳轉到主頁
-            router.replace({ name: routes.index.name })
+            router.replace({ name: routes.dashboard.name })
         }
     }
 })
