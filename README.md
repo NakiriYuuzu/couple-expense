@@ -1,109 +1,112 @@
----
-name: Couple Expense Tracker
-description: 情侶記帳應用程式 - 記錄共同開支，讓愛情更甜蜜
----
+# Family Expense
 
-# 情侶記帳 App
+React 19 rewrite of the shared household expense tracker. The app supports personal expenses, group expense splitting, settlements, recurring expenses, push notifications, PWA offline/install behavior, and monthly reports backed by Supabase.
 
-一個專為情侶設計的記帳應用程式，讓兩人可以輕鬆記錄和管理共同開支。
+## Tech Stack
 
-## 功能特色
+| Area | Current choice |
+|---|---|
+| Runtime / package manager | Bun |
+| UI | React 19, React DOM 19 |
+| Build | Vite 8 beta with Rolldown output options |
+| Routing | TanStack Router file routes |
+| Server state | TanStack Query |
+| Client state | Zustand |
+| UI components | shadcn/ui-style React components, Radix UI, Vaul, lucide-react |
+| Styling | Tailwind CSS v4, `@tailwindcss/vite` |
+| PWA | `vite-plugin-pwa` with `injectManifest`, custom `src/sw.ts` |
+| Push | Firebase Messaging, Supabase Edge Function `send-push` |
+| Backend | Supabase Auth, Postgres schema `group_expense`, RLS, Edge Functions |
+| Testing | Vitest, happy-dom, React Testing Library |
 
-- 💑 **情侶共享帳本** - 兩人共同管理支出記錄
-- 📊 **支出統計分析** - 視覺化呈現各類別支出
-- 📅 **月度預算管理** - 設定和追蹤每月預算
-- 🔔 **推播通知提醒** - 支出提醒和每日/週報總結
-- 🌓 **深色模式支援** - 自動切換明暗主題
-- 🌍 **多語言支援** - 支援繁體中文和英文
+## Quick Start
 
-## 技術棧
+1. Install dependencies:
 
-- **前端框架**: Vue 3 + TypeScript
-- **狀態管理**: Pinia
-- **UI 框架**: Reka UI (Radix UI Vue) + Tailwind CSS v4
-- **後端服務**: Supabase (資料庫與認證)
-- **構建工具**: Vite + Bun
-- **部署**: GitHub Pages (自動部署)
-
-## Build
-
-### DEV
-```bash
-bun run dev
-```
-
-### PROD
-```bash
-bun run build
-```
-
-## 環境需求
-
-- Node.js 18+
-- Bun 1.0+
-
-## 快速開始
-
-1. **複製專案**
-```bash
-git clone https://github.com/NakiriYuuzu/couple-expense.git
-cd couple-expense
-```
-
-2. **安裝依賴**
 ```bash
 bun install
 ```
 
-3. **設定環境變數**
-```bash
-cp .env.sample .env
-# 編輯 .env 檔案，填入必要的設定
+2. Create local env values from [.env.sample](./.env.sample):
+
+```env
+VITE_APP_TITLE=記帳寶App
+VITE_APP_ROUTER_BASE=
+
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_FIREBASE_VAPID_KEY=
 ```
 
-4. **啟動開發伺服器**
+`VITE_FIREBASE_VAPID_KEY` comes from Firebase Console Web Push certificates. Supabase Edge Function secrets for FCM service accounts are documented in [docs/fcm-setup.md](./docs/fcm-setup.md).
+
+3. Start the dev server:
+
 ```bash
 bun run dev
 ```
 
-## GitHub Pages 部署
+## Commands
 
-本專案已設定自動部署到 GitHub Pages：
+| Command | Purpose |
+|---|---|
+| `bun run dev` | Start Vite dev server |
+| `bun run build` | Build production assets into `dist/production` |
+| `bun run typecheck` | Run `tsc -b` |
+| `bun run test` | Run Vitest once |
+| `bun run test:watch` | Run Vitest in watch mode |
+| `bun run preview` | Preview the built app |
 
-1. **啟用 GitHub Pages**
-   - Settings → Pages → Source: Deploy from a branch
-   - Branch: gh-pages / (root)
+## Deployment
 
-2. **發布 Release**
-   - 創建新的 Release 會自動觸發部署
-   - 部署網址：`https://[username].github.io/[repository-name]/`
+GitHub Pages deployment uses the production Vite mode, copies `dist/production/index.html` to `dist/production/404.html` for SPA deep-link fallback, and publishes `dist/production` to `gh-pages`.
 
-詳細部署說明請參考 [GitHub Pages 部署指南](./docs/github-pages-deployment.md)
+See [docs/github-pages-deployment.md](./docs/github-pages-deployment.md) for required GitHub Secrets, release-trigger behavior, and troubleshooting.
 
-## 專案結構
+## Source Layout
 
-```
+```text
 src/
-├── components/     # 可重用元件
-├── views/         # 頁面元件
-├── stores/        # Pinia 狀態管理
-├── routers/       # 路由設定
-├── lib/           # 工具函式
-└── assets/        # 靜態資源
+├── components/ui/          # shadcn/ui-style primitives
+├── entities/               # cross-feature domain types
+├── features/
+│   ├── auth/               # auth stores, guards, account switching
+│   ├── expense/            # expense queries, mutations, forms, list rows
+│   ├── group/              # group queries and mutations
+│   ├── notification/       # FCM registration and notification prefs
+│   ├── report/             # monthly report data hooks and helpers
+│   ├── settlement/         # debt and settlement hooks/components
+│   ├── split/              # split calculation UI and logic
+│   ├── statistics/         # statistics selectors and charts
+│   └── user/               # profile and budget hooks
+├── pages/                  # route page components
+├── routes/                 # TanStack Router file routes
+├── shared/
+│   ├── components/         # app shell/shared widgets
+│   ├── hooks/              # shared React hooks
+│   ├── i18n/               # i18n setup and locales
+│   ├── lib/                # Supabase, query keys, datetime, money, theme
+│   └── stores/             # Zustand session/UI stores
+├── styles/                 # global styles
+├── main.tsx                # React entrypoint
+└── sw.ts                   # custom PWA and FCM service worker
 ```
 
-## 主要依賴
+Database architecture is summarized in [docs/architecture.md](./docs/architecture.md) and the ERD is in [docs/db-diagram.md](./docs/db-diagram.md).
 
-- [Bun](https://bun.sh/) - JavaScript 執行環境和套件管理器
-- [Vue 3](https://vuejs.org/) - 漸進式 JavaScript 框架
-- [TypeScript](https://www.typescriptlang.org/) - JavaScript 的超集
-- [Vite](https://vitejs.dev/) - 下一代前端構建工具
-- [Pinia](https://pinia.vuejs.org/) - Vue 狀態管理
-- [Vue Router](https://router.vuejs.org/) - Vue 官方路由
-- [Reka UI](https://reka-ui.com/) - Vue 的 Radix UI 移植版
-- [Tailwind CSS](https://tailwindcss.com/) - 實用優先的 CSS 框架
-- [Supabase](https://supabase.com/) - 開源 Firebase 替代方案
+## Release Flow
 
-## 授權
+Version changes require three synchronized artifacts:
 
-MIT License
+1. Bump `package.json` `version`.
+2. Add a matching entry to [CHANGELOG.md](./CHANGELOG.md) and keep `src/shared/changelog.ts` mirrored.
+3. After review, create a matching `v*` git tag and GitHub Release.
+
+Do not tag, publish a release, or push without explicit user approval.

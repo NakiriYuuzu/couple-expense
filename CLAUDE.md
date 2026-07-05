@@ -1,173 +1,117 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+本檔案是本專案的 agent 工作指引。若與使用者當前指令衝突，以使用者當前指令為準。
 
-## Development Commands
+## 專案現況
 
-```bash
-bun run dev          # Vite dev server (HTTPS, port 5173, auto-open)
-bun run build        # Production build (vite build → ./dist/{mode})
-bun run typecheck    # Type-check only (vue-tsc -b)
-bun run preview      # Preview production build
-bun run test         # Run all tests once (vitest run, happy-dom)
-bun run test:watch   # Run tests in watch mode
-bun run clean        # Remove dist and node_modules
-```
+- repo：`couple-expense-react19`
+- package name：`family-expense`
+- 前端：React 19 + TypeScript + Vite 8 beta
+- 後端：Supabase Auth、Postgres `group_expense` schema、RLS、Edge Functions
+- 套件管理與指令：優先使用 Bun
 
-### Running a Single Test
+## 必讀真相來源
 
-```bash
-bunx vitest run src/features/split/composables/__tests__/useSplitCalculation.spec.ts
-```
+修改前先讀實際程式碼與設定，不只依賴 README：
 
-### WSL + Windows Drive: MUST Use PowerShell (CRITICAL)
+- [package.json](./package.json)
+- [vite.config.ts](./vite.config.ts)
+- [vitest.config.ts](./vitest.config.ts)
+- [src/shared/lib/database.types.ts](./src/shared/lib/database.types.ts)
+- [schema.sql](./schema.sql)
+- [migrations/](./migrations)
 
-**This project lives on a Windows drive (`/mnt/e/`).**  WSL accesses Windows drives via the 9P filesystem bridge, which makes I/O-heavy operations (build, typecheck, test) extremely slow.
-
-**MANDATORY**: All build/typecheck/test commands MUST be run through `powershell.exe -Command` to bypass the 9P penalty. This rule applies to the **main agent AND all subagents/sub-tasks**.
+## 常用命令
 
 ```bash
-# CORRECT — runs natively on Windows, fast
-powershell.exe -Command "bun run build"
-powershell.exe -Command "bun run typecheck"
-powershell.exe -Command "bun run test"
-powershell.exe -Command "bunx vitest run path/to/test.spec.ts"
-
-# WRONG — runs through WSL 9P bridge, 3-10x slower
+bun run dev
 bun run build
 bun run typecheck
 bun run test
+bun run preview
 ```
 
-> **Why `powershell.exe` not `powershell`?**  On WSL, the full `.exe` suffix ensures the Windows binary is invoked. Both work, but `.exe` is explicit and avoids ambiguity.
+## 架構規範
 
-## Environment Variables
+- `src/routes/` 只做薄 route shell：loader/route params/懶載入頁面。
+- `src/pages/` 組合頁面流程與 layout，不直接藏資料層複雜度。
+- `src/features/*/api/` 放 TanStack Query hooks、mutation hooks、Supabase RPC 呼叫。
+- `src/features/*/components/` 放 feature-local UI。
+- `src/shared/lib/` 放跨 feature 的唯一真相模組。
+- `src/shared/stores/` 放 Zustand store；伺服器資料不要放進 Zustand，交給 TanStack Query。
 
-Copy `.env.sample` to `.env` and fill in:
-- `VITE_SUPABASE_URL` — Supabase project URL
-- `VITE_SUPABASE_ANON_KEY` — Supabase anon/public key
-- `VITE_APP_ROUTER_BASE` — Base path for Vue Router (default: `/`)
+## 統一模組
 
-## Project Architecture
+### 時間
 
-### Technology Stack
+所有日曆日、月/週分桶與顯示口徑以 [src/shared/lib/datetime.ts](./src/shared/lib/datetime.ts) 為準。
 
-- **Runtime/Package Manager**: Bun
-- **Framework**: Vue 3 (Composition API + `<script setup lang="ts">`)
-- **Build**: Vite 8 beta (rolldown-vite) + Tailwind CSS v4 (Vite plugin)
-- **Backend**: Supabase (Auth, PostgreSQL, RPC functions)
-- **UI**: shadcn-vue (Reka UI base) + Lucide icons
-- **State**: Pinia + pinia-plugin-persistedstate
-- **i18n**: vue-i18n (zh-TW / en, localStorage-persisted)
-- **Charts**: Chart.js via vue-chartjs + @unovis
-- **Forms**: vee-validate + Zod
-- **PWA**: vite-plugin-pwa (workbox, auto-update)
-- **Testing**: Vitest + happy-dom + @vue/test-utils
+- `APP_TZ = 'Asia/Taipei'`
+- `taipeiDateString()`：UTC instant 轉台北日曆日 `YYYY-MM-DD`
+- `currentYearMonth()`：台北月份 `YYYY-MM`
+- `monthRangeUtc(yearMonth)`：台北月界轉 UTC 半開區間
+- `weekStart()`：台北週一
+- `formatDateTime()`：以 `Intl` 與 `Asia/Taipei` 顯示完整時間
 
-### Directory Structure (Feature-Sliced Design)
+不要在 feature 內自行用 `toISOString().slice(...)` 做日期分桶或顯示。
 
-```
-src/
-├── app/                    # App shell
-│   ├── main.ts            # Entry point (mounts Vue + router + pinia + i18n)
-│   ├── App.vue            # Root component (layout, fade transitions, global drawer)
-│   ├── router/            # Vue Router config
-│   │   ├── routes/index.ts  # All route definitions (type-safe, lazy-loaded)
-│   │   ├── guard.ts       # Auth guard (waits for auth init, redirects)
-│   │   └── authorize.ts   # Role-based authorization
-│   └── styles/main.css    # Global CSS (glassmorphism tokens, animations, color system)
-├── entities/              # Domain types (no logic)
-│   ├── expense/types.ts
-│   ├── group/types.ts
-│   ├── split/types.ts
-│   ├── settlement/types.ts
-│   └── user/types.ts
-├── features/              # Business logic by domain
-│   ├── auth/stores/       # auth.ts (Supabase auth), accountManager.ts
-│   ├── expense/
-│   │   ├── stores/expense.ts        # CRUD + computed stats
-│   │   └── composables/             # useCategories, useRecentExpenses
-│   ├── group/
-│   │   ├── stores/group.ts          # Groups, members, settings
-│   │   └── composables/useGroupContext.ts
-│   ├── split/
-│   │   ├── stores/split.ts
-│   │   └── composables/             # useSplitCalculation, useDebtSimplification
-│   ├── settlement/
-│   │   ├── stores/settlement.ts
-│   │   └── composables/             # useNetBalances, useMonthlySnapshots
-│   └── statistics/components/       # CalendarView, ChartView, StatisticsPanel
-├── pages/                 # Page-level components (one folder per route)
-│   ├── dashboard/DashboardPage.vue
-│   ├── expenses/ExpensesPage.vue
-│   ├── expense-detail/ExpenseDetailPage.vue
-│   ├── overview/OverviewPage.vue
-│   ├── balances/BalancesPage.vue
-│   ├── statistics/StatisticsPage.vue
-│   ├── settings/SettingsPage.vue
-│   ├── group-list/GroupListPage.vue
-│   ├── group-create/GroupCreatePage.vue
-│   ├── group/GroupSettingsPage.vue
-│   └── startup/StartupPage.vue
-└── shared/                # Cross-cutting concerns
-    ├── components/
-    │   ├── ui/            # shadcn-vue components (40+, auto-generated)
-    │   ├── BottomNavigation.vue  # Floating capsule nav (auto-hide on scroll)
-    │   └── TopBar.vue
-    ├── composables/       # usePullToRefresh, useScrollDirection
-    ├── i18n/              # vue-i18n setup + locale JSON files
-    ├── lib/
-    │   ├── supabase.ts    # Supabase client + auth helpers
-    │   ├── database.types.ts  # Generated DB types (Row/Insert/Update per table)
-    │   └── utils.ts       # cn() helper (clsx + tailwind-merge)
-    ├── stores/
-    │   ├── index.ts       # Creates Pinia instance, re-exports all stores
-    │   ├── theme.ts
-    │   └── locale.ts
-    └── utils/             # Extensions (datetime helpers)
-```
+### 金額
 
-### Key Architecture Patterns
+所有幣別顯示以 [src/shared/lib/money.ts](./src/shared/lib/money.ts) 為準。
 
-**Store barrel export**: All stores are re-exported from `src/shared/stores/index.ts`. Import stores from there, not directly from feature folders.
+- `formatCurrency(amount, currency = 'TWD', { signed })`
+- TWD/JPY 零小數，其餘幣別保留 2 位小數
+- `signed: true` 時只有正數加 `+`，零不帶符號
+- 內建負零防護，避免負號零（例如 `-NT 0`）
 
-**Database types**: `src/shared/lib/database.types.ts` contains generated Supabase types. Each table has `Row`, `Insert`, and `Update` interfaces. Domain-specific type aliases (e.g. `SplitMethod`, `GroupMemberRole`) are also exported from this file.
+## Query Key 與快取
 
-**Personal vs Group context**: The app operates in two modes controlled by `groupStore.activeGroupId`:
-- `null` = personal mode (expenses with `group_id = null`)
-- UUID = group mode (shows group expenses + personal expenses)
+[src/shared/lib/queryKeys.ts](./src/shared/lib/queryKeys.ts) 是 TanStack Query key 唯一入口。
 
-**Auth flow**: `useAuthStore` auto-initializes on creation. Route guard in `guard.ts` polls `authStore.initialized` (up to 5s) before checking `requiresAuth` meta.
+- 不要在 hook 內就地拼 `['expenses', ...]`。
+- 涉及使用者資料的 key 必須包含 `userId` 或等價 scope。
+- 涉及群組資料的 key 必須包含 `groupId`。
+- 個人模式使用 `queryKeys.expenses(null)`，由工廠轉成 `'personal'` key segment。
+- mutation 成功後用同一組 key 做目標式 invalidation。
 
-**Supabase RPC**: Group operations (create, join, leave, add expense with splits, balances, simplified debts, settle) use PostgreSQL RPC functions defined in `schema.sql`.
+[src/shared/lib/queryClient.ts](./src/shared/lib/queryClient.ts) 定義 staleTime 分層：
 
-**Page transitions**: App.vue uses a unified fade transition (0.2s) for all page changes.
+- `STALE.long = 600_000`：profile、user settings 類低變動資料
+- `STALE.medium = 300_000`：groups 等中低頻資料
+- `STALE.standard = 60_000`：expenses、reports、snapshots 等一般資料
+- `STALE.short = 15_000`：balances、settlement/debt 類高變動資料
 
-**Bottom navigation**: Floating capsule style, shown on main tabs (dashboard, expenses, overview, settings). Auto-hides on scroll down via `useScrollDirection` composable.
+預設 `QueryClient` staleTime 是 30 秒、`retry: 1`、`refetchOnWindowFocus: true`。
 
-### Path Alias
+## Supabase 規範
 
-`@/*` → `./src/*` (configured in tsconfig.json and vite.config.ts)
+- client 端統一從 [src/shared/lib/supabase.ts](./src/shared/lib/supabase.ts) 匯入。
+- DB 型別以 [src/shared/lib/database.types.ts](./src/shared/lib/database.types.ts) 為準。
+- 群組新增走 `add_group_expense` RPC；群組編輯走 `update_group_expense` RPC。
+- 單筆費用結清走 `settle_expense` RPC。
+- 推播裝置寫入 `user_devices`，通知偏好寫入 `user_settings.notification_prefs`。
+- Edge Functions 位於 [supabase/functions](./supabase/functions)，目前包含 `send-push`、`monthly-report`、`process-recurring`。
 
-## UI Design System (v2 — Light Glassmorphism)
+## 測試慣例
 
-- **Font**: Inter (system-ui fallback)
-- **Primary color**: Purple `oklch(0.637 0.153 278)` / dark: `oklch(0.737 0.145 278)`
-- **Color system**: Purple-tinted oklch tokens (not zinc)
-- **Glass utilities**: `.glass`, `.glass-heavy`, `.glass-light`, `.glass-elevated`, `.glass-nav`
-- **Animations**: `fade-up`, `scale-in`, `slide-number-up/down`, `.press-feedback`, `.hover-transition`
-- **Category colors**: CSS variables `--category-{name}` / `--category-{name}-bg`
-- **Glass borders**: `border-glass-border` / `border-glass-border-strong`
-- **Radius**: 1.25rem default (`rounded-2xl` for cards)
-- **Page bottom padding**: All pages use `pb-28` for floating nav spacing
+- 測試環境是 Vitest + happy-dom，設定在 [vitest.config.ts](./vitest.config.ts)。
+- 全域測試 setup 在 [tests/setup.ts](./tests/setup.ts)，包含 localStorage/sessionStorage guard。
+- React hooks/components 使用 React Testing Library。
+- 每個 Query 測試建立自己的 `QueryClient`，通常關閉 retry，避免 cache 與重試污染測試。
+- Supabase mock 優先使用 `vi.hoisted()` 建 chain builder，只 mock `supabase` client，不 mock 被測 hook 本身。
+- Query key 相關測試要斷言 `queryKeys.*`，不要只斷言渲染結果。
 
-## Database
+範例可參考：
 
-See `schema.sql` at project root for the complete schema and RPC function signatures. Key tables: `groups`, `group_members`, `group_settings`, `expenses`, `expense_splits`, `settlements`, `user_profiles`, `user_settings`.
+- [src/features/expense/api/__tests__/useExpenses.spec.tsx](./src/features/expense/api/__tests__/useExpenses.spec.tsx)
+- [src/features/report/api/__tests__/useMonthlyReport.spec.tsx](./src/features/report/api/__tests__/useMonthlyReport.spec.tsx)
+- [src/features/notification/api/__tests__/useNotificationMutations.spec.tsx](./src/features/notification/api/__tests__/useNotificationMutations.spec.tsx)
 
-## Code Style
+## 程式碼風格
 
-- Four spaces indentation, no semicolons, no trailing commas (JS/TS)
-- Vue components: `<script setup lang="ts">` always
-- Tailwind CSS v4 with oklch color tokens
-- All components use shadcn-vue patterns — do not create custom UI primitives
+- TypeScript/TSX 使用 4 個空白縮排。
+- 不加分號。
+- 不加 trailing comma。
+- React 檔案保持函式式元件與 hooks pattern。
+- 優先從既有 barrel 或 feature API 匯入，不新增平行風格。
+- 只改任務必要檔案；不要順手重排或重構無關程式。

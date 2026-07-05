@@ -1,39 +1,29 @@
-import { createI18n } from 'vue-i18n'
+import i18next from 'i18next'
+import { initReactI18next } from 'react-i18next'
 import zhTW from './locales/zh-TW'
 import en from './locales/en'
 
-// 可用的語言列表
-const availableLocales = ['zh-TW', 'en']
+// 可用語言列表
+export const AVAILABLE_LOCALES = ['zh-TW', 'en'] as const
+export type AppLocale = (typeof AVAILABLE_LOCALES)[number]
 
-// 驗證並獲取有效的語言設定
-const getValidLocale = (locale: string | null): string => {
-  if (locale && availableLocales.includes(locale)) {
-    return locale
-  }
-  return 'zh-TW' // 預設回到繁體中文
-}
+export const resources = {
+    'zh-TW': { translation: zhTW },
+    en: { translation: en }
+} as const
 
-// 從 localStorage 獲取保存的語言設定，確保是有效的語言
-const savedLocale = getValidLocale(localStorage.getItem('locale'))
-
-// 如果 localStorage 中的值無效，更新為有效值
-if (localStorage.getItem('locale') !== savedLocale) {
-  localStorage.setItem('locale', savedLocale)
-}
-
-const i18n = createI18n({
-  legacy: false,
-  globalInjection: true,
-  locale: savedLocale,
-  fallbackLocale: 'zh-TW',
-  messages: {
-    'zh-TW': zhTW,
-    'en': en
-  },
-  silentTranslationWarn: import.meta.env.PROD,
-  silentFallbackWarn: import.meta.env.PROD,
-  missingWarn: import.meta.env.DEV,
-  fallbackWarn: import.meta.env.DEV
+// react-i18next 初始化。
+// interpolation prefix/suffix 設為單一大括號，沿用 Vue 版 locale 的 `{name}` 佔位語法，
+// 讓 locale 值保持 verbatim、Phase 5 頁面可直接沿用相同 key 與插值。
+export const i18nReady = i18next.use(initReactI18next).init({
+    resources,
+    lng: 'zh-TW',
+    fallbackLng: 'zh-TW',
+    interpolation: {
+        escapeValue: false,
+        prefix: '{',
+        suffix: '}'
+    }
 })
 
-export default i18n
+export default i18next

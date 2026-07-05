@@ -52,6 +52,14 @@ jobs:
           # 應用設定
           VITE_APP_TITLE: ${{ secrets.VITE_APP_TITLE }}
           VITE_APP_API_BASE: ${{ secrets.VITE_APP_API_BASE }}
+          # Firebase / Web Push 環境變數；secrets 未設定時會以空值建置，前端推播功能會優雅停用
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_VAPID_KEY: ${{ secrets.VITE_FIREBASE_VAPID_KEY }}
 
       # SPA fallback：GitHub Pages 靜態伺服器對深層路由(history 模式)會回 404，
       # 複製 index.html 成 404.html 讓深層路由直接訪問/重新整理可正常載入

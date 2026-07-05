@@ -42,6 +42,7 @@ const zhTW = {
         family: '家庭支出',
         group: '群組支出',
         monthTotal: '本月總計',
+        weekTotal: '本週總計',
         todayTotal: '今日總計',
         recentExpenses: '最近支出',
         viewMore: '查看更多',
@@ -66,6 +67,26 @@ const zhTW = {
         greetingAfternoon: '午安',
         greetingEvening: '晚安',
         greeting: '{greeting}，{name}'
+    },
+
+    // 月報
+    report: {
+        pageTitle: '月報',
+        pageHeroLabel: '{{yearMonth}} 月報',
+        pageMoMLabel: 'MoM',
+        pageGroupSettlementTitle: '分組結算',
+        pageNoGroupSettlementData: '尚未有分組結算資料',
+        groupSplitLabel: '分攤',
+        groupSettledLabel: '已結清',
+        groupUnsettledLabel: '未結清',
+        dashboardCardTitle: '上月月報',
+        dashboardCardSubtitle: '查看上月月報',
+        dashboardCardAction: '點擊查看',
+        settingsHistoryNavTitle: '歷史月報',
+        settingsHistoryNavSubtitle: '查看歷史月份',
+        settingsHistoryDrawerTitle: '月報歷史',
+        settingsHistoryEmpty: '尚未有月報紀錄',
+        pageLoadError: '月報載入失敗，請稍後再試'
     },
 
     // 支出列表
@@ -179,6 +200,7 @@ const zhTW = {
         editExpense: '編輯消費',
         deleteExpense: '刪除消費',
         expenseAdded: '消費記錄已新增',
+        addFailed: '新增失敗，請稍後再試',
         expenseUpdated: '消費記錄已更新',
         expenseDeleted: '消費記錄已刪除',
         // Scope 相關
@@ -224,6 +246,7 @@ const zhTW = {
         notes: '備註',
         notesPlaceholder: '輸入備註（選填）',
         // ExpenseGroup 相關
+        moreActions: '更多操作',
         deleteAll: '全部刪除',
         confirmDeleteTitle: '確認刪除',
         confirmDeleteDateDesc: '確定要刪除 {date} 的所有費用記錄嗎？此操作無法撤銷。',
@@ -399,7 +422,7 @@ const zhTW = {
         areaChartTitle: '支出分佈',
         areaChartXAxisMonthHint: 'X 軸：第幾週',
         areaChartXAxisYearHint: 'X 軸：月份',
-        areaChartYAxisHint: 'Y 軸：消費金額（NT$）',
+        areaChartYAxisHint: 'Y 軸：消費金額（NT）',
         areaChartWeekTick: '第 {value} 週',
         areaChartMonthTick: '{value} 月',
         categoryBreakdown: '類別明細',
@@ -407,7 +430,6 @@ const zhTW = {
         settled: '已結清',
         partiallyUnsettled: '部分未結清',
         unsettled: '未結清',
-        totalUnsettled: '未結清',
         pendingSettlement: '{count} 筆待結算',
         expandDetails: '展開詳情',
         collapseDetails: '收起詳情',
@@ -427,6 +449,7 @@ const zhTW = {
         noDataThisYear: '此年度無資料',
         totalExpenses: '總支出',
         unsettledAmount: '待結清',
+        pendingCount: '待結算筆數',
         debtDetails: '債務明細',
         memberBalances: '成員餘額',
         settlementRecords: '結算紀錄'
@@ -460,6 +483,9 @@ const zhTW = {
     // 設定
     settings: {
         title: '設定',
+        appearanceSection: '外觀',
+        notificationsSection: '通知',
+        budgetSection: '預算',
         theme: '主題',
         themeDesc: '切換深色或淺色模式',
         language: '語言',
@@ -468,7 +494,13 @@ const zhTW = {
         account: '帳戶設定',
         accountDesc: '管理您的帳戶資訊',
         about: '關於',
-        version: '版本 1.0.0',
+        versionChangelog: '版本與更新日誌',
+        currentVersion: '目前版本 v{version}',
+        changelogSections: {
+            added: '新增',
+            changed: '變更',
+            fixed: '修復'
+        },
         languages: {
             'zh-TW': '繁體中文',
             'zh-CN': '简体中文',
@@ -519,7 +551,22 @@ const zhTW = {
         displayNameSaved: '顯示名稱已更新',
         displayNameError: '更新顯示名稱失敗',
         displayNameRequired: '顯示名稱不能為空',
-        displayNameMaxLength: '顯示名稱最多 50 個字元'
+        displayNameMaxLength: '顯示名稱最多 50 個字元',
+        // 推播通知
+        notifications: {
+            title: '推播通知',
+            desc: '接收被分帳、收到結算與每月月報的通知',
+            unconfigured: '推播功能尚未設定',
+            unsupported: '此瀏覽器不支援推播通知',
+            permissionDenied: '通知權限已被封鎖，請至瀏覽器設定開啟',
+            enableError: '開啟推播通知失敗，請稍後再試',
+            disableError: '關閉推播通知失敗，請稍後再試',
+            eventsTitle: '通知事件',
+            splitAssigned: '被指派分帳',
+            settlementReceived: '收到結算',
+            monthlyReport: '每月月報',
+            prefsError: '更新通知設定失敗'
+        }
     },
 
     // 驗證訊息
@@ -544,6 +591,7 @@ const zhTW = {
     // PWA 更新
     pwa: {
         updateAvailable: '有新版本可用',
+        updateAvailableDesc: '目前執行版本為 v{version}，重新整理後會載入可用更新',
         updateNow: '立即更新',
         dismiss: '稍後再說'
     },
@@ -626,6 +674,41 @@ const zhTW = {
         monthlyAmount: '月費',
         dueOn: '每月 {day} 日',
         nextDue: '下次：{date}'
+    },
+
+    // 認證 / 登入
+    auth: {
+        brand: 'Keep',
+        tagline: '共同記帳，簡單生活',
+        email: '電子郵件',
+        emailPlaceholder: '輸入電子郵件',
+        password: '密碼',
+        passwordPlaceholder: '輸入密碼',
+        signIn: '登入',
+        signingIn: '登入中...',
+        signUp: '註冊',
+        signingUp: '註冊中...',
+        createAccount: '建立帳號',
+        noAccount: '還沒有帳號？註冊',
+        haveAccount: '已有帳號？登入',
+        forgotPassword: '忘記密碼？',
+        resetTitle: '重設密碼',
+        resetDesc: '輸入你的電子郵件，我們會寄送重設連結',
+        sendReset: '寄送重設信',
+        sending: '寄送中...',
+        backToSignIn: '返回登入',
+        continueWithGoogle: '使用 Google 繼續',
+        or: '或',
+        quickSignIn: '快速登入',
+        lastUsed: '上次使用：{time}',
+        emailRequired: '請輸入電子郵件',
+        passwordRequired: '請輸入密碼',
+        signInFailed: '登入失敗，請檢查帳號密碼後重試',
+        signUpSuccess: '註冊成功，請查看信箱完成驗證',
+        signUpFailed: '註冊失敗，請稍後再試',
+        resetSent: '重設密碼信已寄出，請查看信箱',
+        resetFailed: '寄送失敗，請稍後再試',
+        googleFailed: 'Google 登入失敗，請稍後再試'
     }
 }
 
