@@ -24,6 +24,7 @@ import { useGroups, useGroupMembers, useGroupSettings } from '@/features/group/a
 import { loadProfiles } from '@/features/group/api/profiles'
 import { useSessionStore } from '@/shared/stores/session'
 import { useAuthStore } from '@/features/auth/authStore'
+import { DatePicker } from '@/shared/components/DatePicker'
 import { taipeiDateString } from '@/shared/lib/datetime'
 import { formatCurrency } from '@/shared/lib/money'
 import { queryKeys } from '@/shared/lib/queryKeys'
@@ -446,11 +447,10 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                                 <label htmlFor="expense-date" className="text-sm font-medium text-foreground">
                                     {t('expense.date')}
                                 </label>
-                                <Input
+                                <DatePicker
                                     id="expense-date"
-                                    type="date"
                                     value={date}
-                                    onChange={e => setDate(e.target.value)}
+                                    onChange={setDate}
                                     className="h-12"
                                 />
                             </div>

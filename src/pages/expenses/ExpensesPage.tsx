@@ -24,6 +24,7 @@ import type { ExpenseWithUser } from '@/features/expense/api/useExpenses'
 import { useDeleteExpense } from '@/features/expense/api/useDeleteExpense'
 import { useGroups } from '@/features/group/api/useGroups'
 import { ScopeChips, type ExpenseScope } from '@/shared/components/ScopeChips'
+import { DatePicker } from '@/shared/components/DatePicker'
 import { CategoryUtils, categoryIds } from '@/features/expense/lib/categories'
 import { formatCurrency } from '@/shared/lib/money'
 import { cn } from '@/shared/lib/utils'
@@ -353,17 +354,17 @@ export default function ExpensesPage() {
                         <div className="space-y-2">
                             <Label>{t('search.dateRange')}</Label>
                             <div className="grid grid-cols-2 gap-2">
-                                <Input
-                                    type="date"
+                                <DatePicker
                                     value={filters.startDate}
                                     aria-label={t('search.startDate')}
-                                    onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value }))}
+                                    placeholder={t('search.startDate')}
+                                    onChange={(value) => setFilters((f) => ({ ...f, startDate: value }))}
                                 />
-                                <Input
-                                    type="date"
+                                <DatePicker
                                     value={filters.endDate}
                                     aria-label={t('search.endDate')}
-                                    onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value }))}
+                                    placeholder={t('search.endDate')}
+                                    onChange={(value) => setFilters((f) => ({ ...f, endDate: value }))}
                                 />
                             </div>
                         </div>

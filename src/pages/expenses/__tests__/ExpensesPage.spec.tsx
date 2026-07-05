@@ -242,6 +242,24 @@ const expenses = [
     { id: 'p1', user_id: 'user-1', group_id: null, title: '午餐', amount: 100, category: 'food', icon: 'restaurant', date: '2026-06-01', currency: 'TWD', split_method: null, paid_by: 'user-1', notes: null, is_settled: false, created_at: '', updated_at: '', user: { id: 'user-1', display_name: '我', avatar_url: null } },
     { id: 'g1', user_id: 'user-1', group_id: GID, title: '房租', amount: 300, category: 'home', icon: 'home', date: '2026-06-01', currency: 'TWD', split_method: 'equal', paid_by: 'user-1', notes: null, is_settled: false, created_at: '', updated_at: '', user: { id: 'user-2', display_name: '室友', avatar_url: null } }
 ] as any
+const pad2 = (value: number): string => String(value).padStart(2, '0')
+
+function currentLocalMonthDate(day: number): string {
+    const now = new Date()
+    return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(day)}`
+}
+
+function dateLabelPattern(value: string): RegExp {
+    const [year, month, day] = value.split('-').map(Number)
+    return new RegExp(`${year}年${month}月${day}日`)
+}
+
+async function selectDate(label: string, value: string) {
+    fireEvent.click(screen.getByRole('button', { name: label }))
+    const calendar = await screen.findByRole('grid')
+    fireEvent.click(within(calendar).getByRole('button', { name: dateLabelPattern(value) }))
+    await waitFor(() => expect(screen.queryByRole('grid')).toBeNull())
+}
 
 function renderPage(options: { groups?: any[]; expenses?: any[] } = {}): ReturnType<typeof render> {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity, gcTime: Infinity } } })
@@ -365,16 +383,30 @@ describe('ExpensesPage', () => {
         expect(screen.getByText('房租')).toBeTruthy()
     })
 
-    it('date and amount filters use the no-results empty state when nothing matches', async () => {
-        renderPage()
+    it('date range filters update through the date pickers and narrow results', async () => {
+        const firstDate = currentLocalMonthDate(1)
+        const secondDate = currentLocalMonthDate(2)
+        renderPage({
+            expenses: [
+                { ...expenses[0], date: firstDate },
+                { ...expenses[1], date: secondDate }
+            ]
+        })
         fireEvent.click(screen.getByRole('button', { name: '篩選條件' }))
         const dialog = await screen.findByRole('dialog')
-        fireEvent.change(screen.getByLabelText('開始日期'), { target: { value: '2026-07-01' } })
-        fireEvent.change(screen.getByLabelText('最低金額'), { target: { value: '999' } })
+        await selectDate('開始日期', secondDate)
+        await selectDate('結束日期', secondDate)
         fireEvent.click(within(dialog).getByRole('button', { name: '套用篩選' }))
 
         await waitFor(() => expect(screen.queryByText('午餐')).toBeNull())
-        expect(screen.queryByText('房租')).toBeNull()
+        expect(screen.getByText('房租')).toBeTruthy()
+
+        fireEvent.click(screen.getByRole('button', { name: '篩選條件' }))
+        const amountDialog = await screen.findByRole('dialog')
+        fireEvent.change(within(amountDialog).getByLabelText('最低金額'), { target: { value: '999' } })
+        fireEvent.click(within(amountDialog).getByRole('button', { name: '套用篩選' }))
+
+        await waitFor(() => expect(screen.queryByText('房租')).toBeNull())
         expect(screen.getByText('沒有找到相關的交易')).toBeTruthy()
     })
 

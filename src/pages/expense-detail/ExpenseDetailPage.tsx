@@ -26,6 +26,7 @@ import { useSettleExpense } from '@/features/settlement/api/mutations'
 import { useGroups } from '@/features/group/api/useGroups'
 import { loadProfiles } from '@/features/group/api/profiles'
 import { useAuthStore } from '@/features/auth/authStore'
+import { DatePicker } from '@/shared/components/DatePicker'
 import { CategoryUtils, categoryIds } from '@/features/expense/lib/categories'
 import { formatCurrency } from '@/shared/lib/money'
 import { queryKeys } from '@/shared/lib/queryKeys'
@@ -479,11 +480,10 @@ export default function ExpenseDetailPage({ id }: { id: string }) {
 
                         <div className="space-y-2">
                             <Label htmlFor="detail-edit-date">{t('expense.date')}</Label>
-                            <Input
+                            <DatePicker
                                 id="detail-edit-date"
-                                type="date"
                                 value={editDate}
-                                onChange={(e) => setEditDate(e.target.value)}
+                                onChange={setEditDate}
                             />
                         </div>
 

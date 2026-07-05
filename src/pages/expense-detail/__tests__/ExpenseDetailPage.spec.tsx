@@ -74,6 +74,18 @@ import ExpenseDetailPage from '../ExpenseDetailPage'
 
 const GID = '11111111-1111-4111-8111-111111111111'
 
+function dateLabelPattern(value: string): RegExp {
+    const [year, month, day] = value.split('-').map(Number)
+    return new RegExp(`${year}年${month}月${day}日`)
+}
+
+async function selectDate(container: HTMLElement, label: string, value: string) {
+    fireEvent.click(within(container).getByRole('button', { name: label }))
+    const calendar = await screen.findByRole('grid')
+    fireEvent.click(within(calendar).getByRole('button', { name: dateLabelPattern(value) }))
+    await waitFor(() => expect(screen.queryByRole('grid')).toBeNull())
+}
+
 const personalExpense = {
     id: 'exp-1', user_id: 'user-1', group_id: null, title: '午餐', amount: 100,
     category: 'food', icon: 'restaurant', date: '2026-06-01', currency: 'TWD',
@@ -258,12 +270,14 @@ describe('ExpenseDetailPage', () => {
         expect(formerMember.checked).toBe(true)
 
         fireEvent.change(within(dialog).getByLabelText('費用項目'), { target: { value: '房租更新' } })
+        await selectDate(dialog, '日期', '2026-06-01')
         fireEvent.click(within(dialog).getByRole('button', { name: '儲存' }))
 
         await waitFor(() => expect(h.update.mutateAsync).toHaveBeenCalled())
         const calls = h.update.mutateAsync.mock.calls as unknown[][]
-        const payload = calls[0]![0] as { splits: unknown[] }
+        const payload = calls[0]![0] as { splits: unknown[]; updates: { date: string } }
         expect(payload).toMatchObject({ id: 'exp-2', groupId: GID })
+        expect(payload.updates.date).toBe('2026-06-01')
         expect(payload.splits).toEqual([
             { userId: 'user-1', amount: 150, percentage: undefined, shares: undefined },
             { userId: 'user-3', amount: 150, percentage: undefined, shares: undefined }

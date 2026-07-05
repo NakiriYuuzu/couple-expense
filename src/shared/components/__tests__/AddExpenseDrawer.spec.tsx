@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import i18next, { i18nReady } from '@/shared/i18n'
 import { queryKeys } from '@/shared/lib/queryKeys'
+import { taipeiDateString } from '@/shared/lib/datetime'
 import { useSessionStore } from '@/shared/stores/session'
 import { useAuthStore } from '@/features/auth/authStore'
 
@@ -60,6 +61,19 @@ beforeAll(async () => {
 import { AddExpenseDrawer } from '../AddExpenseDrawer'
 
 const GROUP_ID = '11111111-1111-4111-8111-111111111111'
+const pad2 = (value: number): string => String(value).padStart(2, '0')
+
+function dateLabelPattern(value: string): RegExp {
+    const [year, month, day] = value.split('-').map(Number)
+    return new RegExp(`${year}年${month}月${day}日`)
+}
+
+async function selectDate(label: string, value: string) {
+    fireEvent.click(screen.getByRole('button', { name: label }))
+    const calendar = await screen.findByRole('grid')
+    fireEvent.click(within(calendar).getByRole('button', { name: dateLabelPattern(value) }))
+    await waitFor(() => expect(screen.queryByRole('grid')).toBeNull())
+}
 
 const groupsData = [
     {
@@ -123,10 +137,13 @@ describe('AddExpenseDrawer', () => {
     it('personal mode: single step, submits a personal CreateExpenseInput and closes', async () => {
         useSessionStore.setState({ activeGroupId: null })
         const { onOpenChange } = renderDrawer()
+        const [year, month, today] = taipeiDateString().split('-').map(Number)
+        const targetDate = `${year}-${pad2(month!)}-${pad2(today === 1 ? 2 : 1)}`
 
         // 個人模式為單步：主按鈕直接是「新增費用」
         fireEvent.change(screen.getByLabelText('費用項目'), { target: { value: '午餐' } })
         fireEvent.change(screen.getByLabelText('金額'), { target: { value: '120' } })
+        await selectDate('日期', targetDate)
 
         fireEvent.click(screen.getByRole('button', { name: '新增費用' }))
 
@@ -137,7 +154,7 @@ describe('AddExpenseDrawer', () => {
         expect(input.amount).toBe(120)
         expect(input.category).toBe('food')
         expect(input.icon).toBe('restaurant')
-        expect(input.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+        expect(input.date).toBe(targetDate)
         expect(input.splits).toBeUndefined()
         await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
     })
