@@ -2,7 +2,7 @@
 // （getItem 不是 function 或存取即拋錯）。若偵測到不可用，就以完整 in-memory
 // Storage 實作覆蓋 globalThis.localStorage / sessionStorage，拆掉這顆測試炸彈。
 
-class MemoryStorage implements Storage {
+export class MemoryStorage implements Storage {
     private map = new Map<string, string>()
 
     get length(): number {
@@ -32,7 +32,7 @@ class MemoryStorage implements Storage {
     [name: string]: any
 }
 
-function isUsable(storage: unknown): boolean {
+export function isUsable(storage: unknown): boolean {
     try {
         return !!storage && typeof (storage as Storage).getItem === 'function'
     } catch {
