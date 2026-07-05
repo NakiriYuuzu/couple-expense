@@ -37,3 +37,8 @@ jobs:
 
       - name: Test
         run: bun run test
+        # 測試全程 mock supabase client，不打網路；但 src/shared/lib/supabase.ts 於
+        # module load 時要求 env 存在（缺值即 throw），CI 無 .env 故注入 dummy 值。
+        env:
+          VITE_SUPABASE_URL: https://ci-dummy.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-dummy-anon-key
