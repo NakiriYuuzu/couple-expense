@@ -42,6 +42,7 @@ const en = {
         family: 'Family Expenses',
         group: 'Group Expenses',
         monthTotal: 'This Month',
+        weekTotal: 'This Week',
         todayTotal: 'Today',
         recentExpenses: 'Recent Expenses',
         viewMore: 'View More',
@@ -66,6 +67,26 @@ const en = {
         greetingAfternoon: 'Good afternoon',
         greetingEvening: 'Good evening',
         greeting: '{greeting}, {name}'
+    },
+
+    // Monthly report
+    report: {
+        pageTitle: 'Monthly report',
+        pageHeroLabel: '{{yearMonth}} Monthly Report',
+        pageMoMLabel: 'MoM',
+        pageGroupSettlementTitle: 'Group settlement',
+        pageNoGroupSettlementData: 'No group settlement data yet',
+        groupSplitLabel: 'Split',
+        groupSettledLabel: 'Settled',
+        groupUnsettledLabel: 'Unsettled',
+        dashboardCardTitle: 'Previous month report',
+        dashboardCardSubtitle: 'View last month report',
+        dashboardCardAction: 'Tap to view',
+        settingsHistoryNavTitle: 'Report history',
+        settingsHistoryNavSubtitle: 'View previous reports',
+        settingsHistoryDrawerTitle: 'Report History',
+        settingsHistoryEmpty: 'No report history yet',
+        pageLoadError: 'Failed to load report, please try again later'
     },
 
     // Expenses List
@@ -179,6 +200,7 @@ const en = {
         editExpense: 'Edit Expense',
         deleteExpense: 'Delete Expense',
         expenseAdded: 'Expense record added',
+        addFailed: 'Failed to add, please try again',
         expenseUpdated: 'Expense record updated',
         expenseDeleted: 'Expense record deleted',
         // Scope related
@@ -224,6 +246,7 @@ const en = {
         notes: 'Notes',
         notesPlaceholder: 'Enter notes (optional)',
         // ExpenseGroup related
+        moreActions: 'More actions',
         deleteAll: 'Delete All',
         confirmDeleteTitle: 'Confirm Delete',
         confirmDeleteDateDesc: 'Are you sure you want to delete all expenses on {date}? This action cannot be undone.',
@@ -398,14 +421,13 @@ const en = {
         areaChartTitle: 'Spending Distribution',
         areaChartXAxisMonthHint: 'X Axis: Week of month',
         areaChartXAxisYearHint: 'X Axis: Month',
-        areaChartYAxisHint: 'Y Axis: Spending Amount (NT$)',
+        areaChartYAxisHint: 'Y Axis: Spending Amount (NT)',
         areaChartWeekTick: 'Week {value}',
         areaChartMonthTick: '{value} mo',
         categoryBreakdown: 'Category Breakdown',
         settled: 'Settled',
         partiallyUnsettled: 'Partially Unsettled',
         unsettled: 'Unsettled',
-        totalUnsettled: 'Unsettled',
         pendingSettlement: '{count} pending',
         expandDetails: 'Expand Details',
         collapseDetails: 'Collapse Details',
@@ -426,6 +448,7 @@ const en = {
         noDataThisYear: 'No data this year',
         totalExpenses: 'Total Expenses',
         unsettledAmount: 'Unsettled',
+        pendingCount: 'Pending items',
         debtDetails: 'Debt Details',
         memberBalances: 'Member Balances',
         settlementRecords: 'Settlement History'
@@ -459,6 +482,9 @@ const en = {
     // Settings
     settings: {
         title: 'Settings',
+        appearanceSection: 'Appearance',
+        notificationsSection: 'Notifications',
+        budgetSection: 'Budget',
         theme: 'Theme',
         themeDesc: 'Switch between dark and light mode',
         language: 'Language',
@@ -467,7 +493,13 @@ const en = {
         account: 'Account Settings',
         accountDesc: 'Manage your account information',
         about: 'About',
-        version: 'Version 1.0.0',
+        versionChangelog: 'Version & Changelog',
+        currentVersion: 'Current version v{version}',
+        changelogSections: {
+            added: 'Added',
+            changed: 'Changed',
+            fixed: 'Fixed'
+        },
         languages: {
             'zh-TW': '繁體中文',
             'zh-CN': '简体中文',
@@ -518,7 +550,22 @@ const en = {
         displayNameSaved: 'Display name updated',
         displayNameError: 'Failed to update display name',
         displayNameRequired: 'Display name cannot be empty',
-        displayNameMaxLength: 'Display name must be 50 characters or less'
+        displayNameMaxLength: 'Display name must be 50 characters or less',
+        // Push notifications
+        notifications: {
+            title: 'Push Notifications',
+            desc: 'Get notified about split assignments, settlements and monthly reports',
+            unconfigured: 'Push notifications are not configured',
+            unsupported: 'This browser does not support push notifications',
+            permissionDenied: 'Notification permission is blocked; enable it in your browser settings',
+            enableError: 'Failed to enable push notifications, please try again',
+            disableError: 'Failed to disable push notifications, please try again',
+            eventsTitle: 'Notification Events',
+            splitAssigned: 'Split assigned to me',
+            settlementReceived: 'Settlement received',
+            monthlyReport: 'Monthly report',
+            prefsError: 'Failed to update notification settings'
+        }
     },
 
     // Validation messages
@@ -543,6 +590,7 @@ const en = {
     // PWA update
     pwa: {
         updateAvailable: 'A new version is available',
+        updateAvailableDesc: 'You are currently running v{version}; refresh to load the available update',
         updateNow: 'Update now',
         dismiss: 'Dismiss'
     },
@@ -625,6 +673,41 @@ const en = {
         monthlyAmount: 'Monthly',
         dueOn: 'Day {day} each month',
         nextDue: 'Next: {date}'
+    },
+
+    // Auth / Login
+    auth: {
+        brand: 'Keep',
+        tagline: 'Shared expenses, simpler life',
+        email: 'Email',
+        emailPlaceholder: 'Enter your email',
+        password: 'Password',
+        passwordPlaceholder: 'Enter your password',
+        signIn: 'Sign in',
+        signingIn: 'Signing in...',
+        signUp: 'Sign up',
+        signingUp: 'Signing up...',
+        createAccount: 'Create account',
+        noAccount: "Don't have an account? Sign up",
+        haveAccount: 'Already have an account? Sign in',
+        forgotPassword: 'Forgot password?',
+        resetTitle: 'Reset password',
+        resetDesc: "Enter your email and we'll send you a reset link",
+        sendReset: 'Send reset link',
+        sending: 'Sending...',
+        backToSignIn: 'Back to sign in',
+        continueWithGoogle: 'Continue with Google',
+        or: 'or',
+        quickSignIn: 'Quick sign in',
+        lastUsed: 'Last used: {time}',
+        emailRequired: 'Please enter your email',
+        passwordRequired: 'Please enter your password',
+        signInFailed: 'Sign in failed, please check your credentials',
+        signUpSuccess: 'Sign up succeeded, please check your inbox to verify',
+        signUpFailed: 'Sign up failed, please try again',
+        resetSent: 'Reset email sent, please check your inbox',
+        resetFailed: 'Failed to send, please try again',
+        googleFailed: 'Google sign in failed, please try again'
     }
 }
 export default en

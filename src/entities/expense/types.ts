@@ -1,4 +1,4 @@
-import type { SplitMethod } from '@/shared/lib/database.types'
+import type { SplitMethod, CurrencyType } from '@/shared/lib/database.types'
 
 // Category ID type (canonical definition)
 export type CategoryId = 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 'other'
@@ -52,6 +52,7 @@ export interface DisplayExpense {
     title: string
     amount: string
     numericAmount?: number
+    currency?: CurrencyType
     category: string
     icon: string
     user?: ExpenseUser

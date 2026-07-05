@@ -31,3 +31,7 @@ dist-ssr
 # AI
 .claude
 .mcp.json
+# TanStack Router tmp
+.tanstack
+# build/tool scratch
+.tmp/

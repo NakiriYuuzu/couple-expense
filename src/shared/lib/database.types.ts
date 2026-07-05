@@ -10,6 +10,14 @@ export type SplitMethod = 'equal' | 'exact' | 'percentage' | 'shares'
 export type GroupMemberRole = 'owner' | 'admin' | 'member'
 export type CategoryType = 'food' | 'pet' | 'shopping' | 'transport' | 'home' | 'other'
 export type CurrencyType = 'TWD' | 'USD' | 'EUR' | 'JPY' | 'CNY'
+export type DevicePlatform = 'web' | 'android-pwa' | 'ios-pwa'
+
+// 對照 migrations/v3-05-notification-prefs.sql 手動維護，套用後以 supabase gen types 重生。
+export interface NotificationPrefs {
+    split_assigned: boolean
+    settlement_received: boolean
+    monthly_report: boolean
+}
 
 export interface Database {
     group_expense: {
@@ -357,6 +365,7 @@ export interface Database {
                     language: 'zh-TW' | 'en'
                     theme: 'light' | 'dark' | 'system'
                     show_in_statistics: boolean
+                    notification_prefs: NotificationPrefs
                     created_at: string
                     updated_at: string
                 }
@@ -366,6 +375,7 @@ export interface Database {
                     language?: 'zh-TW' | 'en'
                     theme?: 'light' | 'dark' | 'system'
                     show_in_statistics?: boolean
+                    notification_prefs?: NotificationPrefs
                     created_at?: string
                     updated_at?: string
                 }
@@ -375,8 +385,40 @@ export interface Database {
                     language?: 'zh-TW' | 'en'
                     theme?: 'light' | 'dark' | 'system'
                     show_in_statistics?: boolean
+                    notification_prefs?: NotificationPrefs
                     created_at?: string
                     updated_at?: string
+                }
+                Relationships: []
+            }
+            // 對照 migrations/v3-01-user-devices.sql 手動維護，套用後以 supabase gen types 重生。
+            user_devices: {
+                Row: {
+                    id: string
+                    user_id: string
+                    fcm_token: string
+                    platform: DevicePlatform
+                    user_agent: string | null
+                    last_seen_at: string
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    fcm_token: string
+                    platform: DevicePlatform
+                    user_agent?: string | null
+                    last_seen_at?: string
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    fcm_token?: string
+                    platform?: DevicePlatform
+                    user_agent?: string | null
+                    last_seen_at?: string
+                    created_at?: string
                 }
                 Relationships: []
             }
@@ -432,6 +474,37 @@ export interface Database {
                         referencedColumns: ['id']
                     }
                 ]
+            }
+            // 對照 migrations/v3-02-monthly-reports.sql 手動維護，套用後以 supabase gen types 重生。
+            monthly_reports: {
+                Row: {
+                    id: string
+                    user_id: string
+                    year_month: string
+                    data: Json
+                    read_at: string | null
+                    notified_at: string | null
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    user_id: string
+                    year_month: string
+                    data: Json
+                    read_at?: string | null
+                    notified_at?: string | null
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    user_id?: string
+                    year_month?: string
+                    data?: Json
+                    read_at?: string | null
+                    notified_at?: string | null
+                    created_at?: string
+                }
+                Relationships: []
             }
         }
         Views: {
@@ -565,6 +638,14 @@ export interface Database {
                 }
                 Returns: number
             }
+            update_group_expense: {
+                Args: {
+                    p_expense_id: string
+                    p_updates: Json
+                    p_splits: Json
+                }
+                Returns: undefined
+            }
             process_recurring_expenses: {
                 Args: Record<string, never>
                 Returns: number
@@ -621,7 +702,17 @@ export type UserSettingsRow = Database['group_expense']['Tables']['user_settings
 export type UserSettingsInsert = Database['group_expense']['Tables']['user_settings']['Insert']
 export type UserSettingsUpdate = Database['group_expense']['Tables']['user_settings']['Update']
 
+// UserDevice type aliases
+export type UserDeviceRow = Database['group_expense']['Tables']['user_devices']['Row']
+export type UserDeviceInsert = Database['group_expense']['Tables']['user_devices']['Insert']
+export type UserDeviceUpdate = Database['group_expense']['Tables']['user_devices']['Update']
+
 // RecurringExpense type aliases
 export type RecurringExpenseRow = Database['group_expense']['Tables']['recurring_expenses']['Row']
 export type RecurringExpenseInsert = Database['group_expense']['Tables']['recurring_expenses']['Insert']
 export type RecurringExpenseUpdate = Database['group_expense']['Tables']['recurring_expenses']['Update']
+
+// MonthlyReport type aliases
+export type MonthlyReportRow = Database['group_expense']['Tables']['monthly_reports']['Row']
+export type MonthlyReportInsert = Database['group_expense']['Tables']['monthly_reports']['Insert']
+export type MonthlyReportUpdate = Database['group_expense']['Tables']['monthly_reports']['Update']

@@ -1,0 +1,68 @@
+{
+  "version": "5",
+  "redirects": {
+    "https://esm.sh/@supabase/supabase-js@2": "https://esm.sh/@supabase/supabase-js@2.110.0"
+  },
+  "remote": {
+    "https://esm.sh/@supabase/supabase-js@2.110.0": "b99c0ce7729f9de7797f836b93ab9ec94f1cfe079b4f937fa4144fe13525e979"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@babel/core@^7.29.0",
+        "npm:@hookform/resolvers@^5.4.0",
+        "npm:@rolldown/plugin-babel@~0.2.3",
+        "npm:@supabase/supabase-js@^2.98.0",
+        "npm:@tailwindcss/vite@^4.2.1",
+        "npm:@tanstack/react-query@^5.101.2",
+        "npm:@tanstack/react-router@^1.170.17",
+        "npm:@tanstack/router-plugin@^1.168.19",
+        "npm:@testing-library/dom@^10.4.1",
+        "npm:@testing-library/react@^16.3.2",
+        "npm:@testing-library/user-event@^14.6.1",
+        "npm:@tsconfig/node22@^22.0.5",
+        "npm:@types/babel__core@^7.20.5",
+        "npm:@types/node@^24.12.0",
+        "npm:@types/react-dom@^19.2.3",
+        "npm:@types/react@^19.2.17",
+        "npm:@vitejs/plugin-react@^6.0.3",
+        "npm:babel-plugin-react-compiler@1",
+        "npm:class-variance-authority@~0.7.1",
+        "npm:clsx@^2.1.1",
+        "npm:date-fns@^4.4.0",
+        "npm:eslint@^10.6.0",
+        "npm:firebase@^12.15.0",
+        "npm:happy-dom@^20.8.3",
+        "npm:i18next@^26.3.4",
+        "npm:lucide-react@^1.23.0",
+        "npm:prettier@^3.9.4",
+        "npm:radix-ui@^1.6.1",
+        "npm:react-day-picker@^10.0.1",
+        "npm:react-dom@19",
+        "npm:react-hook-form@^7.80.0",
+        "npm:react-i18next@^17.0.8",
+        "npm:react@19",
+        "npm:recharts@^3.9.1",
+        "npm:sonner@^2.0.7",
+        "npm:tailwind-merge@^3.5.0",
+        "npm:tailwindcss@^4.2.1",
+        "npm:tw-animate-css@^1.4.0",
+        "npm:typescript-eslint@^8.62.1",
+        "npm:typescript@~5.9.3",
+        "npm:vaul@^1.1.2",
+        "npm:vite-plugin-mkcert@^1.17.10",
+        "npm:vite-plugin-pwa@^1.2.0",
+        "npm:vite-plugin-remove-console@^2.2.0",
+        "npm:vite@^8.0.0-beta.18",
+        "npm:vitest@^4.0.18",
+        "npm:workbox-core@^7.4.1",
+        "npm:workbox-expiration@^7.4.1",
+        "npm:workbox-precaching@^7.4.1",
+        "npm:workbox-routing@^7.4.1",
+        "npm:workbox-strategies@^7.4.1",
+        "npm:zod@3.25.76",
+        "npm:zustand@^5.0.14"
+      ]
+    }
+  }
+}
