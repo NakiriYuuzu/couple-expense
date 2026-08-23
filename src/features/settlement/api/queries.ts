@@ -54,6 +54,18 @@ function normalizeSnapshotNetBalances<T extends { netBalance: number }>(rows: T[
     return rows.map((r, i) => ({ ...r, netBalance: normalized[i] ?? 0 }))
 }
 
+// 首頁只需要「我欠誰／誰欠我」。第三方彼此間的債務若混入前五筆，會讓目前使用者的
+// 實際欠款被擠掉，並使摘要看起來像判定錯誤。fromUser 是欠款人，toUser 是債權人。
+export function filterDebtsForUser(
+    debts: readonly SimplifiedDebt[],
+    userId: string | null | undefined
+): SimplifiedDebt[] {
+    if (!userId) return []
+    return debts.filter(
+        (debt) => debt.fromUser.userId === userId || debt.toUser.userId === userId
+    )
+}
+
 // [start, next-month-start) 的日期字串半開區間（date 欄位為 'YYYY-MM-DD'，字串比較即可）。
 function monthDateRange(yearMonth: string): [string, string] {
     const [year, month] = yearMonth.split('-').map(Number)
@@ -100,8 +112,12 @@ export async function fetchSimplifiedDebts(
     client: QueryClient,
     groupId: string
 ): Promise<SimplifiedDebt[]> {
-    const { data, error } = await supabase.rpc('get_simplified_debts', { p_group_id: groupId })
+    const [{ data, error }, userResult] = await Promise.all([
+        supabase.rpc('get_simplified_debts', { p_group_id: groupId }),
+        supabase.auth.getUser()
+    ])
     if (error) throw error
+    if (userResult.error) throw userResult.error
 
     const rows = normalizeAmountRows(
         (data ?? []) as Array<{ from_user: string; to_user: string; amount: number }>
@@ -111,7 +127,7 @@ export async function fetchSimplifiedDebts(
         rows.flatMap((r) => [r.from_user, r.to_user])
     )
 
-    return rows.map((r) => ({
+    const debts = rows.map((r) => ({
         fromUser: {
             userId: r.from_user,
             displayName: profiles.get(r.from_user)?.display_name ?? null,
@@ -124,6 +140,8 @@ export async function fetchSimplifiedDebts(
         },
         amount: r.amount
     }))
+
+    return filterDebtsForUser(debts, userResult.data.user?.id)
 }
 
 export function useSimplifiedDebts(groupId: string | null | undefined) {
