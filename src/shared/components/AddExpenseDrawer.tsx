@@ -247,10 +247,10 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent
                 id="add-expense-drawer-content"
-                className="flex max-h-[90vh] flex-col border-t border-glass-border-strong bg-card"
+                className="flex min-w-0 max-h-[90dvh] max-w-full flex-col overflow-x-hidden border-t border-glass-border-strong bg-card"
             >
-                <DrawerHeader className="shrink-0 pb-2 text-center">
-                    <DrawerTitle className="text-xl font-semibold text-foreground">
+                <DrawerHeader className="min-w-0 shrink-0 pb-2 text-center">
+                    <DrawerTitle className="truncate text-xl font-semibold text-foreground">
                         {t('expense.addExpense')}
                     </DrawerTitle>
                     <div className="mt-2 flex items-center justify-center gap-2">
@@ -268,22 +268,22 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                             />
                         ))}
                     </div>
-                    <DrawerDescription className="mt-1 text-xs text-muted-foreground">
+                    <DrawerDescription className="mt-1 truncate text-xs text-muted-foreground">
                         {t('expense.step', { n: step })} / {totalSteps} —{' '}
                         {step === 1 ? t('expense.stepExpenseInfo') : t('split.stepSplitConfig')}
                     </DrawerDescription>
                 </DrawerHeader>
 
-                <div className="flex-1 overflow-y-auto px-4">
+                <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-4">
                     {step === 1 ? (
-                        <div className="space-y-4 pt-2 pb-4">
+                        <div className="min-w-0 space-y-4 pt-2 pb-4">
                             {/* 最近記錄快速複製 */}
                             {recentExpenses.length > 0 && (
-                                <div className="space-y-1.5">
+                                <div className="min-w-0 space-y-1.5">
                                     <label className="text-xs text-muted-foreground">
                                         {t('expense.recentQuickCopy')}
                                     </label>
-                                    <div className="flex flex-wrap gap-2">
+                                    <div className="flex min-w-0 flex-wrap gap-2">
                                         {recentExpenses.map(recent => {
                                             const Icon = CategoryUtils.getIconByKey(recent.icon)
                                             return (
@@ -291,11 +291,11 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                                                     key={recent.title}
                                                     type="button"
                                                     onClick={() => applyRecent(recent)}
-                                                    className="glass-light press-feedback hover-transition inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-foreground"
+                                                    className="glass-light press-feedback hover-transition inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-foreground"
                                                 >
-                                                    <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                                                    {recent.title}
-                                                    <span className="text-muted-foreground">
+                                                    <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                                    <span className="min-w-0 truncate">{recent.title}</span>
+                                                    <span className="shrink-0 whitespace-nowrap text-muted-foreground">
                                                         {formatCurrency(recent.amount, currency)}
                                                     </span>
                                                 </button>
@@ -306,7 +306,7 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                             )}
 
                             {/* 標題 */}
-                            <div className="space-y-1.5">
+                            <div className="min-w-0 space-y-1.5">
                                 <label htmlFor="expense-title" className="text-sm font-medium text-foreground">
                                     {t('expense.title')}
                                 </label>
@@ -315,17 +315,17 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                                     value={title}
                                     onChange={e => setTitle(e.target.value)}
                                     placeholder={t('expense.titlePlaceholder')}
-                                    className="h-12"
+                                    className="h-12 min-w-0"
                                     autoComplete="off"
                                 />
                             </div>
 
                             {/* 金額 */}
-                            <div className="space-y-1.5">
+                            <div className="min-w-0 space-y-1.5">
                                 <label htmlFor="expense-amount" className="text-sm font-medium text-foreground">
                                     {t('expense.amount')}
                                 </label>
-                                <div className="relative">
+                                <div className="relative min-w-0">
                                     <span className="absolute top-1/2 left-3 -translate-y-1/2 text-sm font-medium text-muted-foreground">
                                         {currencySymbol}
                                     </span>
@@ -338,7 +338,7 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                                             setAmount(e.target.value === '' ? undefined : Number(e.target.value))
                                         }
                                         placeholder="0"
-                                        className="h-12 pl-12"
+                                        className="h-12 min-w-0 pl-12"
                                         min="0"
                                         step="1"
                                         aria-invalid={amountInvalid}
@@ -355,24 +355,24 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
 
                             {/* 上下文（個人 / 群組）*/}
                             {isInAnyGroup && (
-                                <div className="space-y-1.5">
+                                <div className="min-w-0 space-y-1.5">
                                     <label className="text-sm font-medium text-foreground">
                                         {t('expense.context')}
                                     </label>
-                                    <div className="glass-light flex gap-2 rounded-xl p-1">
+                                    <div className="glass-light grid min-w-0 grid-cols-2 gap-2 rounded-xl p-1 sm:flex">
                                         <button
                                             type="button"
                                             onClick={() => selectContext(null)}
                                             aria-pressed={groupId === null}
                                             className={cn(
-                                                'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                                                'flex min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 sm:flex-1',
                                                 groupId === null
                                                     ? 'bg-brand-primary text-brand-primary-foreground shadow-sm'
                                                     : 'bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground'
                                             )}
                                         >
-                                            <User className="h-4 w-4" />
-                                            {t('expense.personal')}
+                                            <User className="h-4 w-4 shrink-0" />
+                                            <span className="truncate">{t('expense.personal')}</span>
                                         </button>
                                         {groups.map(group => (
                                             <button
@@ -381,7 +381,7 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                                                 onClick={() => selectContext(group.id)}
                                                 aria-pressed={groupId === group.id}
                                                 className={cn(
-                                                    'flex flex-1 items-center justify-center gap-2 truncate rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                                                    'flex min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 sm:flex-1',
                                                     groupId === group.id
                                                         ? 'bg-brand-primary text-brand-primary-foreground shadow-sm'
                                                         : 'bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -399,11 +399,11 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                             )}
 
                             {/* 類別 */}
-                            <div className="space-y-1.5">
+                            <div className="min-w-0 space-y-1.5">
                                 <label className="text-sm font-medium text-foreground">
                                     {t('expense.category')}
                                 </label>
-                                <div className="grid grid-cols-3 gap-2.5">
+                                <div className="grid min-w-0 grid-cols-3 gap-2.5">
                                     {categoryIds.map(id => {
                                         const Icon = CategoryUtils.getIconByCategory(id)
                                         const selected = category === id
@@ -415,7 +415,7 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                                                 onClick={() => setCategory(id)}
                                                 aria-pressed={selected}
                                                 className={cn(
-                                                    'press-feedback flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all duration-200',
+                                                    'press-feedback flex min-w-0 flex-col items-center gap-2 rounded-xl border-2 p-2.5 transition-all duration-200 sm:p-3',
                                                     selected
                                                         ? 'glass-heavy'
                                                         : 'glass-light border-transparent hover:glass'
@@ -423,7 +423,7 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                                                 style={selected ? { borderColor: color.color } : undefined}
                                             >
                                                 <span
-                                                    className="flex h-10 w-10 items-center justify-center rounded-xl"
+                                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
                                                     style={{
                                                         backgroundColor: selected ? color.color : color.bg
                                                     }}
@@ -433,7 +433,7 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                                                         style={{ color: selected ? 'white' : color.color }}
                                                     />
                                                 </span>
-                                                <span className="text-center text-xs leading-tight font-medium text-foreground">
+                                                <span className="max-w-full truncate text-center text-xs leading-tight font-medium text-foreground">
                                                     {t(`expense.categories.${id}`)}
                                                 </span>
                                             </button>
@@ -443,7 +443,7 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                             </div>
 
                             {/* 日期 */}
-                            <div className="space-y-1.5">
+                            <div className="min-w-0 space-y-1.5">
                                 <label htmlFor="expense-date" className="text-sm font-medium text-foreground">
                                     {t('expense.date')}
                                 </label>
@@ -451,26 +451,26 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                                     id="expense-date"
                                     value={date}
                                     onChange={setDate}
-                                    className="h-12"
+                                    className="h-12 min-w-0"
                                 />
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-1 pt-2 pb-4">
+                        <div className="min-w-0 space-y-1 pt-2 pb-4">
                             {/* 費用摘要 */}
-                            <div className="glass-elevated mb-4 flex items-center justify-between rounded-xl p-3">
-                                <div className="flex items-center gap-2">
-                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-primary">
+                            <div className="glass-elevated mb-4 flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl p-3">
+                                <div className="flex min-w-0 flex-1 items-center gap-2">
+                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-primary">
                                         <SummaryIcon className="h-4 w-4 text-brand-primary-foreground" />
                                     </span>
-                                    <div>
-                                        <p className="text-sm leading-tight font-semibold text-foreground">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm leading-tight font-semibold text-foreground">
                                             {title}
                                         </p>
-                                        <p className="text-xs text-muted-foreground">{date}</p>
+                                        <p className="truncate text-xs text-muted-foreground">{date}</p>
                                     </div>
                                 </div>
-                                <span className="text-lg font-bold text-brand-primary">
+                                <span className="ml-auto shrink-0 whitespace-nowrap text-lg font-bold text-brand-primary">
                                     {formatCurrency(totalAmount, currency)}
                                 </span>
                             </div>
@@ -491,16 +491,16 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                 </div>
 
                 {/* 底部動作 */}
-                <div className="shrink-0 border-t border-border bg-card px-4 py-4">
-                    <div className="flex gap-3">
+                <div className="min-w-0 shrink-0 border-t border-border bg-card px-4 py-4">
+                    <div className="flex min-w-0 gap-3">
                         {step === 1 ? (
                             <DrawerClose asChild>
                                 <Button
                                     variant="outline"
                                     type="button"
-                                    className="h-12 flex-1 border-border text-foreground hover:bg-accent"
+                                    className="h-12 min-w-0 flex-1 border-border text-foreground hover:bg-accent"
                                 >
-                                    {t('common.cancel')}
+                                    <span className="truncate">{t('common.cancel')}</span>
                                 </Button>
                             </DrawerClose>
                         ) : (
@@ -508,10 +508,10 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                                 variant="outline"
                                 type="button"
                                 onClick={() => setStep(1)}
-                                className="h-12 flex-1 border-border text-foreground hover:bg-accent"
+                                className="h-12 min-w-0 flex-1 border-border text-foreground hover:bg-accent"
                             >
-                                <ChevronLeft className="mr-1 h-4 w-4" />
-                                {t('common.back')}
+                                <ChevronLeft className="mr-1 h-4 w-4 shrink-0" />
+                                <span className="truncate">{t('common.back')}</span>
                             </Button>
                         )}
 
@@ -521,17 +521,17 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                             disabled={
                                 addExpense.isPending || (step === 1 ? !isStep1Valid : !isSplitBalanced)
                             }
-                            className="press-feedback h-12 flex-1 bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary/90 disabled:opacity-50"
+                            className="press-feedback h-12 min-w-0 flex-1 bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary/90 disabled:opacity-50"
                         >
                             {step === 1 && isGroupExpense ? (
                                 <>
-                                    {t('expense.nextStep')}
-                                    <ChevronRight className="ml-1 h-4 w-4" />
+                                    <span className="truncate">{t('expense.nextStep')}</span>
+                                    <ChevronRight className="ml-1 h-4 w-4 shrink-0" />
                                 </>
                             ) : (
                                 <>
-                                    <Plus className="mr-1 h-4 w-4" />
-                                    {t('expense.addExpense')}
+                                    <Plus className="mr-1 h-4 w-4 shrink-0" />
+                                    <span className="truncate">{t('expense.addExpense')}</span>
                                 </>
                             )}
                         </Button>
