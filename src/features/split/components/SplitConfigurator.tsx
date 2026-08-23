@@ -109,11 +109,11 @@ export function SplitConfigurator({
     const isBalanced = calc.isBalanced
 
     return (
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
             {/* 分帳方式選擇 */}
             <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">{t('split.splitMethod')}</label>
-                <div className="grid grid-cols-4 gap-1.5 rounded-xl bg-muted/40 p-1">
+                <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-muted/40 p-1 sm:grid-cols-4">
                     {SPLIT_METHODS.map(({ value, icon: Icon }) => (
                         <button
                             key={value}
@@ -121,14 +121,14 @@ export function SplitConfigurator({
                             onClick={() => handleMethodChange(value)}
                             aria-pressed={splitMethod === value}
                             className={cn(
-                                'flex flex-col items-center gap-1 rounded-lg px-1 py-2 text-xs font-medium transition-all duration-200',
+                                'flex min-w-0 flex-col items-center gap-1 rounded-lg px-1 py-2 text-xs font-medium transition-all duration-200',
                                 splitMethod === value
                                     ? 'bg-brand-primary text-brand-primary-foreground shadow-sm'
                                     : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                             )}
                         >
-                            <Icon className="h-4 w-4" />
-                            {t(`split.${value}`)}
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span className="max-w-full truncate">{t(`split.${value}`)}</span>
                         </button>
                     ))}
                 </div>
@@ -138,7 +138,7 @@ export function SplitConfigurator({
             {/* 付款人 */}
             <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">{t('split.paidBy')}</label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex min-w-0 flex-wrap gap-2">
                     {included.map(p => (
                         <button
                             key={p.userId}
@@ -146,17 +146,17 @@ export function SplitConfigurator({
                             onClick={() => onPaidByChange(p.userId)}
                             aria-pressed={paidBy === p.userId}
                             className={cn(
-                                'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-all duration-200',
+                                'flex max-w-full min-w-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-all duration-200',
                                 paidBy === p.userId
                                     ? 'border-brand-primary bg-brand-accent font-medium text-brand-primary'
                                     : 'border-border text-muted-foreground hover:border-brand-primary hover:text-foreground'
                             )}
                         >
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-brand-accent text-[10px] text-brand-primary">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-accent text-[10px] text-brand-primary">
                                 {initialOf(p)}
                             </span>
-                            {nameOf(p)}
-                            {paidBy === p.userId && <Check className="h-3.5 w-3.5" />}
+                            <span className="truncate">{nameOf(p)}</span>
+                            {paidBy === p.userId && <Check className="h-3.5 w-3.5 shrink-0" />}
                         </button>
                     ))}
                 </div>
@@ -164,19 +164,19 @@ export function SplitConfigurator({
 
             {/* 參與者清單 */}
             <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                     <label className="text-sm font-medium text-foreground">{t('split.participants')}</label>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="shrink-0 text-xs text-muted-foreground">
                         {t('split.people', { n: includedCount })}
                     </span>
                 </div>
 
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                     {participants.map((p, index) => (
                         <div
                             key={p.userId}
                             className={cn(
-                                'flex items-center gap-3 rounded-lg border p-3 transition-all duration-200',
+                                'grid min-w-0 grid-cols-[auto_auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 rounded-lg border p-3 transition-all duration-200 sm:flex',
                                 p.isIncluded
                                     ? 'border-border bg-background'
                                     : 'border-border/50 bg-muted/20 opacity-60'
@@ -193,11 +193,11 @@ export function SplitConfigurator({
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-accent text-xs text-brand-primary">
                                 {initialOf(p)}
                             </span>
-                            <span className="flex-1 truncate text-sm font-medium">{nameOf(p)}</span>
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium">{nameOf(p)}</span>
 
-                            <div className="flex shrink-0 items-center gap-1">
+                            <div className="col-span-3 flex min-w-0 flex-wrap items-center justify-end gap-1 sm:col-auto sm:ml-auto sm:flex-nowrap">
                                 {splitMethod === 'equal' && (
-                                    <span className="min-w-[60px] text-right text-sm font-semibold text-foreground">
+                                    <span className="min-w-[60px] whitespace-nowrap text-right text-sm font-semibold text-foreground">
                                         {formatCurrency(amountByUser.get(p.userId) ?? 0, currency)}
                                     </span>
                                 )}
@@ -214,7 +214,7 @@ export function SplitConfigurator({
                                         aria-label={`${nameOf(p)} ${t('expense.amount')}`}
                                         onFocus={e => e.target.select()}
                                         onChange={e => updateAt(index, { amount: toInteger(e.target.value) })}
-                                        className="h-8 w-24 rounded-md border border-border bg-background px-2 text-right text-sm focus:ring-1 focus:ring-brand-primary focus:outline-none disabled:opacity-40"
+                                        className="h-8 w-24 max-w-full rounded-md border border-border bg-background px-2 text-right text-sm focus:ring-1 focus:ring-brand-primary focus:outline-none disabled:opacity-40"
                                     />
                                 )}
 
@@ -235,7 +235,7 @@ export function SplitConfigurator({
                                             className="h-8 w-16 rounded-md border border-border bg-background px-2 text-right text-sm focus:ring-1 focus:ring-brand-primary focus:outline-none disabled:opacity-40"
                                         />
                                         <span className="text-xs text-muted-foreground">%</span>
-                                        <span className="ml-1 text-xs text-muted-foreground">
+                                        <span className="ml-1 whitespace-nowrap text-xs text-muted-foreground">
                                             ≈{formatCurrency(amountByUser.get(p.userId) ?? 0, currency)}
                                         </span>
                                     </>
@@ -256,7 +256,7 @@ export function SplitConfigurator({
                                             className="h-8 w-14 rounded-md border border-border bg-background px-2 text-right text-sm focus:ring-1 focus:ring-brand-primary focus:outline-none disabled:opacity-40"
                                         />
                                         <span className="text-xs text-muted-foreground">{t('split.shares')}</span>
-                                        <span className="ml-1 text-xs text-muted-foreground">
+                                        <span className="ml-1 whitespace-nowrap text-xs text-muted-foreground">
                                             ≈{formatCurrency(amountByUser.get(p.userId) ?? 0, currency)}
                                         </span>
                                     </>
@@ -272,17 +272,17 @@ export function SplitConfigurator({
                 data-testid="split-balance"
                 data-balanced={isBalanced}
                 className={cn(
-                    'flex items-center justify-between rounded-lg border p-3 text-sm font-medium transition-all duration-200',
+                    'flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-lg border p-3 text-sm font-medium transition-all duration-200',
                     isBalanced
                         ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30'
                         : 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30'
                 )}
             >
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                     {isBalanced ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
                     ) : (
-                        <AlertCircle className="h-4 w-4 text-amber-500" />
+                        <AlertCircle className="h-4 w-4 shrink-0 text-amber-500" />
                     )}
                     <span
                         className={
@@ -294,12 +294,12 @@ export function SplitConfigurator({
                         {isBalanced ? t('split.balanced') : t('split.notBalanced')}
                     </span>
                 </div>
-                <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground">
+                <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                    <span className="text-right text-xs text-muted-foreground [overflow-wrap:anywhere]">
                         {t('split.total')}: {formatCurrency(calc.total, currency)}
                     </span>
                     {!isBalanced && (
-                        <span className="text-xs text-amber-600 dark:text-amber-400">
+                        <span className="whitespace-nowrap text-xs text-amber-600 dark:text-amber-400">
                             {formatCurrency(calc.remaining, currency, { signed: true })}
                         </span>
                     )}
