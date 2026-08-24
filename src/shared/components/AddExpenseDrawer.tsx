@@ -244,10 +244,10 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
     const SummaryIcon = CategoryUtils.getIconByCategory(category)
 
     return (
-        <Drawer open={open} onOpenChange={onOpenChange}>
+        <Drawer open={open} onOpenChange={onOpenChange} fixed>
             <DrawerContent
                 id="add-expense-drawer-content"
-                className="flex min-w-0 max-h-[90dvh] max-w-full flex-col overflow-x-hidden border-t border-glass-border-strong bg-card"
+                className="flex min-w-0 max-h-[90vh] max-w-full flex-col overflow-x-hidden border-t border-glass-border-strong bg-card"
             >
                 <DrawerHeader className="min-w-0 shrink-0 pb-2 text-center">
                     <DrawerTitle className="truncate text-xl font-semibold text-foreground">
