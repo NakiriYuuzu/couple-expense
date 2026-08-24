@@ -53,7 +53,7 @@ export const ExpenseItem = memo(function ExpenseItem({
     return (
         <div
             className={cn(
-                'glass-light hover-transition press-feedback rounded-2xl p-3',
+                'glass-light hover-transition press-feedback min-w-0 rounded-2xl p-3',
                 clickable && 'cursor-pointer'
             )}
             onClick={onClick}
@@ -61,23 +61,25 @@ export const ExpenseItem = memo(function ExpenseItem({
             role={clickable ? 'button' : undefined}
             tabIndex={clickable ? 0 : undefined}
         >
-            <div className="flex items-center justify-between">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
                 {/* 左側：圖標 + 標題 */}
-                <div className="flex min-w-0 items-center gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
                     <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', tw.bg)}>
                         <Icon className={cn('h-5 w-5', tw.text)} />
                     </div>
                     <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                            <p className="truncate text-sm font-medium text-card-foreground">{title}</p>
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                            <p className="min-w-0 flex-1 truncate text-sm font-medium text-card-foreground">
+                                {title}
+                            </p>
                             {groupName && (
-                                <span className="glass-light rounded-full border border-glass-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                <span className="glass-light max-w-full truncate rounded-full border border-glass-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:max-w-[12rem]">
                                     {t('expense.fromGroup', { name: groupName })}
                                 </span>
                             )}
                         </div>
                         {showUser && user && (
-                            <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                                 {user.display_name || t('expense.unknownUser')}
                             </p>
                         )}
@@ -85,14 +87,14 @@ export const ExpenseItem = memo(function ExpenseItem({
                 </div>
 
                 {/* 右側：分帳 badge + 金額 + 結算標記 */}
-                <div className="flex shrink-0 items-center gap-1">
+                <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-1">
                     {splitMethod && (
-                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        <span className="max-w-full truncate rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                             {t(`split.methods.${splitMethod}`)}
                         </span>
                     )}
-                    <p className="text-sm font-semibold text-expense">{amount}</p>
-                    {isSettled && <Check className="ml-1 h-3 w-3 text-green-500" />}
+                    <p className="shrink-0 whitespace-nowrap text-sm font-semibold text-expense">{amount}</p>
+                    {isSettled && <Check className="ml-1 h-3 w-3 shrink-0 text-green-500" />}
                 </div>
             </div>
         </div>

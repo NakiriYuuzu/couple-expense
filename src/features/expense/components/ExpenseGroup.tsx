@@ -61,15 +61,15 @@ export function ExpenseGroup({
     }
 
     return (
-        <div className="glass hover-transition rounded-2xl p-4">
+        <div className="glass hover-transition min-w-0 rounded-2xl p-4">
             {/* 日期標題列 */}
-            <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="text-sm font-normal text-foreground">{date}</h3>
+            <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                    <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <h3 className="truncate text-sm font-normal text-foreground">{date}</h3>
                 </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-right text-sm font-semibold text-expense">
+                <div className="ml-auto flex max-w-full min-w-0 items-center justify-end gap-2">
+                    <span className="min-w-0 text-right text-sm font-semibold text-expense [overflow-wrap:anywhere]">
                         {dailyTotals.map(([totalCurrency, total]) => formatCurrency(total, totalCurrency)).join(' / ')}
                     </span>
                     {onDeleteAll && (
@@ -78,7 +78,7 @@ export function ExpenseGroup({
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-6 w-6 rounded-full hover:bg-accent"
+                                    className="h-6 w-6 shrink-0 rounded-full hover:bg-accent"
                                     aria-label={t('expense.moreActions')}
                                 >
                                     <MoreHorizontal className="h-4 w-4 text-foreground" />
@@ -99,7 +99,7 @@ export function ExpenseGroup({
             </div>
 
             {/* 費用列表 */}
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
                 {expenses.map((expense) => (
                     <ExpenseItem
                         key={expense.id}

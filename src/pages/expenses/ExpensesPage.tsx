@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from '@tanstack/react-router'
@@ -210,11 +210,11 @@ export default function ExpensesPage() {
           : t('expenses.noPersonalExpenses')
 
     return (
-        <div>
+        <div className="min-w-0 overflow-x-clip">
             {/* 搜尋列 */}
             <div className="sticky top-[52px] z-30 bg-background/80 px-4 py-3 backdrop-blur-xl">
-                <div className="glass flex gap-2 rounded-full p-1.5">
-                    <div className="relative flex-1">
+                <div className="glass flex min-w-0 gap-2 rounded-full p-1.5">
+                    <div className="relative min-w-0 flex-1">
                         <Search className="absolute top-1/2 left-3 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             type="text"
@@ -225,7 +225,7 @@ export default function ExpensesPage() {
                             className="h-11 border-0 bg-transparent pr-4 pl-10 shadow-none focus-visible:ring-0"
                         />
                     </div>
-                    <div className="relative">
+                    <div className="relative shrink-0">
                         <Button
                             variant="outline"
                             size="icon"
@@ -242,30 +242,30 @@ export default function ExpensesPage() {
                 </div>
             </div>
 
-            <main className="px-4 pb-28">
-                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MainTab)} className="mt-4">
-                    <TabsList className="glass-light grid w-full grid-cols-3 rounded-full p-[2px]">
-                        <TabsTrigger value="personal" className="press-feedback flex items-center gap-2 rounded-full">
-                            <User className="h-4 w-4" />
-                            {t('expense.personal')}
+            <main className="min-w-0 px-4 pb-28">
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as MainTab)} className="mt-4 min-w-0">
+                    <TabsList className="glass-light grid w-full min-w-0 grid-cols-3 rounded-full p-[2px]">
+                        <TabsTrigger value="personal" className="press-feedback min-w-0 gap-1 rounded-full sm:gap-2">
+                            <User className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{t('expense.personal')}</span>
                         </TabsTrigger>
                         <TabsTrigger
                             value="group"
                             disabled={!isInGroup}
-                            className="press-feedback flex items-center gap-2 rounded-full"
+                            className="press-feedback min-w-0 gap-1 rounded-full sm:gap-2"
                         >
-                            <Users className="h-4 w-4" />
-                            {t('expense.group')}
+                            <Users className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{t('expense.group')}</span>
                         </TabsTrigger>
-                        <TabsTrigger value="recurring" className="press-feedback flex items-center gap-2 rounded-full">
-                            <RefreshCw className="h-4 w-4" />
-                            {t('recurring.title')}
+                        <TabsTrigger value="recurring" className="press-feedback min-w-0 gap-1 rounded-full sm:gap-2">
+                            <RefreshCw className="h-4 w-4 shrink-0" />
+                            <span className="truncate">{t('recurring.title')}</span>
                         </TabsTrigger>
                     </TabsList>
 
                     {/* 個人 */}
-                    <TabsContent value="personal" className="mt-4">
-                        <div className="mb-4 flex gap-2">
+                    <TabsContent value="personal" className="mt-4 min-w-0">
+                        <div className="mb-4 flex min-w-0 flex-wrap gap-2">
                             {typeFilterButtons.map((f) => (
                                 <button
                                     key={f.value}
@@ -273,14 +273,14 @@ export default function ExpensesPage() {
                                     onClick={() => setTypeFilter(f.value)}
                                     aria-pressed={typeFilter === f.value}
                                     className={cn(
-                                        'press-feedback flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-200',
+                                        'press-feedback flex min-w-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-200',
                                         typeFilter === f.value
                                             ? 'bg-primary text-primary-foreground shadow-sm'
                                             : 'glass text-muted-foreground hover:text-foreground'
                                     )}
                                 >
-                                    {f.icon && <f.icon className="h-3.5 w-3.5" />}
-                                    {f.label}
+                                    {f.icon && <f.icon className="h-3.5 w-3.5 shrink-0" />}
+                                    <span className="truncate">{f.label}</span>
                                 </button>
                             ))}
                         </div>
@@ -297,7 +297,7 @@ export default function ExpensesPage() {
                     </TabsContent>
 
                     {/* 群組 */}
-                    <TabsContent value="group" className="mt-4">
+                    <TabsContent value="group" className="mt-4 min-w-0">
                         {isInGroup && (
                             <ScopeChips
                                 className="mb-4"
@@ -323,7 +323,7 @@ export default function ExpensesPage() {
                     </TabsContent>
 
                     {/* 週期費用 */}
-                    <TabsContent value="recurring" className="mt-4">
+                    <TabsContent value="recurring" className="mt-4 min-w-0">
                         <div className="mb-3 flex justify-end">
                             <Button size="sm" className="press-feedback gap-2 rounded-full" onClick={openAddRecurring}>
                                 <Plus className="h-4 w-4" />
@@ -383,7 +383,7 @@ export default function ExpensesPage() {
                                             onClick={() => toggleCategory(id)}
                                             aria-pressed={selected}
                                             className={cn(
-                                                'press-feedback flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-all duration-200',
+                                                'press-feedback flex min-w-0 flex-col items-center gap-2 rounded-lg border-2 p-3 transition-all duration-200',
                                                 selected
                                                     ? 'border-brand-primary bg-brand-accent'
                                                     : 'border-border bg-background hover:border-brand-primary'
@@ -391,7 +391,7 @@ export default function ExpensesPage() {
                                         >
                                             <span
                                                 className={cn(
-                                                    'flex h-10 w-10 items-center justify-center rounded-lg',
+                                                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
                                                     selected ? 'bg-brand-primary' : 'bg-brand-accent'
                                                 )}
                                             >
@@ -402,7 +402,7 @@ export default function ExpensesPage() {
                                                     )}
                                                 />
                                             </span>
-                                            <span className="text-xs font-medium text-foreground">
+                                            <span className="max-w-full truncate text-xs font-medium text-foreground">
                                                 {t(`expense.categories.${id}`)}
                                             </span>
                                         </button>
@@ -476,6 +476,13 @@ function ExpenseListBody({
 }: ListBodyProps) {
     const listOffsetRef = useRef(0)
     const listRef = useRef<HTMLDivElement>(null)
+    const measurementKey = useMemo(
+        () =>
+            groups
+                .map((group) => `${group.date}:${group.expenses.map((expense) => expense.id).join(',')}`)
+                .join('|'),
+        [groups]
+    )
 
     const virtualizer = useWindowVirtualizer({
         count: groups.length,
@@ -512,6 +519,11 @@ function ExpenseListBody({
         scrollMargin: listOffsetRef.current
     })
 
+    // 同一日期新增或刪除支出時，group key 不會改變；主動清除舊尺寸，避免下一組沿用舊高度而重疊。
+    useLayoutEffect(() => {
+        virtualizer.measure()
+    }, [measurementKey, virtualizer])
+
     useEffect(() => {
         const listElement = listRef.current
         if (!listElement) return
@@ -536,9 +548,9 @@ function ExpenseListBody({
 
     if (isLoading) {
         return (
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-4">
                 {[0, 1, 2].map((i) => (
-                    <div key={i} className="glass space-y-3 rounded-2xl p-4">
+                    <div key={i} className="glass min-w-0 space-y-3 rounded-2xl p-4">
                         <div className="h-4 w-24 animate-pulse rounded bg-muted" />
                         <div className="h-10 animate-pulse rounded-lg bg-muted" />
                         <div className="h-10 animate-pulse rounded-lg bg-muted" />
@@ -550,7 +562,7 @@ function ExpenseListBody({
 
     if (groups.length === 0) {
         return (
-            <div className="py-12 text-center">
+            <div className="min-w-0 py-12 text-center">
                 {emptyIcon}
                 <p className="mb-4 text-muted-foreground">{emptyText}</p>
             </div>
@@ -558,8 +570,12 @@ function ExpenseListBody({
     }
 
     return (
-        <div className="relative w-full">
-            <div className="relative w-full" ref={listRef} style={{ height: `${virtualizer.getTotalSize()}px` }}>
+        <div className="relative min-w-0 w-full overflow-x-clip">
+            <div
+                className="relative min-w-0 w-full"
+                ref={listRef}
+                style={{ height: `${virtualizer.getTotalSize()}px` }}
+            >
                 {virtualizer.getVirtualItems().map((virtualItem) => {
                     const group = groups[virtualItem.index]
 
@@ -576,6 +592,7 @@ function ExpenseListBody({
                                 top: 0,
                                 left: 0,
                                 width: '100%',
+                                maxWidth: '100%',
                                 transform: `translateY(${virtualItem.start - virtualizer.options.scrollMargin}px)`
                             }}
                         >
