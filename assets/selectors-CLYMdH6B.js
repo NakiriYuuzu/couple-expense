@@ -1,0 +1,1 @@
+import{i as e,r as t,t as n}from"./datetime-C5zZEYDp.js";var r=()=>({food:0,pet:0,shopping:0,transport:0,home:0,other:0});function i(i){let a=t(),o=e(),s=`${n()}-01`,c=0,l=0,u=0,d=r();for(let e of i)e.date>a||(e.date===a&&(c+=e.amount),e.date>=o&&(l+=e.amount),e.date>=s&&(u+=e.amount,d[e.category]+=e.amount));return{today:c,week:l,month:u,byCategory:d}}export{i as t};
