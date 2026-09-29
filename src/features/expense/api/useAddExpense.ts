@@ -28,7 +28,7 @@ export interface CreateExpenseInput {
 // 新增費用。對照 Vue expenseStore.addExpense（expense.ts:393-499）但收斂 P2：
 //   群組分帳走原子 add_group_expense RPC（單一 transaction 建立 expense + splits），
 //   取代 Vue 的「insert expense → upsert splits 失敗再補償刪除」兩步式（會留下孤兒/競態窗口）。
-//   個人費用（無 groupId 或無 splits）維持直接 insert。
+//   僅個人費用（無 groupId）直接 insert；群組未傳 splits 時也由 RPC 原子產生等分。
 export function useAddExpense() {
     const client = useQueryClient()
 
@@ -50,7 +50,7 @@ export function useAddExpense() {
             const currency: CurrencyType = input.currency ?? 'TWD'
             const paidBy = input.paid_by ?? userId
 
-            if (groupId && input.splits && input.splits.length > 0) {
+            if (groupId) {
                 const { data, error } = await supabase.rpc('add_group_expense', {
                     p_group_id: groupId,
                     p_title: input.title,
@@ -62,12 +62,12 @@ export function useAddExpense() {
                     p_split_method: input.split_method ?? 'equal',
                     p_paid_by: paidBy,
                     p_notes: input.notes,
-                    p_splits: input.splits.map((s) => ({
+                    p_splits: input.splits?.map((s) => ({
                         user_id: s.userId,
                         amount: s.amount,
                         percentage: s.percentage ?? null,
                         shares: s.shares ?? null
-                    }))
+                    })) ?? null
                 })
                 if (error) throw error
                 return { id: data as string, groupId }
