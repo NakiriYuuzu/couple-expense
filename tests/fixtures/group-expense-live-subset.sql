@@ -65,6 +65,17 @@ CREATE TABLE group_expense.user_profiles (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE group_expense.user_settings (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL UNIQUE,
+    language text DEFAULT 'zh-TW',
+    theme text DEFAULT 'system',
+    show_in_statistics boolean DEFAULT true,
+    notification_prefs jsonb DEFAULT '{"monthly_report": true, "split_assigned": true, "settlement_received": true}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE group_expense.settlements (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     group_id uuid NOT NULL REFERENCES group_expense.groups (id) ON DELETE CASCADE,

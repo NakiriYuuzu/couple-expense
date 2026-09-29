@@ -379,3 +379,65 @@ export function taipeiMonth(now: Date): string {
     const part = (type: string) => parts.find(p => p.type === type)?.value
     return `${part('year')}-${part('month')}`
 }
+
+// ── 群組新增費用通知 ─────────────────────────────────────────────────────
+
+export interface GroupExpenseNotice {
+    expenseId: string
+    groupName: string
+    creatorName: string | null
+    title: string
+    amount: string
+    currency: string
+    category: string
+    expenseDate: string
+    /** 收件人的分攤金額；null = 不需分攤 */
+    myShare: string | null
+}
+
+/** 網頁版費用明細；openExternalBrowser=1 讓 LINE 用手機瀏覽器開啟（沿用已登入的網頁 session）。 */
+export function expenseUrl(webAppUrl: string, expenseId: string): string {
+    const base = webAppUrl.endsWith('/') ? webAppUrl : `${webAppUrl}/`
+    return `${base}expenses/${encodeURIComponent(expenseId)}?openExternalBrowser=1`
+}
+
+export function groupExpenseMessage(notice: GroupExpenseNotice, webAppUrl: string): LineMessage {
+    const creator = notice.creatorName ?? '成員'
+    const amount = formatAmount(notice.amount, notice.currency)
+    return {
+        type: 'flex',
+        altText: `${creator} 在「${notice.groupName}」記了一筆：${notice.title} ${amount}`,
+        contents: {
+            type: 'bubble',
+            header: {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                    { type: 'text', text: `「${notice.groupName}」新增一筆`, size: 'xs', color: '#888888', wrap: true }
+                ]
+            },
+            body: {
+                type: 'box',
+                layout: 'vertical',
+                spacing: 'md',
+                contents: [
+                    { type: 'text', text: notice.title, weight: 'bold', size: 'lg', wrap: true },
+                    { type: 'text', text: amount, weight: 'bold', size: 'xxl' },
+                    row('記帳人', creator),
+                    row('你分攤', notice.myShare === null ? '不需分攤' : formatAmount(notice.myShare, notice.currency)),
+                    row('分類', categoryName(notice.category)),
+                    row('日期', notice.expenseDate)
+                ]
+            },
+            footer: {
+                type: 'box',
+                layout: 'vertical',
+                contents: [{
+                    type: 'button',
+                    style: 'primary',
+                    action: { type: 'uri', label: '在網頁版查看', uri: expenseUrl(webAppUrl, notice.expenseId) }
+                }]
+            }
+        }
+    }
+}

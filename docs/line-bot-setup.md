@@ -112,7 +112,28 @@ LINE_CHANNEL_ACCESS_TOKEN=... bun scripts/line-rich-menu/cli.ts deploy
 
 `deploy` 會建立新選單、設為預設，再刪除同名（`couple-expense`）的舊選單。
 
+## 群組新增費用通知
+
+任何人在群組新增費用（App、Bot、週期費用皆算），會私訊通知同群組其他成員：
+
+- 收件人：有效成員、已綁定 LINE、未封鎖 Bot、App 設定的「分帳通知」未關閉；記帳的人自己不會收到。
+- 卡片：品項、金額、記帳人、收件人的分攤、分類、日期，以及「在網頁版查看」按鈕
+  （`{WEB_APP_URL}expenses/{id}?openExternalBrowser=1`，用手機瀏覽器開啟以沿用登入狀態）。
+- 流程：`expenses` 的 deferred trigger 在交易提交時寫入 `line_bot.notification_outbox` → pg_net 呼叫
+  `line-notify` → LINE push（`X-Line-Retry-Key` = outbox id，重送不重複）。
+- 失敗：429／5xx／網路錯誤由 cron `line-bot-notify-retry` 每 10 分鐘補送，最多 5 次；其他 4xx 標為 failed。
+  通知失敗不影響記帳。
+- 設定：`migrations/line-bot-05-notifications.sql`；Edge secrets `LINE_NOTIFY_SECRET`、`WEB_APP_URL`；
+  Vault `line_notify_url`、`line_notify_secret`（與 `LINE_NOTIFY_SECRET` 相同）。
+
+```sh
+supabase functions deploy line-notify --no-verify-jwt
+```
+
+查看送出狀況：`SELECT status, attempts, last_error, created_at FROM line_bot.notification_outbox ORDER BY created_at DESC LIMIT 20;`
+
 ## 已知限制
 
 - 事件登記後若函式在處理中途當掉，該事件不會重試（第 1 步只有回覆訊息，無帳務寫入）。
-- `webhook_events`、過期的 `link_nonces` 尚未自動清理，之後再加保存期限。
+- `webhook_events`、過期的 `link_nonces`、已送出的 `notification_outbox` 尚未自動清理，之後再加保存期限。
+- 只通知新增；修改、刪除、結清不通知。
