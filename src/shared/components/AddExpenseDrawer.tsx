@@ -247,13 +247,13 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
         <Drawer open={open} onOpenChange={onOpenChange} fixed>
             <DrawerContent
                 id="add-expense-drawer-content"
-                className="flex min-w-0 max-h-[90vh] max-w-full flex-col overflow-x-hidden border-t border-glass-border-strong bg-card"
+                className="flex min-w-0 max-h-[90vh] max-w-full flex-col overflow-x-clip border-t border-glass-border-strong bg-card"
             >
                 <DrawerHeader className="min-w-0 shrink-0 pb-2 text-center">
-                    <DrawerTitle className="truncate text-xl font-semibold text-foreground">
+                    <DrawerTitle className="truncate text-xl font-semibold text-foreground short:text-base">
                         {t('expense.addExpense')}
                     </DrawerTitle>
-                    <div className="mt-2 flex items-center justify-center gap-2">
+                    <div className="mt-2 flex items-center justify-center gap-2 short:mt-1">
                         {Array.from({ length: totalSteps }, (_, i) => i + 1).map(s => (
                             <div
                                 key={s}
@@ -491,14 +491,14 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                 </div>
 
                 {/* 底部動作 */}
-                <div className="min-w-0 shrink-0 border-t border-border bg-card px-4 py-4">
+                <div className="min-w-0 shrink-0 border-t border-border bg-card px-4 py-4 short:py-2">
                     <div className="flex min-w-0 gap-3">
                         {step === 1 ? (
                             <DrawerClose asChild>
                                 <Button
                                     variant="outline"
                                     type="button"
-                                    className="h-12 min-w-0 flex-1 border-border text-foreground hover:bg-accent"
+                                    className="h-12 min-w-0 flex-1 border-border text-foreground hover:bg-accent short:h-10"
                                 >
                                     <span className="truncate">{t('common.cancel')}</span>
                                 </Button>
@@ -508,7 +508,7 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                                 variant="outline"
                                 type="button"
                                 onClick={() => setStep(1)}
-                                className="h-12 min-w-0 flex-1 border-border text-foreground hover:bg-accent"
+                                className="h-12 min-w-0 flex-1 border-border text-foreground hover:bg-accent short:h-10"
                             >
                                 <ChevronLeft className="mr-1 h-4 w-4 shrink-0" />
                                 <span className="truncate">{t('common.back')}</span>
@@ -521,7 +521,7 @@ export function AddExpenseDrawer({ open, onOpenChange }: Props) {
                             disabled={
                                 addExpense.isPending || (step === 1 ? !isStep1Valid : !isSplitBalanced)
                             }
-                            className="press-feedback h-12 min-w-0 flex-1 bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary/90 disabled:opacity-50"
+                            className="press-feedback h-12 min-w-0 flex-1 short:h-10 bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary/90 disabled:opacity-50"
                         >
                             {step === 1 && isGroupExpense ? (
                                 <>

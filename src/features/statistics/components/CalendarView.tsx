@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/shared/lib/utils'
-import { formatCurrency } from '@/shared/lib/money'
+import { formatCompactAmount, formatCurrency } from '@/shared/lib/money'
 import { currentYearMonth, taipeiDateString } from '@/shared/lib/datetime'
 import { CategoryUtils } from '@/features/expense/lib/categories'
 import type { CurrencyType } from '@/shared/lib/database.types'
@@ -132,7 +132,7 @@ export function CalendarView({
                 </div>
 
                 {/* 星期表頭 */}
-                <div className="grid grid-cols-7 gap-1">
+                <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
                     {weekdayLabels.map((label, i) => (
                         <div key={i} className="py-1 text-center text-xs font-medium text-muted-foreground">
                             {label}
@@ -141,7 +141,7 @@ export function CalendarView({
                 </div>
 
                 {/* 日期格 */}
-                <div className="mt-1 grid grid-cols-7 gap-1" data-testid="calendar-grid">
+                <div className="mt-1 grid grid-cols-7 gap-0.5 sm:gap-1" data-testid="calendar-grid">
                     {cells.map((day, index) => {
                         if (day === null) return <div key={`blank-${index}`} className="h-16" />
 
@@ -153,7 +153,7 @@ export function CalendarView({
                         const isSelected = dateStr === selectedDay
 
                         const base =
-                            'flex h-16 flex-col items-center justify-start gap-1 rounded-md border border-glass-border p-1.5 hover-transition'
+                            'flex h-16 min-w-0 flex-col items-center justify-start gap-1 rounded-md border border-glass-border px-0.5 py-1 hover-transition sm:p-1.5'
                         const stateClass = cn(
                             isSelected && 'bg-primary/10 ring-2 ring-primary',
                             !isSelected && isToday && 'ring-1 ring-primary/60',
@@ -164,8 +164,13 @@ export function CalendarView({
                             <>
                                 <span className="text-sm font-medium">{day}</span>
                                 {hasData && (
-                                    <span className="mt-auto max-w-full truncate rounded-sm bg-expense/10 px-1 py-0.5 text-[9px] font-bold leading-none text-expense">
-                                        {formatCurrency(total, currency)}
+                                    <span
+                                        className="mt-auto max-w-full truncate rounded-sm bg-expense/10 px-0 py-0.5 text-[9px] font-bold leading-none text-expense sm:px-1"
+                                        title={formatCurrency(total, currency)}
+                                    >
+                                        {/* 手機日格只剩 ~20px，完整金額會被截成「N...」；窄螢幕改顯示精簡數字 */}
+                                        <span className="sm:hidden">{formatCompactAmount(total)}</span>
+                                        <span className="hidden sm:inline">{formatCurrency(total, currency)}</span>
                                     </span>
                                 )}
                             </>

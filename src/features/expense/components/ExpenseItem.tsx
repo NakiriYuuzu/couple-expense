@@ -62,14 +62,15 @@ export const ExpenseItem = memo(function ExpenseItem({
             tabIndex={clickable ? 0 : undefined}
         >
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2">
-                {/* 左側：圖標 + 標題 */}
-                <div className="flex min-w-0 flex-1 items-center gap-3">
+                {/* 左側：圖標 + 標題。basis 讓窄寬度時右側金額換行，而不是把標題擠到只剩一個字 */}
+                <div className="flex min-w-0 flex-1 basis-40 items-center gap-3">
                     <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', tw.bg)}>
                         <Icon className={cn('h-5 w-5', tw.text)} />
                     </div>
                     <div className="min-w-0 flex-1">
                         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                            <p className="min-w-0 flex-1 truncate text-sm font-medium text-card-foreground">
+                            {/* min-w-20：標題至少保留 5rem，放不下時群組標籤換到下一行 */}
+                            <p className="min-w-20 flex-1 truncate text-sm font-medium text-card-foreground">
                                 {title}
                             </p>
                             {groupName && (

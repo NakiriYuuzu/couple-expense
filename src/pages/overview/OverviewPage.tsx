@@ -36,7 +36,7 @@ import { useAuthStore } from '@/features/auth/authStore'
 import { CalendarView } from '@/features/statistics/components/CalendarView'
 import { ScopeChips, type ExpenseScope } from '@/shared/components/ScopeChips'
 import { currentYearMonth, taipeiDateString } from '@/shared/lib/datetime'
-import { formatCurrency } from '@/shared/lib/money'
+import { formatCompactAmount, formatCurrency } from '@/shared/lib/money'
 import { cn } from '@/shared/lib/utils'
 import type { CategoryId } from '@/entities/expense/types'
 import type { GroupWithDetails } from '@/entities/group/types'
@@ -506,14 +506,14 @@ function StatisticsPanel({
 
     return (
         <div className="space-y-4">
-            <section className="glass rounded-2xl p-3">
-                <div className="flex items-center justify-between gap-2">
-                    <div className="glass-light flex rounded-full p-1">
+            <section className="glass rounded-2xl p-3 max-sm:px-2">
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                    <div className="glass-light flex shrink-0 rounded-full p-1">
                         <Button
                             type="button"
                             variant={mode === 'month' ? 'default' : 'ghost'}
                             size="sm"
-                            className="rounded-full"
+                            className="rounded-full max-sm:px-2.5"
                             onClick={() => setMode('month')}
                         >
                             {t('overview.byMonth')}
@@ -522,31 +522,31 @@ function StatisticsPanel({
                             type="button"
                             variant={mode === 'year' ? 'default' : 'ghost'}
                             size="sm"
-                            className="rounded-full"
+                            className="rounded-full max-sm:px-2.5"
                             onClick={() => setMode('year')}
                         >
                             {t('overview.byYear')}
                         </Button>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-0.5 sm:gap-2">
                         <Button
                             type="button"
                             variant="ghost"
                             size="icon-sm"
-                            className="rounded-full"
+                            className="shrink-0 rounded-full max-sm:size-7"
                             aria-label="previous period"
                             onClick={previous}
                         >
                             <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <span className="min-w-24 text-center text-sm font-semibold text-foreground">
+                        <span className="min-w-0 truncate text-center text-sm font-semibold text-foreground sm:min-w-24">
                             {periodLabel(mode, selectedMonth, selectedYear, t)}
                         </span>
                         <Button
                             type="button"
                             variant="ghost"
                             size="icon-sm"
-                            className="rounded-full"
+                            className="shrink-0 rounded-full max-sm:size-7"
                             aria-label="next period"
                             disabled={!canGoNext}
                             onClick={next}
@@ -628,12 +628,14 @@ function StatisticsPanel({
                                 axisLine={false}
                                 tick={{ fontSize: 11 }}
                             />
+                            {/* 完整金額（如 'NT 10,000'）在窄寬度會被 recharts 折行並切掉上半，軸標改用精簡數字；
+                                tooltip 與下方清單仍顯示完整金額 */}
                             <YAxis
-                                width={72}
+                                width={44}
                                 tickLine={false}
                                 axisLine={false}
                                 tick={{ fontSize: 11 }}
-                                tickFormatter={value => formatCurrency(Number(value), currency)}
+                                tickFormatter={value => formatCompactAmount(Number(value))}
                             />
                             <Tooltip
                                 content={props => <MoneyTooltip {...props} currency={currency} />}

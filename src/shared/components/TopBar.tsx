@@ -17,7 +17,7 @@ export function TopBar({
 }: Props) {
     return (
         <header className="glass sticky top-0 z-40 w-full">
-            <div className="flex items-center gap-2 px-4 py-2">
+            <div className="mx-auto flex w-full max-w-3xl items-center gap-2 px-4 py-2">
                 {showBackButton && (
                     <Button
                         variant="ghost"

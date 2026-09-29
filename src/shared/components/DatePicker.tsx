@@ -88,7 +88,9 @@ export function DatePicker({
             </PopoverTrigger>
             <PopoverContent
                 align="start"
-                className="pointer-events-auto z-[70] w-auto p-0"
+                collisionPadding={8}
+                // 矮視窗（橫向手機）上下都放不下整個月曆時改為內部捲動，月份切換列不會被切到畫面外
+                className="pointer-events-auto z-[70] max-h-(--radix-popover-content-available-height) w-auto overflow-y-auto overscroll-contain p-0"
                 onOpenAutoFocus={event => event.preventDefault()}
             >
                 <Calendar

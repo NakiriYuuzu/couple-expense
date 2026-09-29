@@ -119,6 +119,9 @@ export default function SettingsPage() {
     const displayName = myProfile?.display_name || userEmail
     const avatarUrl =
         myProfile?.avatar_url || (currentUser?.user_metadata?.avatar_url as string | undefined) || ''
+    // Google 頭像載入失敗（過期、被擋、referrer 限制）時退回首字母，避免顯示破圖
+    const [failedAvatarUrl, setFailedAvatarUrl] = useState('')
+    const showAvatar = !!avatarUrl && failedAvatarUrl !== avatarUrl
 
     // ── 顯示名稱行內編輯 ──────────────────────────────────────
     const [isEditingName, setIsEditingName] = useState(false)
@@ -388,8 +391,14 @@ export default function SettingsPage() {
             {/* 個人資料 */}
             <section className="flex flex-col items-center gap-3 py-6">
                 <div className="h-16 w-16 overflow-hidden rounded-full bg-primary text-primary-foreground">
-                    {avatarUrl ? (
-                        <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                    {showAvatar ? (
+                        <img
+                            src={avatarUrl}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            className="h-full w-full object-cover"
+                            onError={() => setFailedAvatarUrl(avatarUrl)}
+                        />
                     ) : (
                         <div className="flex h-full w-full items-center justify-center text-xl font-semibold">
                             {(displayName || '?').charAt(0).toUpperCase()}
@@ -414,7 +423,7 @@ export default function SettingsPage() {
                             <div className="flex items-center gap-1.5">
                                 <Input
                                     value={editNameValue}
-                                    className={`h-8 w-48 text-center text-sm ${nameError ? 'border-destructive' : ''}`}
+                                    className={`h-8 w-48 text-center text-base sm:text-sm ${nameError ? 'border-destructive' : ''}`}
                                     placeholder={t('settings.displayNamePlaceholder')}
                                     disabled={updateDisplayName.isPending}
                                     onChange={(e) => setEditNameValue(e.target.value)}
@@ -454,19 +463,19 @@ export default function SettingsPage() {
                     {t('settings.appearanceSection')}
                 </h2>
 
-                {/* 主題 */}
+                {/* 主題（窄螢幕文字欄不夠寬時，按鈕組換到下一行） */}
                 <section className="glass hover-transition rounded-2xl p-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="glass-light flex h-10 w-10 items-center justify-center rounded-lg text-purple-600 dark:text-purple-400">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex min-w-0 flex-1 basis-36 items-center gap-3">
+                            <div className="glass-light flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-purple-600 dark:text-purple-400">
                                 <Moon className="h-5 w-5" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                                 <h3 className="text-base font-medium text-foreground">{t('settings.theme')}</h3>
                                 <p className="text-sm text-muted-foreground">{t('settings.themeDesc')}</p>
                             </div>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="ml-auto flex shrink-0 gap-1">
                             {THEMES.map(({ value, Icon }) => (
                                 <Button
                                     key={value}
@@ -482,19 +491,19 @@ export default function SettingsPage() {
                     </div>
                 </section>
 
-                {/* 語言 */}
+                {/* 語言（同上，窄螢幕按鈕組換行） */}
                 <section className="glass hover-transition rounded-2xl p-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="glass-light flex h-10 w-10 items-center justify-center rounded-lg text-blue-600 dark:text-blue-400">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex min-w-0 flex-1 basis-36 items-center gap-3">
+                            <div className="glass-light flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-blue-600 dark:text-blue-400">
                                 <Languages className="h-5 w-5" />
                             </div>
-                            <div>
+                            <div className="min-w-0">
                                 <h3 className="text-base font-medium text-foreground">{t('settings.language')}</h3>
                                 <p className="text-sm text-muted-foreground">{t('settings.languageDesc')}</p>
                             </div>
                         </div>
-                        <div className="flex gap-1">
+                        <div className="ml-auto flex shrink-0 gap-1">
                             {LANGS.map((lang) => (
                                 <Button
                                     key={lang}
@@ -788,6 +797,7 @@ export default function SettingsPage() {
                                         <img
                                             src={account.avatarUrl}
                                             alt=""
+                                            referrerPolicy="no-referrer"
                                             className="h-9 w-9 rounded-full object-cover"
                                         />
                                     ) : (
@@ -841,7 +851,7 @@ export default function SettingsPage() {
                     <DrawerHeader>
                         <DrawerTitle>{t('settings.personalBudgetTitle')}</DrawerTitle>
                     </DrawerHeader>
-                    <form className="space-y-4 px-4 pb-6" onSubmit={(e) => void saveBudget(e)}>
+                    <form className="min-h-0 space-y-4 overflow-y-auto px-4 pb-6 short:pb-3" onSubmit={(e) => void saveBudget(e)}>
                         <div className="space-y-2">
                             <Label htmlFor="personal-budget-input">{t('settings.monthlyBudgetAmount')}</Label>
                             <div className="flex items-center gap-2">
@@ -877,7 +887,7 @@ export default function SettingsPage() {
                             </div>
                         )}
 
-                        <div className="flex gap-2 pt-4">
+                        <div className="flex gap-2 pt-4 short:pt-1">
                             <Button
                                 type="button"
                                 variant="outline"

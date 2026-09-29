@@ -49,3 +49,13 @@ export function formatCurrency(
 
     return display
 }
+
+// 空間極窄處（圖表座標軸、月曆日格）用的精簡數字：不帶幣別前綴，千以上縮寫。
+//   1234 → '1.2K'、12345 → '12K'、999 → '999'
+// 幣別脈絡由周邊標題提供；需要完整金額時仍一律用 formatCurrency。
+export function formatCompactAmount(amount: number): string {
+    return new Intl.NumberFormat('en-US', {
+        notation: 'compact',
+        maximumFractionDigits: 1
+    }).format(amount)
+}
