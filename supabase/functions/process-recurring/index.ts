@@ -12,6 +12,14 @@ Deno.serve(async (req: Request) => {
             )
         }
 
+        // A valid user JWT at the gateway is not permission to run a global admin job.
+        if (req.headers.get('Authorization') !== `Bearer ${supabaseServiceKey}`) {
+            return new Response(
+                JSON.stringify({ error: 'Unauthorized' }),
+                { status: 401, headers: { 'Content-Type': 'application/json' } }
+            )
+        }
+
         const supabase = createClient(supabaseUrl, supabaseServiceKey, {
             db: { schema: 'group_expense' }
         })

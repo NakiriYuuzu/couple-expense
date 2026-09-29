@@ -2,6 +2,13 @@
 
 這個目錄包含資料庫結構變更的 SQL 遷移腳本。
 
+## 最新修正：v3-08
+
+權限／分帳／結清 RPC 修正與驗證方式請先閱讀 [v3-08 部署指引](./v3-08-ledger-hardening.md)。
+本目錄不是已驗證可依檔名重播的完整 migration chain；須先比對正式環境 metadata，禁止直接套用整份 `schema.sql`。
+
+以下為歷史說明，不代表 v3-08 的套用順序或已驗證的 CLI 部署流程。
+
 ## 如何執行遷移
 
 ### 使用 Supabase Dashboard

@@ -255,6 +255,7 @@ export interface Database {
                     amount: number
                     notes: string | null
                     year_month: string | null
+                    expense_id: string | null
                     settled_at: string
                     created_at: string
                 }
@@ -266,6 +267,7 @@ export interface Database {
                     amount: number
                     notes?: string | null
                     year_month?: string | null
+                    expense_id?: string | null
                     settled_at?: string
                     created_at?: string
                 }
@@ -277,6 +279,7 @@ export interface Database {
                     amount?: number
                     notes?: string | null
                     year_month?: string | null
+                    expense_id?: string | null
                     settled_at?: string
                     created_at?: string
                 }
@@ -286,6 +289,13 @@ export interface Database {
                         columns: ['group_id']
                         isOneToOne: false
                         referencedRelation: 'groups'
+                        referencedColumns: ['id']
+                    },
+                    {
+                        foreignKeyName: 'settlements_expense_id_fkey'
+                        columns: ['expense_id']
+                        isOneToOne: false
+                        referencedRelation: 'expenses'
                         referencedColumns: ['id']
                     }
                 ]
@@ -443,7 +453,7 @@ export interface Database {
                     group_id?: string | null
                     title: string
                     amount: number
-                    category?: CategoryType
+                    category: CategoryType
                     recurrence_day: number
                     next_due_date: string
                     is_active?: boolean
