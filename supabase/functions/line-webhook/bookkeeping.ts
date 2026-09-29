@@ -55,9 +55,39 @@ export function parseExpense(text: string): { title: string; amount: number } | 
     return { title, amount }
 }
 
-export function formatAmount(amount: string | number): string {
-    return `${Number(amount).toLocaleString('en-US', { maximumFractionDigits: 2 })} 元`
+export function formatAmount(amount: string | number, currency = 'TWD'): string {
+    const number = Number(amount).toLocaleString('en-US', { maximumFractionDigits: 2 })
+    return currency === 'TWD' ? `${number} 元` : `${number} ${currency}`
 }
+
+export interface ExpenseItem {
+    title: string
+    amount: string
+    currency: string
+    category: string
+    expenseDate: string
+    /** 付款人顯示名稱；個人帳不顯示 */
+    payerName: string | null
+    paidByMe: boolean
+}
+
+export interface CategoryTotal {
+    category: string
+    thisMonth: string
+    lastMonth: string
+}
+
+export interface Debt {
+    fromName: string | null
+    toName: string | null
+    amount: string
+    fromMe: boolean
+    toMe: boolean
+}
+
+export const RECENT_PAGE_SIZE = 10
+/** postback 翻頁上限，避免被當成大量查詢的入口 */
+const MAX_RECENT_OFFSET = 500
 
 // ── Postback ────────────────────────────────────────────────────────────
 
@@ -65,6 +95,7 @@ export type Postback =
     | { action: 'confirm' | 'cancel'; draftId: string }
     | { action: 'category'; draftId: string; category: Category }
     | { action: 'ledger'; groupId: string | null }
+    | { action: 'recent'; offset: number }
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -73,6 +104,7 @@ export function encodePostback(postback: Postback): string {
     if ('draftId' in postback) params.set('draft', postback.draftId)
     if (postback.action === 'category') params.set('category', postback.category)
     if (postback.action === 'ledger') params.set('group', postback.groupId ?? 'personal')
+    if (postback.action === 'recent') params.set('offset', String(postback.offset))
     return params.toString()
 }
 
@@ -94,6 +126,11 @@ export function parsePostback(data: string): Postback | null {
         const group = params.get('group') ?? ''
         if (group === 'personal') return { action, groupId: null }
         return uuidPattern.test(group) ? { action, groupId: group } : null
+    }
+    if (action === 'recent') {
+        const raw = params.get('offset') ?? ''
+        const offset = Number(raw)
+        return /^\d{1,3}$/.test(raw) && offset <= MAX_RECENT_OFFSET ? { action, offset } : null
     }
     return null
 }
@@ -182,4 +219,163 @@ export function ledgerMessage(ledgers: Ledger[]): LineMessage {
         text: `目前帳本：${ledgerLabel(current?.name ?? null)}。請選擇之後要記到哪個帳本：`,
         quickReply: { items: options.map(action => ({ type: 'action', action })) }
     }
+}
+
+// ── 圖文選單：最近紀錄、本月統計、誰欠誰 ─────────────────────────────────
+
+const categoryColors: Record<Category, string> = {
+    food: '#F59E0B',
+    pet: '#EC4899',
+    shopping: '#8B5CF6',
+    transport: '#3B82F6',
+    home: '#10B981',
+    other: '#6B7280'
+}
+
+function categoryName(category: string): string {
+    return categories[category as Category] ?? category
+}
+
+function header(title: string, ledgerName: string | null) {
+    return {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+            { type: 'text', text: title, weight: 'bold', size: 'lg' },
+            { type: 'text', text: `帳本：${ledgerLabel(ledgerName)}`, size: 'xs', color: '#888888' }
+        ]
+    }
+}
+
+/** 最近紀錄；items 可多傳一筆，用來判斷是否還有下一頁。 */
+export function recentMessage(ledgerName: string | null, items: ExpenseItem[], offset: number): LineMessage {
+    if (items.length === 0) {
+        return { type: 'text', text: offset === 0 ? `「${ledgerLabel(ledgerName)}」帳本還沒有紀錄。` : '沒有更多紀錄了。' }
+    }
+    const page = items.slice(0, RECENT_PAGE_SIZE)
+    const hasMore = items.length > RECENT_PAGE_SIZE
+    const rows = page.flatMap((item, index) => {
+        const details = [item.expenseDate.slice(5), categoryName(item.category)]
+        if (ledgerName !== null) details.push(item.paidByMe ? '你付' : `${item.payerName ?? '成員'}付`)
+        const row = {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+                {
+                    type: 'box',
+                    layout: 'vertical',
+                    flex: 3,
+                    contents: [
+                        { type: 'text', text: item.title, size: 'sm', weight: 'bold', wrap: true },
+                        { type: 'text', text: details.join('・'), size: 'xxs', color: '#888888' }
+                    ]
+                },
+                { type: 'text', text: formatAmount(item.amount, item.currency), size: 'sm', align: 'end', gravity: 'center', flex: 2 }
+            ]
+        }
+        return index === 0 ? [row] : [{ type: 'separator' }, row]
+    })
+    const bubble: LineMessage = {
+        type: 'bubble',
+        header: header(offset === 0 ? '最近紀錄' : `最近紀錄（第 ${offset + 1} 筆起）`, ledgerName),
+        body: { type: 'box', layout: 'vertical', spacing: 'md', contents: rows }
+    }
+    if (hasMore) {
+        bubble.footer = {
+            type: 'box',
+            layout: 'vertical',
+            contents: [{
+                type: 'button',
+                style: 'secondary',
+                action: postbackAction('更多紀錄', { action: 'recent', offset: offset + RECENT_PAGE_SIZE })
+            }]
+        }
+    }
+    return { type: 'flex', altText: `最近紀錄（${ledgerLabel(ledgerName)}）`, contents: bubble }
+}
+
+function changeText(thisMonth: number, lastMonth: number): string {
+    if (lastMonth === 0) return `上月 ${formatAmount(lastMonth)}`
+    const percent = Math.round(((thisMonth - lastMonth) / lastMonth) * 100)
+    return `上月 ${formatAmount(lastMonth)}（${percent >= 0 ? '+' : ''}${percent}%）`
+}
+
+/** 本月統計：總額、與上月比較、各分類長條（以 Flex box 寬度畫，不需產圖）。 */
+export function summaryMessage(ledgerName: string | null, month: string, totals: CategoryTotal[]): LineMessage {
+    const rows = totals
+        .map(total => ({ ...total, value: Number(total.thisMonth) }))
+        .filter(total => total.value > 0)
+    const thisMonth = rows.reduce((sum, row) => sum + row.value, 0)
+    const lastMonth = totals.reduce((sum, row) => sum + Number(row.lastMonth), 0)
+    const max = Math.max(...rows.map(row => row.value), 1)
+
+    const bars = rows.map(row => ({
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'xs',
+        contents: [
+            {
+                type: 'box',
+                layout: 'horizontal',
+                contents: [
+                    { type: 'text', text: categoryName(row.category), size: 'sm' },
+                    { type: 'text', text: formatAmount(row.value), size: 'sm', align: 'end' }
+                ]
+            },
+            {
+                type: 'box',
+                layout: 'vertical',
+                height: '8px',
+                cornerRadius: '4px',
+                backgroundColor: '#EEEEEE',
+                contents: [{
+                    type: 'box',
+                    layout: 'vertical',
+                    height: '8px',
+                    cornerRadius: '4px',
+                    width: `${Math.max(Math.round((row.value / max) * 100), 2)}%`,
+                    backgroundColor: categoryColors[row.category as Category] ?? categoryColors.other,
+                    contents: []
+                }]
+            }
+        ]
+    }))
+
+    return {
+        type: 'flex',
+        altText: `${month} 支出 ${formatAmount(thisMonth)}（${ledgerLabel(ledgerName)}）`,
+        contents: {
+            type: 'bubble',
+            header: header(`${month} 支出`, ledgerName),
+            body: {
+                type: 'box',
+                layout: 'vertical',
+                spacing: 'lg',
+                contents: [
+                    { type: 'text', text: formatAmount(thisMonth), weight: 'bold', size: 'xxl' },
+                    { type: 'text', text: changeText(thisMonth, lastMonth), size: 'xs', color: '#888888' },
+                    { type: 'separator' },
+                    ...(bars.length > 0 ? bars : [{ type: 'text', text: '本月還沒有紀錄。', size: 'sm', color: '#888888' }]),
+                    { type: 'text', text: '只計入台幣支出。', size: 'xxs', color: '#AAAAAA' }
+                ]
+            }
+        }
+    }
+}
+
+export function debtsText(ledgerName: string | null, debts: Debt[]): string {
+    if (ledgerName === null) return '個人帳沒有分帳欠款。請輸入「帳本」切換到群組後再查詢。'
+    if (debts.length === 0) return `「${ledgerName}」目前沒有欠款。`
+    const name = (me: boolean, value: string | null) => me ? '你' : value ?? '成員'
+    const lines = debts.map(debt =>
+        `・${name(debt.fromMe, debt.fromName)} → ${name(debt.toMe, debt.toName)}：${formatAmount(debt.amount)}`)
+    return [`「${ledgerName}」目前欠款：`, ...lines, '', '結清請到 App 操作。'].join('\n')
+}
+
+/** 台北時間的 YYYY-MM */
+export function taipeiMonth(now: Date): string {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit' })
+        .formatToParts(now)
+    const part = (type: string) => parts.find(p => p.type === type)?.value
+    return `${part('year')}-${part('month')}`
 }

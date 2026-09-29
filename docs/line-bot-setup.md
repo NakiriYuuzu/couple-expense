@@ -88,6 +88,30 @@ supabase functions deploy line-webhook --no-verify-jwt
 - Migration：`migrations/line-bot-03-drafts.sql`。測試用的 `tests/fixtures/group-expense-live-subset.sql`
   取自正式環境的欄位、RLS 與函式定義。
 
+## 圖文選單
+
+| 按鈕 | 送出文字 | 功能 |
+|---|---|---|
+| 記一筆 | `記一筆` | 提示輸入格式與目前帳本 |
+| 帳本 | `帳本` | 切換個人／群組帳本 |
+| 最近紀錄 | `最近紀錄` | 目前帳本最近 10 筆，可按「更多紀錄」翻頁 |
+| 本月統計 | `本月統計` | 台北時間本月總額、與上月比較、各分類長條（只計台幣） |
+| 誰欠誰 | `誰欠誰` | 群組帳本的簡化欠款（沿用 App 的 `get_simplified_debts`） |
+| 說明 | `說明` | 用法 |
+
+- 按鈕使用 message action，手動輸入同樣文字效果相同。按鈕文字與 `handler.ts` 的 `menuCommands`
+  由 `tests/line-rich-menu.spec.ts` 保證一致。
+- 查詢在 `migrations/line-bot-04-queries.sql` 的函式內以綁定使用者身分執行，只看得到 App 裡本來看得到的資料。
+- 修改選單：編輯 `scripts/line-rich-menu/menu.ts` →
+
+```sh
+bun scripts/line-rich-menu/cli.ts svg      # 產生 menu.svg
+scripts/line-rich-menu/render.sh           # 轉成 menu.png（需 macOS PingFang 與 uv）
+LINE_CHANNEL_ACCESS_TOKEN=... bun scripts/line-rich-menu/cli.ts deploy
+```
+
+`deploy` 會建立新選單、設為預設，再刪除同名（`couple-expense`）的舊選單。
+
 ## 已知限制
 
 - 事件登記後若函式在處理中途當掉，該事件不會重試（第 1 步只有回覆訊息，無帳務寫入）。

@@ -4,16 +4,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
     bindButtonMessage,
     createWebhookHandler,
+    menuCommands,
     messages,
     type LineApi,
     type LineMessage,
     type WebhookStore
 } from '../supabase/functions/line-webhook/handler'
 import {
+    debtsText,
     draftMessage,
     encodePostback,
     ledgerMessage,
-    type Draft
+    recentMessage,
+    summaryMessage,
+    type Draft,
+    type ExpenseItem
 } from '../supabase/functions/line-webhook/bookkeeping'
 
 const secret = 'test-only-channel-secret'
@@ -30,6 +35,10 @@ const draft: Draft = {
     status: 'pending',
     ledgerName: null,
     isExpired: false
+}
+
+const expenseItem: ExpenseItem = {
+    title: '午餐', amount: '120', currency: 'TWD', category: 'food', expenseDate: '2026-09-29', payerName: 'Kuri', paidByMe: true
 }
 
 function postbackEvent(id: string, userId: string, data: string) {
@@ -96,7 +105,11 @@ beforeEach(() => {
         getDraft: vi.fn(async (_, id) => id === draft.id ? draft : null),
         setDraftCategory: vi.fn(async () => true),
         cancelDraft: vi.fn(async () => true),
-        confirmDraft: vi.fn(async () => 'confirmed' as const)
+        confirmDraft: vi.fn(async () => 'confirmed' as const),
+        currentLedgerName: vi.fn(async () => '我們家'),
+        recentExpenses: vi.fn(async () => [expenseItem]),
+        monthSummary: vi.fn(async () => [{ category: 'food', thisMonth: '120', lastMonth: '0' }]),
+        ledgerDebts: vi.fn(async () => [])
     }
     replyText.mockReset()
     line = {
@@ -105,7 +118,7 @@ beforeEach(() => {
         }),
         issueLinkToken: vi.fn(async () => 'link-token/1')
     }
-    handler = createWebhookHandler({ channelSecret: secret, store, line, linkPageUrl })
+    handler = createWebhookHandler({ channelSecret: secret, store, line, linkPageUrl, now: () => new Date('2026-09-30T20:00:00Z') })
 })
 
 describe('line-webhook signature', () => {
@@ -313,6 +326,47 @@ describe('line-webhook bookkeeping', () => {
         )))
         expect(store.confirmDraft).not.toHaveBeenCalled()
         expect(store.setDraftCategory).not.toHaveBeenCalled()
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', messages.notBound)
+    })
+})
+
+describe('line-webhook rich menu commands', () => {
+    it('explains how to add an expense in the current ledger', async () => {
+        await handler(request(payload(textEvent('e1', boundLineUser, menuCommands.add))))
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', '目前帳本：我們家。\n請輸入「品項 金額」，例如「午餐 120」。')
+        expect(store.createDraft).not.toHaveBeenCalled()
+    })
+
+    it('shows recent expenses and pages with a postback', async () => {
+        await handler(request(payload(
+            textEvent('e1', boundLineUser, menuCommands.recent),
+            postbackEvent('e2', boundLineUser, encodePostback({ action: 'recent', offset: 10 }))
+        )))
+        expect(store.recentExpenses).toHaveBeenNthCalledWith(1, boundLineUser, 0, 11)
+        expect(store.recentExpenses).toHaveBeenNthCalledWith(2, boundLineUser, 10, 11)
+        expect(replyText).toHaveBeenNthCalledWith(1, 'reply-e1', recentMessage('我們家', [expenseItem], 0))
+        expect(replyText).toHaveBeenNthCalledWith(2, 'reply-e2', recentMessage('我們家', [expenseItem], 10))
+    })
+
+    it('summarises the month in Taipei time', async () => {
+        await handler(request(payload(textEvent('e1', boundLineUser, menuCommands.summary))))
+        // 2026-09-30T20:00Z 在台北已經是 10 月
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1',
+            summaryMessage('我們家', '2026-10', [{ category: 'food', thisMonth: '120', lastMonth: '0' }]))
+    })
+
+    it('shows debts and help', async () => {
+        await handler(request(payload(
+            textEvent('e1', boundLineUser, menuCommands.debts),
+            textEvent('e2', boundLineUser, menuCommands.help)
+        )))
+        expect(replyText).toHaveBeenNthCalledWith(1, 'reply-e1', debtsText('我們家', []))
+        expect(replyText).toHaveBeenNthCalledWith(2, 'reply-e2', messages.help)
+    })
+
+    it('asks unbound users to bind before using the menu', async () => {
+        await handler(request(payload(textEvent('e1', unboundLineUser, menuCommands.summary))))
+        expect(store.monthSummary).not.toHaveBeenCalled()
         expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', messages.notBound)
     })
 })

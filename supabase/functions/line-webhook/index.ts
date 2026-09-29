@@ -93,6 +93,36 @@ const store: WebhookStore = {
     async confirmDraft(lineUserId, draftId) {
         const [row] = await sql!`SELECT line_bot.confirm_draft(${lineUserId}, ${draftId}::uuid) AS result`
         return row.result
+    },
+    async currentLedgerName(lineUserId) {
+        const [row] = await sql!`SELECT name FROM line_bot.current_ledger(${lineUserId})`
+        return row?.name ?? null
+    },
+    async recentExpenses(lineUserId, offset, limit) {
+        const rows = await sql!`SELECT * FROM line_bot.recent_expenses(${lineUserId}, ${offset}, ${limit})`
+        return rows.map(row => ({
+            title: row.title,
+            amount: row.amount,
+            currency: row.currency,
+            category: row.category,
+            expenseDate: row.expense_date,
+            payerName: row.payer_name,
+            paidByMe: row.paid_by_me
+        }))
+    },
+    async monthSummary(lineUserId) {
+        const rows = await sql!`SELECT * FROM line_bot.month_summary(${lineUserId})`
+        return rows.map(row => ({ category: row.category, thisMonth: row.this_month, lastMonth: row.last_month }))
+    },
+    async ledgerDebts(lineUserId) {
+        const rows = await sql!`SELECT * FROM line_bot.ledger_debts(${lineUserId})`
+        return rows.map(row => ({
+            fromName: row.from_name,
+            toName: row.to_name,
+            amount: row.amount,
+            fromMe: row.from_me,
+            toMe: row.to_me
+        }))
     }
 }
 

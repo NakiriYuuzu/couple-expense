@@ -62,7 +62,7 @@ beforeAll(async () => {
         GRANT USAGE ON SCHEMA auth TO anon, authenticated;
     `)
     await admin.query(await readFile(new URL('./fixtures/group-expense-live-subset.sql', import.meta.url), 'utf8'))
-    migrations = await Promise.all(['line-bot-01-webhook.sql', 'line-bot-02-link.sql', 'line-bot-03-drafts.sql'].map(name =>
+    migrations = await Promise.all(['line-bot-01-webhook.sql', 'line-bot-02-link.sql', 'line-bot-03-drafts.sql', 'line-bot-04-queries.sql'].map(name =>
         readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8')))
     for (const migration of migrations) await admin.query(migration)
 }, 60_000)
@@ -297,5 +297,129 @@ describe('line-bot drafts (acting as the bound user)', () => {
         await expect(createDraft('U1', 'x'.repeat(51), 1)).rejects.toThrow(/check/)
         const draftId = await createDraft('U1', '分類', 1)
         await expect(admin.query('SELECT line_bot.set_draft_category($1, $2, $3)', ['U1', draftId, 'bogus'])).rejects.toThrow(/check/)
+    })
+})
+
+describe('line-bot menu queries (acting as the bound user)', () => {
+    const dave = '00000000-0000-0000-0000-000000000011'
+    const erin = '00000000-0000-0000-0000-000000000012'
+    const frank = '00000000-0000-0000-0000-000000000013'
+    const trip = '20000000-0000-0000-0000-000000000011'
+
+    async function rows(query: string, params: unknown[] = []) {
+        return (await admin.query(query, params)).rows
+    }
+
+    beforeAll(async () => {
+        await admin.query(`
+            INSERT INTO auth.users VALUES ('${dave}'), ('${erin}'), ('${frank}');
+            INSERT INTO group_expense.user_profiles (id, email, display_name) VALUES
+                ('${dave}', 'dave@example.com', 'Dave'),
+                ('${erin}', 'erin@example.com', NULL),
+                ('${frank}', 'frank@example.com', 'Frank');
+            INSERT INTO group_expense.groups (id, name, created_by) VALUES ('${trip}', '旅行', '${dave}');
+            INSERT INTO group_expense.group_members (group_id, user_id, joined_at) VALUES
+                ('${trip}', '${dave}', '2024-01-01'), ('${trip}', '${erin}', '2024-01-02');
+            INSERT INTO line_bot.identities (line_user_id, user_id) VALUES
+                ('U-dave', '${dave}'), ('U-erin', '${erin}'), ('U-frank', '${frank}');
+        `)
+        await admin.query(`
+            WITH d AS (SELECT date_trunc('month', now() AT TIME ZONE 'Asia/Taipei')::date AS this_month),
+            inserted AS (
+                INSERT INTO group_expense.expenses (id, user_id, group_id, title, amount, category, date, currency, paid_by, created_at)
+                SELECT v.id::uuid, v.owner::uuid, v.grp::uuid, v.title, v.amount, v.category,
+                       CASE WHEN v.last_month THEN (d.this_month - interval '1 month')::date ELSE d.this_month + 1 END,
+                       v.currency, v.owner::uuid, now() - v.age * interval '1 minute'
+                FROM d, (VALUES
+                    ('40000000-0000-0000-0000-000000000001', '${dave}', '${trip}', '住宿', 300, 'home', false, 'TWD', 3),
+                    ('40000000-0000-0000-0000-000000000002', '${erin}', '${trip}', '高鐵', 100, 'transport', true, 'TWD', 2),
+                    ('40000000-0000-0000-0000-000000000003', '${erin}', '${trip}', '晚餐', 80, 'food', false, 'TWD', 1),
+                    ('40000000-0000-0000-0000-000000000004', '${dave}', NULL, '早餐', 50, 'food', false, 'TWD', 0),
+                    ('40000000-0000-0000-0000-000000000005', '${dave}', NULL, 'App Store', 10, 'other', false, 'USD', 0),
+                    ('40000000-0000-0000-0000-000000000006', '${frank}', NULL, '秘密', 999, 'other', false, 'TWD', 0)
+                ) AS v(id, owner, grp, title, amount, category, last_month, currency, age)
+                RETURNING id
+            )
+            INSERT INTO group_expense.expense_splits (expense_id, user_id, amount) VALUES
+                ('40000000-0000-0000-0000-000000000001', '${dave}', 150), ('40000000-0000-0000-0000-000000000001', '${erin}', 150),
+                ('40000000-0000-0000-0000-000000000002', '${dave}', 50), ('40000000-0000-0000-0000-000000000002', '${erin}', 50),
+                ('40000000-0000-0000-0000-000000000003', '${dave}', 40), ('40000000-0000-0000-0000-000000000003', '${erin}', 40)
+        `)
+    })
+
+    async function expectRoleRestored() {
+        expect((await rows("SELECT current_user AS u, current_setting('request.jwt.claims', true) AS c"))[0])
+            .toEqual({ u: 'postgres', c: '' })
+    }
+
+    it('reports the personal ledger by default and a group after switching', async () => {
+        expect(await rows('SELECT group_id, name FROM line_bot.current_ledger($1)', ['U-dave'])).toEqual([{ group_id: null, name: null }])
+        await admin.query('SELECT line_bot.set_ledger($1, $2)', ['U-erin', trip])
+        expect(await rows('SELECT group_id, name FROM line_bot.current_ledger($1)', ['U-erin'])).toEqual([{ group_id: trip, name: '旅行' }])
+        expect(await rows('SELECT * FROM line_bot.current_ledger($1)', ['U-unknown'])).toEqual([])
+    })
+
+    it('lists only the personal expenses of the user, newest first', async () => {
+        const result = await rows('SELECT title, amount, currency, paid_by_me FROM line_bot.recent_expenses($1, 0, 10)', ['U-dave'])
+        expect(result.map(r => r.title).sort()).toEqual(['App Store', '早餐'])
+        expect(result.every(r => r.paid_by_me)).toBe(true)
+        expect(await rows('SELECT title FROM line_bot.recent_expenses($1, 0, 10)', ['U-frank'])).toEqual([{ title: '秘密' }])
+        await expectRoleRestored()
+    })
+
+    it('lists group expenses with payer names and pages them', async () => {
+        const all = await rows('SELECT title, amount, payer_name, paid_by_me, expense_date FROM line_bot.recent_expenses($1, 0, 10)', ['U-erin'])
+        expect(all.map(r => [r.title, r.payer_name, r.paid_by_me])).toEqual([
+            ['晚餐', 'erin', true],
+            ['住宿', 'Dave', false],
+            ['高鐵', 'erin', true]
+        ])
+        expect(await rows('SELECT title FROM line_bot.recent_expenses($1, 0, 2)', ['U-erin'])).toHaveLength(2)
+        expect(await rows('SELECT title FROM line_bot.recent_expenses($1, 2, 2)', ['U-erin'])).toEqual([{ title: '高鐵' }])
+        await expectRoleRestored()
+    })
+
+    it('summarises this month and last month in TWD only', async () => {
+        expect(await rows('SELECT * FROM line_bot.month_summary($1)', ['U-dave'])).toEqual([
+            { category: 'food', this_month: '50', last_month: '0' }
+        ])
+        expect(await rows('SELECT * FROM line_bot.month_summary($1)', ['U-erin'])).toEqual([
+            { category: 'home', this_month: '300', last_month: '0' },
+            { category: 'food', this_month: '80', last_month: '0' },
+            { category: 'transport', this_month: '0', last_month: '100' }
+        ])
+        await expectRoleRestored()
+    })
+
+    it('shows group debts from the viewpoint of the user', async () => {
+        // Dave 付 300、分攤 150+50+40=240 → +60；Erin 付 180、分攤 240 → -60
+        expect(await rows('SELECT * FROM line_bot.ledger_debts($1)', ['U-erin'])).toEqual([
+            { from_name: 'erin', to_name: 'Dave', amount: '60', from_me: true, to_me: false }
+        ])
+        expect(await rows('SELECT * FROM line_bot.ledger_debts($1)', ['U-dave'])).toEqual([])
+        await expectRoleRestored()
+    })
+
+    it('ignores a stale ledger the user no longer belongs to', async () => {
+        await admin.query('UPDATE line_bot.identities SET ledger_group_id = $1 WHERE line_user_id = $2', [trip, 'U-frank'])
+        expect(await rows('SELECT group_id FROM line_bot.current_ledger($1)', ['U-frank'])).toEqual([{ group_id: null }])
+        expect(await rows('SELECT title FROM line_bot.recent_expenses($1, 0, 10)', ['U-frank'])).toEqual([{ title: '秘密' }])
+        expect(await rows('SELECT * FROM line_bot.ledger_debts($1)', ['U-frank'])).toEqual([])
+    })
+
+    it.each(['anon', 'authenticated'])('denies %s the query functions', async role => {
+        for (const query of [
+            "SELECT * FROM line_bot.recent_expenses('U-dave', 0, 10)",
+            "SELECT * FROM line_bot.month_summary('U-dave')",
+            "SELECT * FROM line_bot.ledger_debts('U-dave')"
+        ]) {
+            await admin.query('BEGIN')
+            try {
+                await admin.query(`SET LOCAL ROLE ${role}`)
+                await expect(admin.query(query)).rejects.toThrow(/permission denied/)
+            } finally {
+                await admin.query('ROLLBACK')
+            }
+        }
     })
 })
