@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LineLinkRouteImport } from './routes/line-link'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
@@ -21,6 +22,11 @@ import { Route as AuthenticatedGroupsNewRouteImport } from './routes/_authentica
 import { Route as AuthenticatedGroupsIdRouteImport } from './routes/_authenticated/groups/$id'
 import { Route as AuthenticatedExpensesIdRouteImport } from './routes/_authenticated/expenses/$id'
 
+const LineLinkRoute = LineLinkRouteImport.update({
+  id: '/line-link',
+  path: '/line-link',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -81,6 +87,7 @@ const AuthenticatedExpensesIdRoute = AuthenticatedExpensesIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/line-link': typeof LineLinkRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/overview': typeof AuthenticatedOverviewRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -93,6 +100,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/line-link': typeof LineLinkRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/overview': typeof AuthenticatedOverviewRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/line-link': typeof LineLinkRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/overview': typeof AuthenticatedOverviewRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -121,6 +130,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/line-link'
     | '/dashboard'
     | '/overview'
     | '/settings'
@@ -133,6 +143,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/line-link'
     | '/dashboard'
     | '/overview'
     | '/settings'
@@ -146,6 +157,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/line-link'
     | '/_authenticated/dashboard'
     | '/_authenticated/overview'
     | '/_authenticated/settings'
@@ -160,10 +172,18 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  LineLinkRoute: typeof LineLinkRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/line-link': {
+      id: '/line-link'
+      path: '/line-link'
+      fullPath: '/line-link'
+      preLoaderRoute: typeof LineLinkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -275,6 +295,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  LineLinkRoute: LineLinkRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

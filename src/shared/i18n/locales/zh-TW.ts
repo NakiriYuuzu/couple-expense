@@ -709,6 +709,18 @@ const zhTW = {
         resetSent: '重設密碼信已寄出，請查看信箱',
         resetFailed: '寄送失敗，請稍後再試',
         googleFailed: 'Google 登入失敗，請稍後再試'
+    },
+    lineLink: {
+        title: '綁定 LINE 記帳 Bot',
+        confirmAccount: '將把 LINE 綁定到以下帳號：',
+        link: '確認綁定',
+        switchAccount: '使用其他帳號',
+        invalidLink: '連結無效，請回到 LINE 重新輸入「綁定」。',
+        errors: {
+            already_bound: '這個帳號已綁定其他 LINE，請先在該 LINE 輸入「解除綁定」。',
+            unauthorized: '登入已過期，請重新登入。',
+            failed: '綁定失敗，請回到 LINE 重新輸入「綁定」。'
+        }
     }
 }
 
