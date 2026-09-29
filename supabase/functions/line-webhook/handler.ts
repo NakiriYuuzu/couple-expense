@@ -1,7 +1,10 @@
 // LINE webhook 核心邏輯：不依賴 Deno 或遠端套件，方便在 Vitest 直接測試。
 import {
+    addExpenseMessage,
+    categories,
     debtsText,
     draftMessage,
+    expenseUrl,
     formatAmount,
     ledgerLabel,
     ledgerMessage,
@@ -11,13 +14,17 @@ import {
     RECENT_PAGE_SIZE,
     summaryMessage,
     taipeiMonth,
+    textCard,
+    webPages,
+    webUrl,
     type Category,
     type CategoryTotal,
     type Debt,
     type Draft,
     type ExpenseItem,
     type Ledger,
-    type LineMessage
+    type LineMessage,
+    type SplitMode
 } from './bookkeeping.ts'
 
 /** 圖文選單按鈕送出的文字；手動輸入同樣有效。 */
@@ -39,7 +46,7 @@ export type LineEvent = {
     source?: { type: string; userId?: string }
     message?: { type: string; text?: string }
     link?: { result: string; nonce?: string }
-    postback?: { data: string }
+    postback?: { data: string; params?: { date?: string } }
 }
 
 export type ConfirmResult = 'confirmed' | 'already_confirmed' | 'not_found' | 'cancelled' | 'expired' | 'failed'
@@ -63,6 +70,13 @@ export interface WebhookStore {
     createDraft(lineUserId: string, title: string, amount: number): Promise<string | null>
     getDraft(lineUserId: string, draftId: string): Promise<Draft | null>
     setDraftCategory(lineUserId: string, draftId: string, category: Category): Promise<boolean>
+    /** 記一筆卡片上選的分類，套用到 10 分鐘內的下一筆草稿 */
+    setPendingCategory(lineUserId: string, category: Category): Promise<boolean>
+    setDraftLedger(lineUserId: string, draftId: string, groupId: string | null): Promise<boolean>
+    setDraftPayer(lineUserId: string, draftId: string, userId: string): Promise<boolean>
+    setDraftParticipants(lineUserId: string, draftId: string, mode: SplitMode, userId: string | null): Promise<boolean>
+    /** date 為 YYYY-MM-DD */
+    setDraftDate(lineUserId: string, draftId: string, date: string): Promise<boolean>
     cancelDraft(lineUserId: string, draftId: string): Promise<boolean>
     confirmDraft(lineUserId: string, draftId: string): Promise<ConfirmResult>
     /** 目前帳本名稱；null = 個人帳（含已失去成員資格的群組） */
@@ -90,7 +104,8 @@ export const messages = {
     userAlreadyBound: '這個記帳帳號已綁定其他 LINE，請先在該 LINE 輸入「解除綁定」。',
     unlinked: '已解除綁定。',
     help: [
-        '記帳：輸入「品項 金額」，例如「午餐 120」，確認後才入帳',
+        '記帳：按「記一筆」選帳本與分類，或直接輸入「品項 金額」，例如「午餐 120」',
+        '草稿：可改帳本、分類、日期；群組可選付款人與分攤方式，確認後才入帳',
         '帳本：切換個人或群組帳本',
         '最近紀錄／本月統計／誰欠誰：查詢目前帳本',
         '解除綁定：解除 LINE 與記帳帳號的連結',
@@ -100,6 +115,8 @@ export const messages = {
     textOnly: '目前只支援文字訊息。輸入「說明」查看用法。',
     ledgerNotMember: '你已不是這個群組的成員，請輸入「帳本」重新選擇。',
     draftNotEditable: '這筆草稿已入帳、取消或過期，無法修改。',
+    draftUpdateFailed: '無法修改：草稿已失效，或對象已不是群組成員。',
+    splitFailed: '無法修改分攤：至少要留一位參與者，或草稿已失效。',
     cancelled: '已取消這筆草稿。',
     alreadyConfirmed: '這筆已經入帳了。',
     draftNotFound: '找不到這筆草稿。',
@@ -184,14 +201,22 @@ export function createWebhookHandler(deps: {
     line: LineApi
     /** 綁定網頁，例如 https://<user>.github.io/couple-expense/line-link */
     linkPageUrl: string
+    /** 網頁版根網址，例如 https://<user>.github.io/couple-expense/ */
+    webAppUrl: string
     logError?: (message: string) => void
     now?: () => Date
 }) {
-    const { channelSecret, store, line, linkPageUrl, logError = () => {}, now = () => new Date() } = deps
+    const { channelSecret, store, line, linkPageUrl, webAppUrl, logError = () => {}, now = () => new Date() } = deps
+    const homeUrl = webUrl(webAppUrl, webPages.home)
 
     async function reply(event: LineEvent, message: string | LineMessage) {
         if (!event.replyToken) return
         await line.reply(event.replyToken, [typeof message === 'string' ? { type: 'text', text: message } : message])
+    }
+
+    /** 已綁定使用者的文字回覆一律附上開啟網頁版的按鈕。 */
+    async function replyCard(event: LineEvent, text: string, url = homeUrl, label?: string) {
+        await reply(event, textCard(text, url, label))
     }
 
     async function handleUnboundText(event: LineEvent, lineUserId: string, text: string | null) {
@@ -204,8 +229,24 @@ export function createWebhookHandler(deps: {
     }
 
     async function replyDraft(event: LineEvent, lineUserId: string, draftId: string | null) {
-        const draft = draftId ? await store.getDraft(lineUserId, draftId) : null
-        await reply(event, draft ? draftMessage(draft) : messages.draftNotFound)
+        const [draft, ledgers] = await Promise.all([
+            draftId ? store.getDraft(lineUserId, draftId) : null,
+            store.listLedgers(lineUserId)
+        ])
+        if (!draft) {
+            await replyCard(event, messages.draftNotFound)
+            return
+        }
+        await reply(event, draftMessage(draft, ledgers, webAppUrl))
+    }
+
+    /** 修改草稿成功就回新的草稿卡片，失敗回說明。 */
+    async function updateDraft(event: LineEvent, lineUserId: string, draftId: string, ok: boolean, failure: string) {
+        if (!ok) {
+            await replyCard(event, failure)
+            return
+        }
+        await replyDraft(event, lineUserId, draftId)
     }
 
     async function replyRecent(event: LineEvent, lineUserId: string, offset: number) {
@@ -213,22 +254,21 @@ export function createWebhookHandler(deps: {
             store.currentLedgerName(lineUserId),
             store.recentExpenses(lineUserId, offset, RECENT_PAGE_SIZE + 1)
         ])
-        await reply(event, recentMessage(ledgerName, items, offset))
+        await reply(event, recentMessage(ledgerName, items, offset, webAppUrl))
     }
 
     async function handleBoundText(event: LineEvent, lineUserId: string, text: string | null) {
         if (text === null) {
-            await reply(event, messages.textOnly)
+            await replyCard(event, messages.textOnly)
         } else if (text === '綁定') {
-            await reply(event, messages.alreadyBound)
+            await replyCard(event, messages.alreadyBound)
         } else if (text === '解除綁定') {
             await store.unlink(lineUserId)
             await reply(event, messages.unlinked)
         } else if (text === menuCommands.ledger) {
-            await reply(event, ledgerMessage(await store.listLedgers(lineUserId)))
+            await reply(event, ledgerMessage(await store.listLedgers(lineUserId), webAppUrl))
         } else if (text === menuCommands.add) {
-            const ledgerName = await store.currentLedgerName(lineUserId)
-            await reply(event, `目前帳本：${ledgerLabel(ledgerName)}。\n請輸入「品項 金額」，例如「午餐 120」。`)
+            await reply(event, addExpenseMessage(await store.listLedgers(lineUserId), webAppUrl))
         } else if (text === menuCommands.recent) {
             await replyRecent(event, lineUserId, 0)
         } else if (text === menuCommands.summary) {
@@ -236,19 +276,19 @@ export function createWebhookHandler(deps: {
                 store.currentLedgerName(lineUserId),
                 store.monthSummary(lineUserId)
             ])
-            await reply(event, summaryMessage(ledgerName, taipeiMonth(now()), totals))
+            await reply(event, summaryMessage(ledgerName, taipeiMonth(now()), totals, webAppUrl))
         } else if (text === menuCommands.debts) {
             const [ledgerName, debts] = await Promise.all([
                 store.currentLedgerName(lineUserId),
                 store.ledgerDebts(lineUserId)
             ])
-            await reply(event, debtsText(ledgerName, debts))
+            await replyCard(event, debtsText(ledgerName, debts), homeUrl, '在網頁版結清')
         } else if (text === menuCommands.help) {
-            await reply(event, messages.help)
+            await replyCard(event, messages.help)
         } else {
             const expense = parseExpense(text)
             if (!expense) {
-                await reply(event, messages.help)
+                await replyCard(event, messages.help)
                 return
             }
             await replyDraft(event, lineUserId, await store.createDraft(lineUserId, expense.title, expense.amount))
@@ -264,36 +304,72 @@ export function createWebhookHandler(deps: {
                 return
             case 'ledger': {
                 if (!await store.setLedger(lineUserId, postback.groupId)) {
-                    await reply(event, messages.ledgerNotMember)
+                    await replyCard(event, messages.ledgerNotMember)
                     return
                 }
                 const ledgers = await store.listLedgers(lineUserId)
-                const name = ledgers.find(ledger => ledger.groupId === postback.groupId)?.name ?? null
-                await reply(event, `之後會記到「${ledgerLabel(name)}」帳本。`)
-                return
-            }
-            case 'category':
-                if (!await store.setDraftCategory(lineUserId, postback.draftId, postback.category)) {
-                    await reply(event, messages.draftNotEditable)
+                if (postback.view === 'add') {
+                    await reply(event, addExpenseMessage(ledgers, webAppUrl))
                     return
                 }
-                await replyDraft(event, lineUserId, postback.draftId)
+                const name = ledgers.find(ledger => ledger.groupId === postback.groupId)?.name ?? null
+                await replyCard(event, `之後會記到「${ledgerLabel(name)}」帳本。`)
                 return
+            }
+            case 'pickcat':
+                // 按鈕同時打開鍵盤，使用者接著輸入「品項 金額」。
+                await store.setPendingCategory(lineUserId, postback.category)
+                await replyCard(
+                    event,
+                    `分類：${categories[postback.category]}。請輸入「品項 金額」，例如「午餐 120」。`,
+                    homeUrl,
+                    '在網頁版記帳'
+                )
+                return
+            case 'category':
+                await updateDraft(event, lineUserId, postback.draftId,
+                    await store.setDraftCategory(lineUserId, postback.draftId, postback.category), messages.draftNotEditable)
+                return
+            case 'dledger':
+                await updateDraft(event, lineUserId, postback.draftId,
+                    await store.setDraftLedger(lineUserId, postback.draftId, postback.groupId), messages.draftUpdateFailed)
+                return
+            case 'payer':
+                await updateDraft(event, lineUserId, postback.draftId,
+                    await store.setDraftPayer(lineUserId, postback.draftId, postback.userId), messages.draftUpdateFailed)
+                return
+            case 'split':
+                await updateDraft(event, lineUserId, postback.draftId,
+                    await store.setDraftParticipants(lineUserId, postback.draftId, postback.mode, postback.userId), messages.splitFailed)
+                return
+            case 'date': {
+                const date = event.postback?.params?.date ?? ''
+                const ok = /^\d{4}-\d{2}-\d{2}$/.test(date) && await store.setDraftDate(lineUserId, postback.draftId, date)
+                await updateDraft(event, lineUserId, postback.draftId, ok, messages.draftUpdateFailed)
+                return
+            }
             case 'cancel':
-                await reply(event, await store.cancelDraft(lineUserId, postback.draftId)
+                await replyCard(event, await store.cancelDraft(lineUserId, postback.draftId)
                     ? messages.cancelled
                     : messages.draftNotEditable)
                 return
             case 'confirm': {
                 const result = await store.confirmDraft(lineUserId, postback.draftId)
                 if (result !== 'confirmed') {
-                    await reply(event, confirmResultMessages[result])
+                    await replyCard(event, confirmResultMessages[result])
                     return
                 }
                 const draft = await store.getDraft(lineUserId, postback.draftId)
-                await reply(event, draft
-                    ? `已入帳：${draft.title} ${formatAmount(draft.amount)}（${ledgerLabel(draft.ledgerName)}）`
-                    : messages.alreadyConfirmed)
+                if (!draft?.expenseId) {
+                    await replyCard(event, messages.alreadyConfirmed)
+                    return
+                }
+                await replyCard(
+                    event,
+                    `已入帳：${draft.title} ${formatAmount(draft.amount)}（${ledgerLabel(draft.ledgerName)}）`,
+                    expenseUrl(webAppUrl, draft.expenseId),
+                    '在網頁版查看這筆'
+                )
                 return
             }
         }

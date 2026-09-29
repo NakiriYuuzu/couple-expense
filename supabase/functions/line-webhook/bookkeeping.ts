@@ -13,6 +13,14 @@ export const categories = {
 
 export type Category = keyof typeof categories
 
+export interface DraftMember {
+    userId: string
+    name: string
+    isMe: boolean
+    isPayer: boolean
+    isParticipant: boolean
+}
+
 export interface Draft {
     id: string
     title: string
@@ -23,7 +31,12 @@ export interface Draft {
     status: 'pending' | 'confirmed' | 'cancelled'
     /** null = 個人帳 */
     ledgerName: string | null
+    groupId: string | null
     isExpired: boolean
+    /** 已入帳的費用 ID */
+    expenseId: string | null
+    /** 群組草稿的有效成員（含付款人／參與者狀態）；個人草稿為空 */
+    members: DraftMember[]
 }
 
 export interface Ledger {
@@ -69,6 +82,9 @@ export interface ExpenseItem {
     /** 付款人顯示名稱；個人帳不顯示 */
     payerName: string | null
     paidByMe: boolean
+    /** 個人帳本中的群組費用：群組名稱（amount 為自己的分攤） */
+    groupName: string | null
+    totalAmount: string
 }
 
 export interface CategoryTotal {
@@ -91,21 +107,43 @@ const MAX_RECENT_OFFSET = 500
 
 // ── Postback ────────────────────────────────────────────────────────────
 
+export type SplitMode = 'all' | 'only' | 'toggle'
+
 export type Postback =
-    | { action: 'confirm' | 'cancel'; draftId: string }
+    | { action: 'confirm' | 'cancel' | 'date'; draftId: string }
     | { action: 'category'; draftId: string; category: Category }
-    | { action: 'ledger'; groupId: string | null }
+    /** view: 'add' 表示從記一筆卡片切換，切換後回到該卡片 */
+    | { action: 'ledger'; groupId: string | null; view?: 'add' }
     | { action: 'recent'; offset: number }
+    | { action: 'pickcat'; category: Category }
+    | { action: 'dledger'; draftId: string; groupId: string | null }
+    | { action: 'payer'; draftId: string; userId: string }
+    | { action: 'split'; draftId: string; mode: SplitMode; userId: string | null }
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export function encodePostback(postback: Postback): string {
     const params = new URLSearchParams({ action: postback.action })
     if ('draftId' in postback) params.set('draft', postback.draftId)
-    if (postback.action === 'category') params.set('category', postback.category)
-    if (postback.action === 'ledger') params.set('group', postback.groupId ?? 'personal')
+    if ('category' in postback) params.set('category', postback.category)
+    if ('groupId' in postback) params.set('group', postback.groupId ?? 'personal')
+    if (postback.action === 'ledger' && postback.view) params.set('view', postback.view)
     if (postback.action === 'recent') params.set('offset', String(postback.offset))
+    if (postback.action === 'payer') params.set('user', postback.userId)
+    if (postback.action === 'split') {
+        params.set('mode', postback.mode)
+        if (postback.userId) params.set('user', postback.userId)
+    }
     return params.toString()
+}
+
+function parseGroup(value: string | null): { ok: true; groupId: string | null } | { ok: false } {
+    if (value === 'personal') return { ok: true, groupId: null }
+    return value && uuidPattern.test(value) ? { ok: true, groupId: value } : { ok: false }
+}
+
+function parseCategory(value: string | null): Category | null {
+    return value && Object.hasOwn(categories, value) ? value as Category : null
 }
 
 /** 只接受格式正確的 postback；授權與擁有者檢查仍由 DB 函式負責。 */
@@ -113,19 +151,36 @@ export function parsePostback(data: string): Postback | null {
     const params = new URLSearchParams(data)
     const action = params.get('action')
     const draftId = params.get('draft') ?? ''
-    if (action === 'confirm' || action === 'cancel') {
-        return uuidPattern.test(draftId) ? { action, draftId } : null
+    const validDraft = uuidPattern.test(draftId)
+    const user = params.get('user') ?? ''
+    const category = parseCategory(params.get('category'))
+    const group = parseGroup(params.get('group'))
+    if (action === 'confirm' || action === 'cancel' || action === 'date') {
+        return validDraft ? { action, draftId } : null
     }
     if (action === 'category') {
-        const category = params.get('category') ?? ''
-        return uuidPattern.test(draftId) && Object.hasOwn(categories, category)
-            ? { action, draftId, category: category as Category }
-            : null
+        return validDraft && category ? { action, draftId, category } : null
+    }
+    if (action === 'pickcat') {
+        return category ? { action, category } : null
     }
     if (action === 'ledger') {
-        const group = params.get('group') ?? ''
-        if (group === 'personal') return { action, groupId: null }
-        return uuidPattern.test(group) ? { action, groupId: group } : null
+        const view = params.get('view')
+        if (!group.ok || (view !== null && view !== 'add')) return null
+        return view === 'add' ? { action, groupId: group.groupId, view } : { action, groupId: group.groupId }
+    }
+    if (action === 'dledger') {
+        return validDraft && group.ok ? { action, draftId, groupId: group.groupId } : null
+    }
+    if (action === 'payer') {
+        return validDraft && uuidPattern.test(user) ? { action, draftId, userId: user } : null
+    }
+    if (action === 'split') {
+        const mode = params.get('mode')
+        if (!validDraft) return null
+        if (mode === 'all') return { action, draftId, mode, userId: null }
+        if ((mode === 'only' || mode === 'toggle') && uuidPattern.test(user)) return { action, draftId, mode, userId: user }
+        return null
     }
     if (action === 'recent') {
         const raw = params.get('offset') ?? ''
@@ -135,7 +190,49 @@ export function parsePostback(data: string): Postback | null {
     return null
 }
 
-// ── 訊息 ────────────────────────────────────────────────────────────────
+// ── 網頁版連結 ──────────────────────────────────────────────────────────
+
+/** openExternalBrowser=1 讓 LINE 用手機瀏覽器開啟，沿用已登入的網頁 session。 */
+export function webUrl(webAppUrl: string, path: string): string {
+    const base = webAppUrl.endsWith('/') ? webAppUrl : `${webAppUrl}/`
+    return `${base}${path}?openExternalBrowser=1`
+}
+
+export const webPages = {
+    home: 'dashboard',
+    expenses: 'expenses',
+    overview: 'overview',
+    groups: 'groups'
+} as const
+
+export function expenseUrl(webAppUrl: string, expenseId: string): string {
+    return webUrl(webAppUrl, `expenses/${encodeURIComponent(expenseId)}`)
+}
+
+function webButton(url: string, label = '在網頁版開啟') {
+    return { type: 'button', style: 'link', height: 'sm', action: { type: 'uri', label, uri: url } }
+}
+
+/** 文字回覆＋開啟網頁版按鈕 */
+export function textCard(text: string, url: string, label?: string): LineMessage {
+    return {
+        type: 'flex',
+        altText: text.slice(0, 400),
+        contents: {
+            type: 'bubble',
+            body: {
+                type: 'box',
+                layout: 'vertical',
+                contents: [{ type: 'text', text, size: 'sm', wrap: true }]
+            },
+            footer: { type: 'box', layout: 'vertical', contents: [webButton(url, label)] }
+        }
+    }
+}
+
+// ── 訊息元件 ────────────────────────────────────────────────────────────
+
+const BRAND = '#777FE6'
 
 function postbackAction(label: string, postback: Postback, displayText = label) {
     return { type: 'postback', label: label.slice(0, 20), data: encodePostback(postback), displayText }
@@ -152,44 +249,225 @@ function row(label: string, value: string) {
     }
 }
 
+/** 可點的選項；selected 以品牌色標示。 */
+function chip(label: string, selected: boolean, action: Record<string, unknown>) {
+    return {
+        type: 'box',
+        layout: 'vertical',
+        flex: 1,
+        paddingAll: '8px',
+        cornerRadius: 'md',
+        backgroundColor: selected ? BRAND : '#F1F2F8',
+        action,
+        contents: [{ type: 'text', text: label, size: 'sm', align: 'center', color: selected ? '#FFFFFF' : '#1F2340' }]
+    }
+}
+
+/** 每列固定欄數；最後一列補空白，讓選項寬度一致。 */
+function chipRows(chips: Record<string, unknown>[], perRow = 3) {
+    const rows = []
+    for (let i = 0; i < chips.length; i += perRow) {
+        const slice = chips.slice(i, i + perRow)
+        while (slice.length < perRow) slice.push({ type: 'box', layout: 'vertical', flex: 1, contents: [] })
+        rows.push({ type: 'box', layout: 'horizontal', spacing: 'sm', contents: slice })
+    }
+    return { type: 'box', layout: 'vertical', spacing: 'sm', contents: rows }
+}
+
+function section(title: string, content: Record<string, unknown>) {
+    return {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        contents: [{ type: 'text', text: title, size: 'xs', color: '#888888' }, content]
+    }
+}
+
 export function ledgerLabel(ledgerName: string | null): string {
     return ledgerName ?? '個人'
 }
 
-export function draftMessage(draft: Draft): LineMessage {
+/** 最多列 11 個群組，加上「個人」剛好 4 列。 */
+const MAX_LEDGER_CHIPS = 11
+
+function ledgerChips(ledgers: Ledger[], selectedGroupId: string | null, toPostback: (groupId: string | null) => Postback) {
+    const options = [{ groupId: null as string | null, name: '個人' }, ...ledgers.slice(0, MAX_LEDGER_CHIPS)]
+    return chipRows(options.map(option => chip(
+        option.name,
+        option.groupId === selectedGroupId,
+        postbackAction(option.name, toPostback(option.groupId), `帳本：${option.name}`)
+    )))
+}
+
+// ── 記一筆卡片 ──────────────────────────────────────────────────────────
+
+/** 點分類 → 記下預選分類並打開鍵盤，使用者直接輸入「品項 金額」。 */
+function pickCategoryAction(category: Category, label: string, displayText: string) {
+    return { ...postbackAction(label, { action: 'pickcat', category }, displayText), inputOption: 'openKeyboard' }
+}
+
+export function addExpenseMessage(ledgers: Ledger[], webAppUrl: string): LineMessage {
+    const current = ledgers.find(ledger => ledger.isCurrent)?.groupId ?? null
+    const categoryChips = (Object.keys(categories) as Category[]).map(category =>
+        chip(categories[category], false, pickCategoryAction(category, categories[category], `分類：${categories[category]}`)))
+    return {
+        type: 'flex',
+        altText: '新增記帳',
+        contents: {
+            type: 'bubble',
+            body: {
+                type: 'box',
+                layout: 'vertical',
+                spacing: 'lg',
+                contents: [
+                    { type: 'text', text: '新增記帳', weight: 'bold', size: 'lg' },
+                    section('帳本', ledgerChips(ledgers, current, groupId => ({ action: 'ledger', groupId, view: 'add' }))),
+                    section('選分類後直接輸入「品項 金額」', chipRows(categoryChips)),
+                    { type: 'text', text: '例如「午餐 120」，確認後才會入帳。', size: 'xs', color: '#888888', wrap: true }
+                ]
+            },
+            footer: {
+                type: 'box',
+                layout: 'vertical',
+                spacing: 'sm',
+                contents: [
+                    { type: 'button', style: 'primary', action: pickCategoryAction('other', '直接輸入', '直接輸入') },
+                    webButton(webUrl(webAppUrl, webPages.home), '在網頁版記帳')
+                ]
+            }
+        }
+    }
+}
+
+// ── 草稿卡片 ────────────────────────────────────────────────────────────
+
+function memberName(member: DraftMember): string {
+    return member.isMe ? '我' : member.name
+}
+
+/** 分攤說明：與 DB 相同以「分」均分。 */
+export function splitSummary(draft: Draft): string {
+    const participants = draft.members.filter(member => member.isParticipant)
+    if (participants.length === 0) return ''
+    if (participants.length === 1) {
+        const only = participants[0]
+        return only.isMe ? `全部算你的：${formatAmount(draft.amount)}` : `由 ${only.name} 全額負擔：${formatAmount(draft.amount)}`
+    }
+    const each = Math.floor(Math.round(Number(draft.amount) * 100) / participants.length) / 100
+    return `${participants.length} 人均分，每人約 ${formatAmount(each)}`
+}
+
+function splitChips(draft: Draft) {
+    const { members } = draft
+    const participants = members.filter(member => member.isParticipant)
+    const me = members.find(member => member.isMe)
+    const others = members.filter(member => !member.isMe)
+    const onlyIs = (member: DraftMember | undefined) =>
+        !!member && participants.length === 1 && participants[0].userId === member.userId
+    const split = (label: string, selected: boolean, mode: 'all' | 'only' | 'toggle', userId: string | null) =>
+        chip(label, selected, postbackAction(label, { action: 'split', draftId: draft.id, mode, userId }, `分攤：${label}`))
+
+    const presets = [split('全員均分', participants.length === members.length, 'all', null)]
+    if (me) presets.push(split('只算我', onlyIs(me), 'only', me.userId))
+    // 兩人群組：三個預設即涵蓋所有組合；多人群組另外提供逐人勾選。
+    if (members.length === 2 && others[0]) {
+        presets.push(split('只算對方', onlyIs(others[0]), 'only', others[0].userId))
+        return chipRows(presets)
+    }
+    const toggles = members.map(member =>
+        split(`${member.isParticipant ? '✓ ' : ''}${memberName(member)}`, member.isParticipant, 'toggle', member.userId))
+    return { type: 'box', layout: 'vertical', spacing: 'sm', contents: [chipRows(presets), chipRows(toggles)] }
+}
+
+function dateRow(draft: Draft) {
+    return {
+        type: 'box',
+        layout: 'horizontal',
+        contents: [
+            { type: 'text', text: '日期', size: 'sm', color: '#888888', flex: 2 },
+            { type: 'text', text: draft.expenseDate, size: 'sm', flex: 3 },
+            {
+                type: 'text',
+                text: '改日期',
+                size: 'sm',
+                color: BRAND,
+                align: 'end',
+                flex: 2,
+                action: {
+                    type: 'datetimepicker',
+                    label: '改日期',
+                    data: encodePostback({ action: 'date', draftId: draft.id }),
+                    mode: 'date',
+                    initial: draft.expenseDate
+                }
+            }
+        ]
+    }
+}
+
+export function draftMessage(draft: Draft, ledgers: Ledger[], webAppUrl: string): LineMessage {
     const editable = draft.status === 'pending' && !draft.isExpired
-    const categoryName = categories[draft.category as Category] ?? draft.category
-    const bubble: LineMessage = {
-        type: 'bubble',
-        body: {
-            type: 'box',
-            layout: 'vertical',
-            spacing: 'md',
-            contents: [
-                { type: 'text', text: editable ? '記帳草稿' : '記帳草稿（已失效）', size: 'xs', color: '#888888' },
-                { type: 'text', text: draft.title, weight: 'bold', size: 'lg', wrap: true },
-                { type: 'text', text: formatAmount(draft.amount), weight: 'bold', size: 'xxl' },
-                row('帳本', ledgerLabel(draft.ledgerName)),
-                row('分類', categoryName),
-                row('日期', draft.expenseDate)
-            ]
-        }
+    const isGroup = draft.groupId !== null && draft.members.length > 0
+    const statusText = draft.status === 'confirmed' ? '已入帳' : editable ? '記帳草稿' : '記帳草稿（已失效）'
+    const payer = draft.members.find(member => member.isPayer)
+
+    const details: Record<string, unknown>[] = editable
+        ? [
+            section('帳本', ledgerChips(ledgers, draft.groupId, groupId => ({ action: 'dledger', draftId: draft.id, groupId }))),
+            row('分類', categoryName(draft.category)),
+            dateRow(draft)
+        ]
+        : [row('帳本', ledgerLabel(draft.ledgerName)), row('分類', categoryName(draft.category)), row('日期', draft.expenseDate)]
+    if (isGroup && editable) {
+        details.push(
+            section('付款人', chipRows(draft.members.map(member => chip(
+                memberName(member),
+                member.isPayer,
+                postbackAction(memberName(member), { action: 'payer', draftId: draft.id, userId: member.userId }, `付款人：${memberName(member)}`)
+            )))),
+            section('分攤給', splitChips(draft))
+        )
+    } else if (isGroup && payer) {
+        details.push(row('付款人', memberName(payer)))
     }
-    if (editable) {
-        bubble.footer = {
-            type: 'box',
-            layout: 'horizontal',
-            spacing: 'sm',
-            contents: [
-                { type: 'button', style: 'secondary', action: postbackAction('取消', { action: 'cancel', draftId: draft.id }) },
-                { type: 'button', style: 'primary', action: postbackAction('確認入帳', { action: 'confirm', draftId: draft.id }) }
-            ]
-        }
-    }
+    if (isGroup) details.push({ type: 'text', text: splitSummary(draft), size: 'xs', color: '#888888', wrap: true })
+
+    const webLink = draft.expenseId
+        ? webButton(expenseUrl(webAppUrl, draft.expenseId), '在網頁版查看這筆')
+        : webButton(webUrl(webAppUrl, webPages.home), '在網頁版開啟')
+    const footer = editable
+        ? [
+            {
+                type: 'box',
+                layout: 'horizontal',
+                spacing: 'sm',
+                contents: [
+                    { type: 'button', style: 'secondary', action: postbackAction('取消', { action: 'cancel', draftId: draft.id }) },
+                    { type: 'button', style: 'primary', action: postbackAction('確認入帳', { action: 'confirm', draftId: draft.id }) }
+                ]
+            },
+            webLink
+        ]
+        : [webLink]
+
     const message: LineMessage = {
         type: 'flex',
-        altText: `記帳草稿：${draft.title} ${formatAmount(draft.amount)}`,
-        contents: bubble
+        altText: `${statusText}：${draft.title} ${formatAmount(draft.amount)}`,
+        contents: {
+            type: 'bubble',
+            body: {
+                type: 'box',
+                layout: 'vertical',
+                spacing: 'md',
+                contents: [
+                    { type: 'text', text: statusText, size: 'xs', color: '#888888' },
+                    { type: 'text', text: draft.title, weight: 'bold', size: 'lg', wrap: true },
+                    { type: 'text', text: formatAmount(draft.amount), weight: 'bold', size: 'xxl' },
+                    ...details
+                ]
+            },
+            footer: { type: 'box', layout: 'vertical', spacing: 'sm', contents: footer }
+        }
     }
     if (editable) {
         message.quickReply = {
@@ -206,18 +484,31 @@ export function draftMessage(draft: Draft): LineMessage {
     return message
 }
 
-/** 帳本選單；quick reply 上限 13 個，保留「個人」後最多列 12 個群組。 */
-export function ledgerMessage(ledgers: Ledger[]): LineMessage {
-    const current = ledgers.find(ledger => ledger.isCurrent)
-    const options = [
-        postbackAction('個人', { action: 'ledger', groupId: null }, '帳本：個人'),
-        ...ledgers.slice(0, 12).map(ledger =>
-            postbackAction(ledger.name, { action: 'ledger', groupId: ledger.groupId }, `帳本：${ledger.name}`))
-    ]
+// ── 帳本卡片 ────────────────────────────────────────────────────────────
+
+export function ledgerMessage(ledgers: Ledger[], webAppUrl: string): LineMessage {
+    const current = ledgers.find(ledger => ledger.isCurrent) ?? null
     return {
-        type: 'text',
-        text: `目前帳本：${ledgerLabel(current?.name ?? null)}。請選擇之後要記到哪個帳本：`,
-        quickReply: { items: options.map(action => ({ type: 'action', action })) }
+        type: 'flex',
+        altText: `目前帳本：${ledgerLabel(current?.name ?? null)}`,
+        contents: {
+            type: 'bubble',
+            body: {
+                type: 'box',
+                layout: 'vertical',
+                spacing: 'lg',
+                contents: [
+                    { type: 'text', text: '切換帳本', weight: 'bold', size: 'lg' },
+                    { type: 'text', text: '之後記的帳會記到選取的帳本。', size: 'xs', color: '#888888', wrap: true },
+                    ledgerChips(ledgers, current?.groupId ?? null, groupId => ({ action: 'ledger', groupId }))
+                ]
+            },
+            footer: {
+                type: 'box',
+                layout: 'vertical',
+                contents: [webButton(webUrl(webAppUrl, webPages.groups), '在網頁版管理群組')]
+            }
+        }
     }
 }
 
@@ -237,26 +528,32 @@ function categoryName(category: string): string {
 }
 
 function header(title: string, ledgerName: string | null) {
+    const scope = ledgerName === null ? '個人（含你在群組的分攤）' : ledgerName
     return {
         type: 'box',
         layout: 'vertical',
         contents: [
             { type: 'text', text: title, weight: 'bold', size: 'lg' },
-            { type: 'text', text: `帳本：${ledgerLabel(ledgerName)}`, size: 'xs', color: '#888888' }
+            { type: 'text', text: `帳本：${scope}`, size: 'xs', color: '#888888', wrap: true }
         ]
     }
 }
 
 /** 最近紀錄；items 可多傳一筆，用來判斷是否還有下一頁。 */
-export function recentMessage(ledgerName: string | null, items: ExpenseItem[], offset: number): LineMessage {
+export function recentMessage(ledgerName: string | null, items: ExpenseItem[], offset: number, webAppUrl: string): LineMessage {
+    const listUrl = webUrl(webAppUrl, webPages.expenses)
     if (items.length === 0) {
-        return { type: 'text', text: offset === 0 ? `「${ledgerLabel(ledgerName)}」帳本還沒有紀錄。` : '沒有更多紀錄了。' }
+        return textCard(offset === 0 ? `「${ledgerLabel(ledgerName)}」帳本還沒有紀錄。` : '沒有更多紀錄了。', listUrl)
     }
     const page = items.slice(0, RECENT_PAGE_SIZE)
     const hasMore = items.length > RECENT_PAGE_SIZE
     const rows = page.flatMap((item, index) => {
         const details = [item.expenseDate.slice(5), categoryName(item.category)]
         if (ledgerName !== null) details.push(item.paidByMe ? '你付' : `${item.payerName ?? '成員'}付`)
+        // 個人帳本中的群組費用：金額是自己的分攤，附上群組與總額
+        if (ledgerName === null && item.groupName) {
+            details.push(`${item.groupName}（共 ${formatAmount(item.totalAmount, item.currency)}）`)
+        }
         const row = {
             type: 'box',
             layout: 'horizontal',
@@ -267,7 +564,7 @@ export function recentMessage(ledgerName: string | null, items: ExpenseItem[], o
                     flex: 3,
                     contents: [
                         { type: 'text', text: item.title, size: 'sm', weight: 'bold', wrap: true },
-                        { type: 'text', text: details.join('・'), size: 'xxs', color: '#888888' }
+                        { type: 'text', text: details.join('・'), size: 'xxs', color: '#888888', wrap: true }
                     ]
                 },
                 { type: 'text', text: formatAmount(item.amount, item.currency), size: 'sm', align: 'end', gravity: 'center', flex: 2 }
@@ -280,17 +577,15 @@ export function recentMessage(ledgerName: string | null, items: ExpenseItem[], o
         header: header(offset === 0 ? '最近紀錄' : `最近紀錄（第 ${offset + 1} 筆起）`, ledgerName),
         body: { type: 'box', layout: 'vertical', spacing: 'md', contents: rows }
     }
+    const footer: Record<string, unknown>[] = [webButton(listUrl, '在網頁版查看全部')]
     if (hasMore) {
-        bubble.footer = {
-            type: 'box',
-            layout: 'vertical',
-            contents: [{
-                type: 'button',
-                style: 'secondary',
-                action: postbackAction('更多紀錄', { action: 'recent', offset: offset + RECENT_PAGE_SIZE })
-            }]
-        }
+        footer.unshift({
+            type: 'button',
+            style: 'secondary',
+            action: postbackAction('更多紀錄', { action: 'recent', offset: offset + RECENT_PAGE_SIZE })
+        })
     }
+    bubble.footer = { type: 'box', layout: 'vertical', spacing: 'sm', contents: footer }
     return { type: 'flex', altText: `最近紀錄（${ledgerLabel(ledgerName)}）`, contents: bubble }
 }
 
@@ -301,7 +596,7 @@ function changeText(thisMonth: number, lastMonth: number): string {
 }
 
 /** 本月統計：總額、與上月比較、各分類長條（以 Flex box 寬度畫，不需產圖）。 */
-export function summaryMessage(ledgerName: string | null, month: string, totals: CategoryTotal[]): LineMessage {
+export function summaryMessage(ledgerName: string | null, month: string, totals: CategoryTotal[], webAppUrl: string): LineMessage {
     const rows = totals
         .map(total => ({ ...total, value: Number(total.thisMonth) }))
         .filter(total => total.value > 0)
@@ -358,6 +653,11 @@ export function summaryMessage(ledgerName: string | null, month: string, totals:
                     ...(bars.length > 0 ? bars : [{ type: 'text', text: '本月還沒有紀錄。', size: 'sm', color: '#888888' }]),
                     { type: 'text', text: '只計入台幣支出。', size: 'xxs', color: '#AAAAAA' }
                 ]
+            },
+            footer: {
+                type: 'box',
+                layout: 'vertical',
+                contents: [webButton(webUrl(webAppUrl, webPages.overview), '在網頁版看統計')]
             }
         }
     }
@@ -369,7 +669,7 @@ export function debtsText(ledgerName: string | null, debts: Debt[]): string {
     const name = (me: boolean, value: string | null) => me ? '你' : value ?? '成員'
     const lines = debts.map(debt =>
         `・${name(debt.fromMe, debt.fromName)} → ${name(debt.toMe, debt.toName)}：${formatAmount(debt.amount)}`)
-    return [`「${ledgerName}」目前欠款：`, ...lines, '', '結清請到 App 操作。'].join('\n')
+    return [`「${ledgerName}」目前欠款：`, ...lines, '', '結清請到網頁版操作。'].join('\n')
 }
 
 /** 台北時間的 YYYY-MM */
@@ -393,12 +693,6 @@ export interface GroupExpenseNotice {
     expenseDate: string
     /** 收件人的分攤金額；null = 不需分攤 */
     myShare: string | null
-}
-
-/** 網頁版費用明細；openExternalBrowser=1 讓 LINE 用手機瀏覽器開啟（沿用已登入的網頁 session）。 */
-export function expenseUrl(webAppUrl: string, expenseId: string): string {
-    const base = webAppUrl.endsWith('/') ? webAppUrl : `${webAppUrl}/`
-    return `${base}expenses/${encodeURIComponent(expenseId)}?openExternalBrowser=1`
 }
 
 export function groupExpenseMessage(notice: GroupExpenseNotice, webAppUrl: string): LineMessage {

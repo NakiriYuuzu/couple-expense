@@ -7,9 +7,10 @@ import { createWebhookHandler, type LineApi, type WebhookStore } from './handler
 const channelSecret = Deno.env.get('LINE_CHANNEL_SECRET')
 const channelAccessToken = Deno.env.get('LINE_CHANNEL_ACCESS_TOKEN')
 const linkPageUrl = Deno.env.get('LINE_LINK_PAGE_URL')
+const webAppUrl = Deno.env.get('WEB_APP_URL')
 const databaseUrl = Deno.env.get('SUPABASE_DB_URL')
 
-const missing = !channelSecret || !channelAccessToken || !linkPageUrl || !databaseUrl
+const missing = !channelSecret || !channelAccessToken || !linkPageUrl || !webAppUrl || !databaseUrl
 
 // prepare:false 以相容 Supabase 連線池的 transaction mode。
 const sql = missing ? null : postgres(databaseUrl, { prepare: false, max: 1 })
@@ -79,11 +80,36 @@ const store: WebhookStore = {
             expenseDate: row.expense_date,
             status: row.status,
             ledgerName: row.ledger_name,
-            isExpired: row.is_expired
+            groupId: row.group_id,
+            isExpired: row.is_expired,
+            expenseId: row.expense_id,
+            members: row.members
         }
     },
     async setDraftCategory(lineUserId, draftId, category) {
         const [row] = await sql!`SELECT line_bot.set_draft_category(${lineUserId}, ${draftId}::uuid, ${category}) AS ok`
+        return row.ok
+    },
+    async setPendingCategory(lineUserId, category) {
+        const [row] = await sql!`SELECT line_bot.set_pending_category(${lineUserId}, ${category}) AS ok`
+        return row.ok
+    },
+    async setDraftLedger(lineUserId, draftId, groupId) {
+        const [row] = await sql!`SELECT line_bot.set_draft_ledger(${lineUserId}, ${draftId}::uuid, ${groupId}::uuid) AS ok`
+        return row.ok
+    },
+    async setDraftPayer(lineUserId, draftId, userId) {
+        const [row] = await sql!`SELECT line_bot.set_draft_payer(${lineUserId}, ${draftId}::uuid, ${userId}::uuid) AS ok`
+        return row.ok
+    },
+    async setDraftParticipants(lineUserId, draftId, mode, userId) {
+        const [row] = await sql!`
+            SELECT line_bot.set_draft_participants(${lineUserId}, ${draftId}::uuid, ${mode}, ${userId}::uuid) AS ok
+        `
+        return row.ok
+    },
+    async setDraftDate(lineUserId, draftId, date) {
+        const [row] = await sql!`SELECT line_bot.set_draft_date(${lineUserId}, ${draftId}::uuid, ${date}::date) AS ok`
         return row.ok
     },
     async cancelDraft(lineUserId, draftId) {
@@ -107,7 +133,9 @@ const store: WebhookStore = {
             category: row.category,
             expenseDate: row.expense_date,
             payerName: row.payer_name,
-            paidByMe: row.paid_by_me
+            paidByMe: row.paid_by_me,
+            groupName: row.group_name,
+            totalAmount: row.total_amount
         }))
     },
     async monthSummary(lineUserId) {
@@ -152,11 +180,18 @@ const line: LineApi = {
 
 const handler = missing
     ? null
-    : createWebhookHandler({ channelSecret: channelSecret!, store, line, linkPageUrl: linkPageUrl!, logError: console.error })
+    : createWebhookHandler({
+        channelSecret: channelSecret!,
+        store,
+        line,
+        linkPageUrl: linkPageUrl!,
+        webAppUrl: webAppUrl!,
+        logError: console.error
+    })
 
 Deno.serve(request => {
     if (!handler) {
-        console.error('line-webhook: missing LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, LINE_LINK_PAGE_URL or SUPABASE_DB_URL')
+        console.error('line-webhook: missing LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN, LINE_LINK_PAGE_URL, WEB_APP_URL or SUPABASE_DB_URL')
         return new Response('Server misconfigured', { status: 500 })
     }
     return handler(request)

@@ -11,18 +11,26 @@ import {
     type WebhookStore
 } from '../supabase/functions/line-webhook/handler'
 import {
+    addExpenseMessage,
     debtsText,
     draftMessage,
+    expenseUrl,
     encodePostback,
     ledgerMessage,
     recentMessage,
     summaryMessage,
+    textCard,
+    webUrl,
     type Draft,
     type ExpenseItem
 } from '../supabase/functions/line-webhook/bookkeeping'
 
 const secret = 'test-only-channel-secret'
 const linkPageUrl = 'https://example.invalid/couple-expense/line-link'
+const webAppUrl = 'https://example.invalid/couple-expense/'
+const homeUrl = webUrl(webAppUrl, 'dashboard')
+/** 已綁定使用者的文字回覆會附網頁版按鈕 */
+const card = (text: string, url = homeUrl, label?: string) => textCard(text, url, label)
 const boundLineUser = 'U-bound'
 const unboundLineUser = 'U-unbound'
 const groupId = '20000000-0000-0000-0000-000000000001'
@@ -34,11 +42,16 @@ const draft: Draft = {
     expenseDate: '2026-09-29',
     status: 'pending',
     ledgerName: null,
-    isExpired: false
+    groupId: null,
+    isExpired: false,
+    expenseId: null,
+    members: []
 }
+const ledgers = [{ groupId: '20000000-0000-0000-0000-000000000001', name: '我們家', isCurrent: false }]
 
 const expenseItem: ExpenseItem = {
-    title: '午餐', amount: '120', currency: 'TWD', category: 'food', expenseDate: '2026-09-29', payerName: 'Kuri', paidByMe: true
+    title: '午餐', amount: '120', currency: 'TWD', category: 'food', expenseDate: '2026-09-29', payerName: 'Kuri', paidByMe: true,
+    groupName: null, totalAmount: '120'
 }
 
 function postbackEvent(id: string, userId: string, data: string) {
@@ -99,11 +112,16 @@ beforeEach(() => {
         setFollowing: vi.fn(async (lineUserId, value) => { following.set(lineUserId, value) }),
         completeLink: vi.fn(async () => 'linked' as const),
         unlink: vi.fn(async () => true),
-        listLedgers: vi.fn(async () => [{ groupId: groupId, name: '我們家', isCurrent: false }]),
+        listLedgers: vi.fn(async () => ledgers),
         setLedger: vi.fn(async () => true),
         createDraft: vi.fn(async () => draft.id),
         getDraft: vi.fn(async (_, id) => id === draft.id ? draft : null),
         setDraftCategory: vi.fn(async () => true),
+        setPendingCategory: vi.fn(async () => true),
+        setDraftLedger: vi.fn(async () => true),
+        setDraftPayer: vi.fn(async () => true),
+        setDraftParticipants: vi.fn(async () => true),
+        setDraftDate: vi.fn(async () => true),
         cancelDraft: vi.fn(async () => true),
         confirmDraft: vi.fn(async () => 'confirmed' as const),
         currentLedgerName: vi.fn(async () => '我們家'),
@@ -118,7 +136,7 @@ beforeEach(() => {
         }),
         issueLinkToken: vi.fn(async () => 'link-token/1')
     }
-    handler = createWebhookHandler({ channelSecret: secret, store, line, linkPageUrl, now: () => new Date('2026-09-30T20:00:00Z') })
+    handler = createWebhookHandler({ channelSecret: secret, store, line, linkPageUrl, webAppUrl, now: () => new Date('2026-09-30T20:00:00Z') })
 })
 
 describe('line-webhook signature', () => {
@@ -170,8 +188,8 @@ describe('line-webhook events', () => {
             textEvent('e1', boundLineUser, '你好'),
             { ...textEvent('e2', boundLineUser, ''), message: { type: 'sticker' } }
         )))
-        expect(replyText).toHaveBeenNthCalledWith(1, 'reply-e1', messages.help)
-        expect(replyText).toHaveBeenNthCalledWith(2, 'reply-e2', messages.textOnly)
+        expect(replyText).toHaveBeenNthCalledWith(1, 'reply-e1', card(messages.help))
+        expect(replyText).toHaveBeenNthCalledWith(2, 'reply-e2', card(messages.textOnly))
         expect(store.createDraft).not.toHaveBeenCalled()
     })
 
@@ -221,7 +239,7 @@ describe('line-webhook binding', () => {
     it('does not issue a new link token for bound users', async () => {
         await handler(request(payload(textEvent('e1', boundLineUser, '綁定'))))
         expect(line.issueLinkToken).not.toHaveBeenCalled()
-        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', messages.alreadyBound)
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', card(messages.alreadyBound))
     })
 
     it('unlinks bound users only', async () => {
@@ -259,12 +277,12 @@ describe('line-webhook bookkeeping', () => {
     it('turns "午餐 120" into a draft card', async () => {
         await handler(request(payload(textEvent('e1', boundLineUser, '午餐 120'))))
         expect(store.createDraft).toHaveBeenCalledExactlyOnceWith(boundLineUser, '午餐', 120)
-        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', draftMessage(draft))
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', draftMessage(draft, ledgers, webAppUrl))
     })
 
     it('shows the ledger menu', async () => {
         await handler(request(payload(textEvent('e1', boundLineUser, '帳本'))))
-        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', ledgerMessage(await store.listLedgers(boundLineUser)))
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', ledgerMessage(ledgers, webAppUrl))
     })
 
     it('switches ledgers and reports membership failures', async () => {
@@ -274,30 +292,32 @@ describe('line-webhook bookkeeping', () => {
         )))
         expect(store.setLedger).toHaveBeenNthCalledWith(1, boundLineUser, groupId)
         expect(store.setLedger).toHaveBeenNthCalledWith(2, boundLineUser, null)
-        expect(replyText).toHaveBeenNthCalledWith(1, 'reply-e1', '之後會記到「我們家」帳本。')
-        expect(replyText).toHaveBeenNthCalledWith(2, 'reply-e2', '之後會記到「個人」帳本。')
+        expect(replyText).toHaveBeenNthCalledWith(1, 'reply-e1', card('之後會記到「我們家」帳本。'))
+        expect(replyText).toHaveBeenNthCalledWith(2, 'reply-e2', card('之後會記到「個人」帳本。'))
 
         vi.mocked(store.setLedger).mockResolvedValueOnce(false)
         await handler(request(payload(postbackEvent('e3', boundLineUser, encodePostback({ action: 'ledger', groupId })))))
-        expect(replyText).toHaveBeenLastCalledWith('reply-e3', messages.ledgerNotMember)
+        expect(replyText).toHaveBeenLastCalledWith('reply-e3', card(messages.ledgerNotMember))
     })
 
     it('changes the category and replies with the updated card', async () => {
         await handler(request(payload(postbackEvent('e1', boundLineUser,
             encodePostback({ action: 'category', draftId: draft.id, category: 'food' })))))
         expect(store.setDraftCategory).toHaveBeenCalledExactlyOnceWith(boundLineUser, draft.id, 'food')
-        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', draftMessage(draft))
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', draftMessage(draft, ledgers, webAppUrl))
 
         vi.mocked(store.setDraftCategory).mockResolvedValueOnce(false)
         await handler(request(payload(postbackEvent('e2', boundLineUser,
             encodePostback({ action: 'category', draftId: draft.id, category: 'pet' })))))
-        expect(replyText).toHaveBeenLastCalledWith('reply-e2', messages.draftNotEditable)
+        expect(replyText).toHaveBeenLastCalledWith('reply-e2', card(messages.draftNotEditable))
     })
 
-    it('confirms a draft', async () => {
+    it('confirms a draft and links to the new expense', async () => {
+        vi.mocked(store.getDraft).mockResolvedValueOnce({ ...draft, status: 'confirmed', expenseId: 'e-1' })
         await handler(request(payload(postbackEvent('e1', boundLineUser, confirmData))))
         expect(store.confirmDraft).toHaveBeenCalledExactlyOnceWith(boundLineUser, draft.id)
-        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', '已入帳：午餐 120 元（個人）')
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1',
+            card('已入帳：午餐 120 元（個人）', expenseUrl(webAppUrl, 'e-1'), '在網頁版查看這筆'))
     })
 
     it.each([
@@ -309,13 +329,13 @@ describe('line-webhook bookkeeping', () => {
     ] as const)('explains a %s confirmation', async (result, text) => {
         vi.mocked(store.confirmDraft).mockResolvedValueOnce(result)
         await handler(request(payload(postbackEvent('e1', boundLineUser, confirmData))))
-        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', text)
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', card(text))
     })
 
     it('cancels a draft', async () => {
         await handler(request(payload(postbackEvent('e1', boundLineUser, encodePostback({ action: 'cancel', draftId: draft.id })))))
         expect(store.cancelDraft).toHaveBeenCalledExactlyOnceWith(boundLineUser, draft.id)
-        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', messages.cancelled)
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', card(messages.cancelled))
     })
 
     it('rejects postbacks from unbound users and ignores malformed ones', async () => {
@@ -333,7 +353,7 @@ describe('line-webhook bookkeeping', () => {
 describe('line-webhook rich menu commands', () => {
     it('explains how to add an expense in the current ledger', async () => {
         await handler(request(payload(textEvent('e1', boundLineUser, menuCommands.add))))
-        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', '目前帳本：我們家。\n請輸入「品項 金額」，例如「午餐 120」。')
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', addExpenseMessage(ledgers, webAppUrl))
         expect(store.createDraft).not.toHaveBeenCalled()
     })
 
@@ -344,15 +364,15 @@ describe('line-webhook rich menu commands', () => {
         )))
         expect(store.recentExpenses).toHaveBeenNthCalledWith(1, boundLineUser, 0, 11)
         expect(store.recentExpenses).toHaveBeenNthCalledWith(2, boundLineUser, 10, 11)
-        expect(replyText).toHaveBeenNthCalledWith(1, 'reply-e1', recentMessage('我們家', [expenseItem], 0))
-        expect(replyText).toHaveBeenNthCalledWith(2, 'reply-e2', recentMessage('我們家', [expenseItem], 10))
+        expect(replyText).toHaveBeenNthCalledWith(1, 'reply-e1', recentMessage('我們家', [expenseItem], 0, webAppUrl))
+        expect(replyText).toHaveBeenNthCalledWith(2, 'reply-e2', recentMessage('我們家', [expenseItem], 10, webAppUrl))
     })
 
     it('summarises the month in Taipei time', async () => {
         await handler(request(payload(textEvent('e1', boundLineUser, menuCommands.summary))))
         // 2026-09-30T20:00Z 在台北已經是 10 月
         expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1',
-            summaryMessage('我們家', '2026-10', [{ category: 'food', thisMonth: '120', lastMonth: '0' }]))
+            summaryMessage('我們家', '2026-10', [{ category: 'food', thisMonth: '120', lastMonth: '0' }], webAppUrl))
     })
 
     it('shows debts and help', async () => {
@@ -360,13 +380,63 @@ describe('line-webhook rich menu commands', () => {
             textEvent('e1', boundLineUser, menuCommands.debts),
             textEvent('e2', boundLineUser, menuCommands.help)
         )))
-        expect(replyText).toHaveBeenNthCalledWith(1, 'reply-e1', debtsText('我們家', []))
-        expect(replyText).toHaveBeenNthCalledWith(2, 'reply-e2', messages.help)
+        expect(replyText).toHaveBeenNthCalledWith(1, 'reply-e1', card(debtsText('我們家', []), homeUrl, '在網頁版結清'))
+        expect(replyText).toHaveBeenNthCalledWith(2, 'reply-e2', card(messages.help))
     })
 
     it('asks unbound users to bind before using the menu', async () => {
         await handler(request(payload(textEvent('e1', unboundLineUser, menuCommands.summary))))
         expect(store.monthSummary).not.toHaveBeenCalled()
         expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', messages.notBound)
+    })
+})
+
+describe('line-webhook add card and draft options', () => {
+    const kuri = '00000000-0000-0000-0000-000000000002'
+
+    it('remembers the picked category and prompts for input', async () => {
+        await handler(request(payload(postbackEvent('e1', boundLineUser, encodePostback({ action: 'pickcat', category: 'food' })))))
+        expect(store.setPendingCategory).toHaveBeenCalledExactlyOnceWith(boundLineUser, 'food')
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1',
+            card('分類：餐飲。請輸入「品項 金額」，例如「午餐 120」。', homeUrl, '在網頁版記帳'))
+    })
+
+    it('switches the ledger from the add card and shows the card again', async () => {
+        await handler(request(payload(postbackEvent('e1', boundLineUser,
+            encodePostback({ action: 'ledger', groupId, view: 'add' })))))
+        expect(store.setLedger).toHaveBeenCalledExactlyOnceWith(boundLineUser, groupId)
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', addExpenseMessage(ledgers, webAppUrl))
+    })
+
+    it.each([
+        ['dledger', { action: 'dledger', draftId: draft.id, groupId }, 'setDraftLedger', [boundLineUser, draft.id, groupId]],
+        ['payer', { action: 'payer', draftId: draft.id, userId: kuri }, 'setDraftPayer', [boundLineUser, draft.id, kuri]],
+        ['split', { action: 'split', draftId: draft.id, mode: 'only', userId: kuri }, 'setDraftParticipants', [boundLineUser, draft.id, 'only', kuri]]
+    ] as const)('updates the draft (%s) and replies with the refreshed card', async (_, postback, method, args) => {
+        await handler(request(payload(postbackEvent('e1', boundLineUser, encodePostback(postback)))))
+        expect(store[method]).toHaveBeenCalledExactlyOnceWith(...args)
+        expect(replyText).toHaveBeenCalledExactlyOnceWith('reply-e1', draftMessage(draft, ledgers, webAppUrl))
+    })
+
+    it('explains failed draft updates', async () => {
+        vi.mocked(store.setDraftParticipants).mockResolvedValueOnce(false)
+        vi.mocked(store.setDraftPayer).mockResolvedValueOnce(false)
+        await handler(request(payload(
+            postbackEvent('e1', boundLineUser, encodePostback({ action: 'split', draftId: draft.id, mode: 'toggle', userId: kuri })),
+            postbackEvent('e2', boundLineUser, encodePostback({ action: 'payer', draftId: draft.id, userId: kuri }))
+        )))
+        expect(replyText).toHaveBeenNthCalledWith(1, 'reply-e1', card(messages.splitFailed))
+        expect(replyText).toHaveBeenNthCalledWith(2, 'reply-e2', card(messages.draftUpdateFailed))
+    })
+
+    it('changes the date from the date picker and rejects malformed dates', async () => {
+        const data = encodePostback({ action: 'date', draftId: draft.id })
+        await handler(request(payload(
+            { ...postbackEvent('e1', boundLineUser, data), postback: { data, params: { date: '2026-09-01' } } },
+            { ...postbackEvent('e2', boundLineUser, data), postback: { data, params: { date: '9/1' } } }
+        )))
+        expect(store.setDraftDate).toHaveBeenCalledExactlyOnceWith(boundLineUser, draft.id, '2026-09-01')
+        expect(replyText).toHaveBeenNthCalledWith(1, 'reply-e1', draftMessage(draft, ledgers, webAppUrl))
+        expect(replyText).toHaveBeenNthCalledWith(2, 'reply-e2', card(messages.draftUpdateFailed))
     })
 })

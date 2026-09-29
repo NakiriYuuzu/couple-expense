@@ -23,7 +23,9 @@ AS $$
 $$;
 
 -- 目前帳本的紀錄，新到舊。個人帳 = 自己建立的個人支出；群組帳 = 該群組所有支出。
-CREATE OR REPLACE FUNCTION line_bot.recent_expenses(p_line_user_id text, p_offset integer, p_limit integer)
+-- 後續 migration 會改變回傳欄位；先刪除，確保整串 migration 可依序重跑。
+DROP FUNCTION IF EXISTS line_bot.recent_expenses(text, integer, integer);
+CREATE FUNCTION line_bot.recent_expenses(p_line_user_id text, p_offset integer, p_limit integer)
 RETURNS TABLE (
     title text, amount text, currency text, category text, expense_date text,
     payer_name text, paid_by_me boolean

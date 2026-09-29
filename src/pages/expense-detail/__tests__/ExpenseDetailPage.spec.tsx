@@ -25,7 +25,7 @@ const h = vi.hoisted(() => {
         deleteByDate: { mutateAsync: vi.fn(async () => []) },
         update: { mutateAsync: vi.fn(async () => undefined), isPending: false },
         settle: { mutateAsync: vi.fn(async () => 1), isPending: false },
-        router: { history: { back: vi.fn() } },
+        router: { history: { back: vi.fn(), canGoBack: () => true }, navigate: vi.fn() },
         toast: { success: vi.fn(), error: vi.fn() },
         groupsPending: false,
         splitsPending: false,

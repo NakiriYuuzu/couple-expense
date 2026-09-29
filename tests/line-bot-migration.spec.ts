@@ -62,7 +62,7 @@ beforeAll(async () => {
         GRANT USAGE ON SCHEMA auth TO anon, authenticated;
     `)
     await admin.query(await readFile(new URL('./fixtures/group-expense-live-subset.sql', import.meta.url), 'utf8'))
-    migrations = await Promise.all(['line-bot-01-webhook.sql', 'line-bot-02-link.sql', 'line-bot-03-drafts.sql', 'line-bot-04-queries.sql', 'line-bot-05-notifications.sql'].map(name =>
+    migrations = await Promise.all(['line-bot-01-webhook.sql', 'line-bot-02-link.sql', 'line-bot-03-drafts.sql', 'line-bot-04-queries.sql', 'line-bot-05-notifications.sql', 'line-bot-06-draft-options.sql'].map(name =>
         readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8')))
     for (const migration of migrations) await admin.query(migration)
 }, 60_000)
@@ -359,10 +359,15 @@ describe('line-bot menu queries (acting as the bound user)', () => {
         expect(await rows('SELECT * FROM line_bot.current_ledger($1)', ['U-unknown'])).toEqual([])
     })
 
-    it('lists only the personal expenses of the user, newest first', async () => {
-        const result = await rows('SELECT title, amount, currency, paid_by_me FROM line_bot.recent_expenses($1, 0, 10)', ['U-dave'])
-        expect(result.map(r => r.title).sort()).toEqual(['App Store', '早餐'])
-        expect(result.every(r => r.paid_by_me)).toBe(true)
+    it('lists personal expenses plus the user share of group expenses, like the web app', async () => {
+        const result = await rows('SELECT title, amount, total_amount, group_name, paid_by_me FROM line_bot.recent_expenses($1, 0, 10)', ['U-dave'])
+        expect(result.map(r => [r.title, r.amount, r.total_amount, r.group_name, r.paid_by_me]).sort()).toEqual([
+            ['App Store', '10', '10', null, true],
+            ['住宿', '150', '300', '旅行', true],
+            ['早餐', '50', '50', null, true],
+            ['晚餐', '40', '80', '旅行', false],
+            ['高鐵', '50', '100', '旅行', false]
+        ])
         expect(await rows('SELECT title FROM line_bot.recent_expenses($1, 0, 10)', ['U-frank'])).toEqual([{ title: '秘密' }])
         await expectRoleRestored()
     })
@@ -380,8 +385,11 @@ describe('line-bot menu queries (acting as the bound user)', () => {
     })
 
     it('summarises this month and last month in TWD only', async () => {
+        // 個人帳本：早餐 50 ＋ 群組分攤（住宿 150、晚餐 40、上月高鐵 50）；USD 不計
         expect(await rows('SELECT * FROM line_bot.month_summary($1)', ['U-dave'])).toEqual([
-            { category: 'food', this_month: '50', last_month: '0' }
+            { category: 'home', this_month: '150', last_month: '0' },
+            { category: 'food', this_month: '90', last_month: '0' },
+            { category: 'transport', this_month: '0', last_month: '50' }
         ])
         expect(await rows('SELECT * FROM line_bot.month_summary($1)', ['U-erin'])).toEqual([
             { category: 'home', this_month: '300', last_month: '0' },
@@ -562,6 +570,118 @@ describe('line-bot group expense notifications', () => {
 
     it.each(['anon', 'authenticated'])('denies %s the notification functions', async role => {
         for (const query of ['SELECT * FROM line_bot.claim_notifications(1)', 'SELECT line_bot.request_notify_drain()']) {
+            await admin.query('BEGIN')
+            try {
+                await admin.query(`SET LOCAL ROLE ${role}`)
+                await expect(admin.query(query)).rejects.toThrow(/permission denied/)
+            } finally {
+                await admin.query('ROLLBACK')
+            }
+        }
+    })
+})
+
+describe('line-bot draft options', () => {
+    // 沿用前面的 shared 群組：user(U1)、alice(U-alice)、carol 為有效成員，bob 已退出。
+    const carol = '00000000-0000-0000-0000-000000000004'
+    const shared = '20000000-0000-0000-0000-000000000001'
+    const others = '20000000-0000-0000-0000-000000000002'
+
+    async function one(query: string, params: unknown[] = []) {
+        return (await admin.query(query, params)).rows[0]
+    }
+    const createDraft = async (title: string, amount: number) =>
+        (await one('SELECT line_bot.create_draft($1, $2, $3) AS id', ['U1', title, amount])).id as string
+    const draft = (id: string) => one('SELECT * FROM line_bot.get_draft($1, $2)', ['U1', id])
+    const call = async (fn: string, args: unknown[]) =>
+        (await one(`SELECT line_bot.${fn}(${args.map((_, i) => `$${i + 1}`).join(', ')}) AS r`, args)).r
+
+    it('applies a category picked on the add card to the next draft only, within 10 minutes', async () => {
+        await admin.query('SELECT line_bot.set_ledger($1, NULL)', ['U1'])
+        expect(await call('set_pending_category', ['U1', 'food'])).toBe(true)
+        expect((await draft(await createDraft('午餐', 120))).category).toBe('food')
+        expect((await draft(await createDraft('雜支', 10))).category).toBe('other')
+
+        await call('set_pending_category', ['U1', 'pet'])
+        await admin.query("UPDATE line_bot.identities SET pending_category_at = now() - interval '11 minutes' WHERE line_user_id = 'U1'")
+        expect((await draft(await createDraft('過期', 10))).category).toBe('other')
+        await expect(call('set_pending_category', ['U1', 'bogus'])).rejects.toThrow(/check/)
+    })
+
+    it('switches a draft between ledgers and resets the split', async () => {
+        const id = await createDraft('換帳本', 90)
+        expect(await call('set_draft_ledger', ['U1', id, others])).toBe(false)
+        expect(await call('set_draft_ledger', ['U1', id, shared])).toBe(true)
+        const grouped = await draft(id)
+        expect(grouped.ledger_name).toBe('我們家')
+        expect(grouped.members.map((m: { userId: string; isPayer: boolean; isParticipant: boolean; isMe: boolean }) =>
+            [m.userId, m.isMe, m.isPayer, m.isParticipant])).toEqual([
+            [user, true, true, true], [alice, false, false, true], [carol, false, false, true]
+        ])
+        expect(await call('set_draft_ledger', ['U1', id, null])).toBe(true)
+        expect(await draft(id)).toMatchObject({ ledger_name: null, group_id: null, members: [] })
+    })
+
+    it('records "I paid, the other person bears it all"', async () => {
+        await admin.query('SELECT line_bot.set_ledger($1, $2)', ['U1', shared])
+        const id = await createDraft('代墊', 200)
+        expect(await call('set_draft_participants', ['U1', id, 'only', alice])).toBe(true)
+        expect(await call('confirm_draft', ['U1', id])).toBe('confirmed')
+        const { expense_id: expenseId } = await draft(id)
+        expect(await one('SELECT paid_by, user_id FROM group_expense.expenses WHERE id = $1', [expenseId]))
+            .toEqual({ paid_by: user, user_id: user })
+        expect((await admin.query('SELECT user_id, amount::text FROM group_expense.expense_splits WHERE expense_id = $1', [expenseId])).rows)
+            .toEqual([{ user_id: alice, amount: '200.00' }])
+    })
+
+    it('records another payer and a chosen set of participants', async () => {
+        const id = await createDraft('晚餐', 100)
+        expect(await call('set_draft_payer', ['U1', id, alice])).toBe(true)
+        expect(await call('set_draft_participants', ['U1', id, 'toggle', carol])).toBe(true)
+        expect(await call('set_draft_date', ['U1', id, '2026-01-15'])).toBe(true)
+        expect(await call('confirm_draft', ['U1', id])).toBe('confirmed')
+        const { expense_id: expenseId } = await draft(id)
+        expect(await one('SELECT paid_by, date::text FROM group_expense.expenses WHERE id = $1', [expenseId]))
+            .toEqual({ paid_by: alice, date: '2026-01-15' })
+        expect((await admin.query('SELECT user_id, amount::text FROM group_expense.expense_splits WHERE expense_id = $1 ORDER BY user_id', [expenseId])).rows)
+            .toEqual([{ user_id: user, amount: '50.00' }, { user_id: alice, amount: '50.00' }])
+    })
+
+    it('rejects invalid split changes', async () => {
+        const id = await createDraft('檢查', 30)
+        expect(await call('set_draft_payer', ['U1', id, bob])).toBe(false)
+        expect(await call('set_draft_participants', ['U1', id, 'only', bob])).toBe(false)
+        expect(await call('set_draft_participants', ['U1', id, 'only', user])).toBe(true)
+        // 不能移除最後一位參與者
+        expect(await call('set_draft_participants', ['U1', id, 'toggle', user])).toBe(false)
+        expect(await call('set_draft_participants', ['U1', id, 'all', null])).toBe(true)
+        expect((await draft(id)).members.every((m: { isParticipant: boolean }) => m.isParticipant)).toBe(true)
+        expect(await call('set_draft_date', ['U1', id, '2015-01-01'])).toBe(false)
+        // 別人的草稿不能改
+        expect(await call('set_draft_payer', ['U-alice', id, alice])).toBe(false)
+        expect(await call('set_draft_ledger', ['U-alice', id, null])).toBe(false)
+
+        const personal = await createDraft('個人', 10)
+        await admin.query('SELECT line_bot.set_draft_ledger($1, $2, NULL)', ['U1', personal])
+        expect(await call('set_draft_payer', ['U1', personal, alice])).toBe(false)
+    })
+
+    it('fails instead of silently changing shares when a participant left', async () => {
+        const id = await createDraft('離開', 60)
+        await admin.query('UPDATE group_expense.group_members SET is_active = false WHERE group_id = $1 AND user_id = $2', [shared, carol])
+        try {
+            expect(await call('confirm_draft', ['U1', id])).toBe('failed')
+            expect((await draft(id)).status).toBe('pending')
+        } finally {
+            await admin.query('UPDATE group_expense.group_members SET is_active = true WHERE group_id = $1 AND user_id = $2', [shared, carol])
+        }
+    })
+
+    it.each(['anon', 'authenticated'])('denies %s the draft option functions', async role => {
+        for (const query of [
+            "SELECT line_bot.set_pending_category('U1', 'food')",
+            "SELECT line_bot.set_draft_participants('U1', gen_random_uuid(), 'all', NULL)"
+        ]) {
             await admin.query('BEGIN')
             try {
                 await admin.query(`SET LOCAL ROLE ${role}`)

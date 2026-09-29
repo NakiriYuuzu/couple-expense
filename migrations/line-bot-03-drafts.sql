@@ -85,7 +85,9 @@ AS $$
 $$;
 
 -- 草稿卡片內容；只回傳該 LINE 使用者自己的草稿。
-CREATE OR REPLACE FUNCTION line_bot.get_draft(p_line_user_id text, p_draft_id uuid)
+-- 後續 migration 會改變回傳欄位；先刪除，確保整串 migration 可依序重跑。
+DROP FUNCTION IF EXISTS line_bot.get_draft(text, uuid);
+CREATE FUNCTION line_bot.get_draft(p_line_user_id text, p_draft_id uuid)
 RETURNS TABLE (
     id uuid, title text, amount text, category text, expense_date text,
     status text, ledger_name text, is_expired boolean
