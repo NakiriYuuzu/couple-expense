@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatCurrency } from '../money'
+import { formatCompactAmount, formatCurrency } from '../money'
 
 describe('formatCurrency', () => {
     describe('TWD (default)', () => {
@@ -79,5 +79,22 @@ describe('formatCurrency', () => {
         it('does not add a sign to zero', () => {
             expect(formatCurrency(0, 'TWD', { signed: true })).toBe('NT 0')
         })
+    })
+})
+
+describe('formatCompactAmount', () => {
+    it('keeps small amounts as-is', () => {
+        expect(formatCompactAmount(0)).toBe('0')
+        expect(formatCompactAmount(999)).toBe('999')
+    })
+
+    it('abbreviates thousands with at most one decimal', () => {
+        expect(formatCompactAmount(1835)).toBe('1.8K')
+        expect(formatCompactAmount(12345)).toBe('12.3K')
+        expect(formatCompactAmount(10000)).toBe('10K')
+    })
+
+    it('abbreviates millions', () => {
+        expect(formatCompactAmount(2_500_000)).toBe('2.5M')
     })
 })

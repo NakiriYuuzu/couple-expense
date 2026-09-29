@@ -2,6 +2,17 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+/* 矮視窗：橫向手機、或直向手機叫出軟鍵盤時，抽屜需要壓縮上下 chrome 讓表單留得出可捲動空間。
+   軟鍵盤不會改變 layout viewport 高度（media query 偵測不到），故另由 DrawerContent 依
+   visualViewport 標上 data-vv-short，兩者任一成立即套用。 */
+@custom-variant short {
+  @media (max-height: 600px) {
+    @slot;
+  }
+  &:where([data-vv-short], [data-vv-short] *) {
+    @slot;
+  }
+}
 
 @theme inline {
   --color-background: var(--background);

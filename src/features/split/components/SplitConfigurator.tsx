@@ -202,6 +202,7 @@ export function SplitConfigurator({
                                     </span>
                                 )}
 
+                                {/* 手機上輸入框字級須 ≥ 16px，否則 iOS Safari 聚焦時會自動放大整頁 */}
                                 {splitMethod === 'exact' && (
                                     <input
                                         type="number"
@@ -214,7 +215,7 @@ export function SplitConfigurator({
                                         aria-label={`${nameOf(p)} ${t('expense.amount')}`}
                                         onFocus={e => e.target.select()}
                                         onChange={e => updateAt(index, { amount: toInteger(e.target.value) })}
-                                        className="h-8 w-24 max-w-full rounded-md border border-border bg-background px-2 text-right text-sm focus:ring-1 focus:ring-brand-primary focus:outline-none disabled:opacity-40"
+                                        className="h-8 w-24 max-w-full rounded-md border border-border bg-background px-2 text-right text-base focus:ring-1 sm:text-sm focus:ring-brand-primary focus:outline-none disabled:opacity-40"
                                     />
                                 )}
 
@@ -232,7 +233,7 @@ export function SplitConfigurator({
                                             aria-label={`${nameOf(p)} %`}
                                             onFocus={e => e.target.select()}
                                             onChange={e => updateAt(index, { percentage: toInteger(e.target.value) })}
-                                            className="h-8 w-16 rounded-md border border-border bg-background px-2 text-right text-sm focus:ring-1 focus:ring-brand-primary focus:outline-none disabled:opacity-40"
+                                            className="h-8 w-16 rounded-md border border-border bg-background px-2 text-right text-base focus:ring-1 sm:text-sm focus:ring-brand-primary focus:outline-none disabled:opacity-40"
                                         />
                                         <span className="text-xs text-muted-foreground">%</span>
                                         <span className="ml-1 whitespace-nowrap text-xs text-muted-foreground">
@@ -253,7 +254,7 @@ export function SplitConfigurator({
                                             aria-label={`${nameOf(p)} ${t('split.shares')}`}
                                             onFocus={e => e.target.select()}
                                             onChange={e => updateAt(index, { shares: Math.max(1, toInteger(e.target.value, 1)) })}
-                                            className="h-8 w-14 rounded-md border border-border bg-background px-2 text-right text-sm focus:ring-1 focus:ring-brand-primary focus:outline-none disabled:opacity-40"
+                                            className="h-8 w-14 rounded-md border border-border bg-background px-2 text-right text-base focus:ring-1 sm:text-sm focus:ring-brand-primary focus:outline-none disabled:opacity-40"
                                         />
                                         <span className="text-xs text-muted-foreground">{t('split.shares')}</span>
                                         <span className="ml-1 whitespace-nowrap text-xs text-muted-foreground">

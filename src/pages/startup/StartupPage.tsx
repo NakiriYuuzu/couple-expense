@@ -238,6 +238,7 @@ export default function StartupPage({ redirect }: { redirect?: string }) {
                                         <img
                                             src={account.avatarUrl}
                                             alt=""
+                                            referrerPolicy="no-referrer"
                                             className="h-9 w-9 rounded-full object-cover"
                                         />
                                     ) : (

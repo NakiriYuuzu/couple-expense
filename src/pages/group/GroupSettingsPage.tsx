@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { SyntheticEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from '@tanstack/react-router'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, ChevronRight, Crown, LogOut, Shield, User, Users, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -12,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuthStore } from '@/features/auth/authStore'
 import { useGroups } from '@/features/group/api/useGroups'
 import { useLeaveGroup, useUpdateGroupSettings } from '@/features/group/api/useGroupMutations'
+import { loadProfiles } from '@/features/group/api/profiles'
+import { queryKeys } from '@/shared/lib/queryKeys'
 import { cn } from '@/shared/lib/utils'
 import type { CategoryBudgets, Currency, GroupMemberRole, GroupSettingsRow, GroupSettingsUpdate, SplitMethod } from '@/entities/group/types'
 import type { Json } from '@/shared/lib/database.types'
@@ -102,6 +105,19 @@ export default function GroupSettingsPage({ id }: Props) {
 
     const target = useMemo(() => data?.find((item) => item.group.id === id) ?? null, [data, id])
     const members = target?.members ?? []
+    // 成員顯示名稱（與 AddExpenseDrawer 同一套 profiles 快取）；未命中時退回「未知」而非裸 user_id
+    const queryClient = useQueryClient()
+    const memberIds = members.map((member) => member.user_id)
+    const memberIdsKey = [...memberIds].sort().join(',')
+    const { data: profileMap } = useQuery({
+        queryKey: queryKeys.memberProfiles(memberIdsKey),
+        queryFn: () => loadProfiles(queryClient, memberIds),
+        enabled: memberIds.length > 0
+    })
+    const memberName = (userId: string): string => {
+        if (userId === currentUserId) return t('common.me')
+        return profileMap?.get(userId)?.display_name || t('common.unknown')
+    }
     const currentRole = members.find((member) => member.user_id === currentUserId)?.role ?? 'member'
     const isOwner = currentRole === 'owner'
     const canManage = currentRole === 'owner' || currentRole === 'admin'
@@ -254,11 +270,11 @@ export default function GroupSettingsPage({ id }: Props) {
                 <div className="h-px bg-border" />
 
                 {target.group.invitation_code ? (
-                    <div className="flex items-center gap-2">
-                        <code className="glass-light flex-1 rounded-xl px-4 py-3 text-center font-mono text-lg tracking-[0.25em] text-foreground">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <code className="glass-light min-w-0 flex-1 basis-40 rounded-xl px-4 py-3 text-center font-mono text-lg tracking-[0.25em] break-all text-foreground">
                             {target.group.invitation_code}
                         </code>
-                        <Button type="button" variant="outline" onClick={copyCode}>
+                        <Button type="button" variant="outline" className="max-sm:flex-1" onClick={copyCode}>
                             {t('group.shareCode')}
                         </Button>
                     </div>
@@ -283,11 +299,11 @@ export default function GroupSettingsPage({ id }: Props) {
                         return (
                             <div key={member.id} className="glass-light flex items-center gap-3 rounded-xl p-3">
                                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-primary/15 text-sm font-semibold text-brand-primary">
-                                    {member.user_id === currentUserId ? t('common.me').charAt(0) : member.user_id.charAt(0).toUpperCase()}
+                                    {memberName(member.user_id).charAt(0).toUpperCase()}
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <p className="truncate text-sm font-medium text-foreground">
-                                        {member.user_id === currentUserId ? t('common.me') : member.user_id}
+                                        {memberName(member.user_id)}
                                     </p>
                                 </div>
                                 <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium', roleBadgeClass(member.role))}>

@@ -165,7 +165,7 @@ export function RecurringExpenseDrawer({ open, onOpenChange, editItem }: Props) 
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent className="flex max-h-[90vh] flex-col border-t border-glass-border-strong bg-card">
                 <DrawerHeader className="shrink-0 pb-2 text-center">
-                    <DrawerTitle className="text-xl font-semibold text-foreground">
+                    <DrawerTitle className="text-xl font-semibold text-foreground short:text-base">
                         {isEdit ? t('recurring.edit') : t('recurring.add')}
                     </DrawerTitle>
                     <DrawerDescription className="mt-1 text-xs text-muted-foreground">
@@ -296,13 +296,13 @@ export function RecurringExpenseDrawer({ open, onOpenChange, editItem }: Props) 
                     </div>
                 </div>
 
-                <div className="shrink-0 border-t border-border bg-card px-4 py-4">
+                <div className="shrink-0 border-t border-border bg-card px-4 py-4 short:py-2">
                     <div className="flex gap-3">
                         <Button
                             variant="outline"
                             type="button"
                             onClick={() => onOpenChange(false)}
-                            className="h-12 flex-1 border-border text-foreground hover:bg-accent"
+                            className="h-12 flex-1 border-border text-foreground hover:bg-accent short:h-10"
                         >
                             {t('common.cancel')}
                         </Button>
@@ -310,7 +310,7 @@ export function RecurringExpenseDrawer({ open, onOpenChange, editItem }: Props) 
                             type="button"
                             onClick={handleSubmit}
                             disabled={!isValid || submitting}
-                            className="press-feedback h-12 flex-1 bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary/90 disabled:opacity-50"
+                            className="press-feedback h-12 flex-1 short:h-10 bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary/90 disabled:opacity-50"
                         >
                             {submitting ? t('common.saving') : t('common.save')}
                         </Button>

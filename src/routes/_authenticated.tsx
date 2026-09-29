@@ -74,7 +74,8 @@ function AuthenticatedLayout() {
 
             {/* key 隨路徑改變 → 每次導航重掛，套用 0.2s fade 轉場（tw-animate-css）。 */}
             <Suspense fallback={null}>
-                <div key={pathname} className="animate-in fade-in duration-200">
+                {/* 平板橫向/桌面限制內容寬度並置中，避免卡片與輸入框被拉成整個螢幕寬 */}
+                <div key={pathname} className="mx-auto w-full max-w-3xl animate-in fade-in duration-200">
                     <Outlet />
                 </div>
             </Suspense>

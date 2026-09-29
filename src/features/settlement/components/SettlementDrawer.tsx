@@ -114,7 +114,7 @@ export function SettlementDrawer({
     return (
         <Drawer open={open} onOpenChange={onOpenChange}>
             <DrawerContent className="flex flex-col border-t border-glass-border-strong bg-card">
-                <DrawerHeader className="px-6 pt-6 pb-4">
+                <DrawerHeader className="shrink-0 px-6 pt-6 pb-4">
                     <div className="flex items-center gap-3">
                         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-accent text-brand-primary">
                             {isEdit ? <Pencil className="h-5 w-5" /> : <HandCoins className="h-5 w-5" />}
@@ -134,7 +134,7 @@ export function SettlementDrawer({
                     </div>
                 </DrawerHeader>
 
-                <div className="space-y-5 px-6 pb-2">
+                <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-6 pb-2">
                     <div className="space-y-2">
                         <label htmlFor="settle-amount" className="text-sm font-medium text-foreground">
                             {t('settlement.amount')}
@@ -174,12 +174,12 @@ export function SettlementDrawer({
                     </div>
                 </div>
 
-                <DrawerFooter className="gap-2 px-6 pt-4 pb-6">
+                <DrawerFooter className="shrink-0 gap-2 px-6 pt-4 pb-6 short:flex-row-reverse">
                     <Button
                         type="button"
                         onClick={handleConfirm}
                         disabled={!isValid || pending}
-                        className="press-feedback h-12 w-full bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary/90 disabled:opacity-50"
+                        className="press-feedback h-12 w-full short:h-10 short:flex-1 bg-brand-primary text-brand-primary-foreground hover:bg-brand-primary/90 disabled:opacity-50"
                     >
                         {pending
                             ? t('common.processing')
@@ -192,7 +192,7 @@ export function SettlementDrawer({
                         variant="ghost"
                         onClick={() => onOpenChange(false)}
                         disabled={pending}
-                        className="h-12 w-full"
+                        className="h-12 w-full short:h-10 short:flex-1"
                     >
                         {t('common.cancel')}
                     </Button>
