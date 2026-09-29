@@ -9,36 +9,36 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LineLinkRouteImport } from './routes/line-link'
-import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
-import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated/overview'
+import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as LineLinkRouteImport } from './routes/line-link'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedGroupsIndexRouteImport } from './routes/_authenticated/groups/index'
+import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated/overview'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedExpensesIndexRouteImport } from './routes/_authenticated/expenses/index'
-import { Route as AuthenticatedReportsYearMonthRouteImport } from './routes/_authenticated/reports/$yearMonth'
-import { Route as AuthenticatedGroupsNewRouteImport } from './routes/_authenticated/groups/new'
-import { Route as AuthenticatedGroupsIdRouteImport } from './routes/_authenticated/groups/$id'
 import { Route as AuthenticatedExpensesIdRouteImport } from './routes/_authenticated/expenses/$id'
+import { Route as AuthenticatedGroupsIndexRouteImport } from './routes/_authenticated/groups/index'
+import { Route as AuthenticatedGroupsIdRouteImport } from './routes/_authenticated/groups/$id'
+import { Route as AuthenticatedGroupsNewRouteImport } from './routes/_authenticated/groups/new'
+import { Route as AuthenticatedReportsYearMonthRouteImport } from './routes/_authenticated/reports/$yearMonth'
 
-const LineLinkRoute = LineLinkRouteImport.update({
-  id: '/line-link',
-  path: '/line-link',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const LineLinkRoute = LineLinkRouteImport.update({
+  id: '/line-link',
+  path: '/line-link',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedOverviewRoute = AuthenticatedOverviewRouteImport.update({
@@ -46,9 +46,20 @@ const AuthenticatedOverviewRoute = AuthenticatedOverviewRouteImport.update({
   path: '/overview',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedExpensesIndexRoute =
+  AuthenticatedExpensesIndexRouteImport.update({
+    id: '/expenses/',
+    path: '/expenses/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedExpensesIdRoute = AuthenticatedExpensesIdRouteImport.update({
+  id: '/expenses/$id',
+  path: '/expenses/$id',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedGroupsIndexRoute =
@@ -57,33 +68,22 @@ const AuthenticatedGroupsIndexRoute =
     path: '/groups/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedExpensesIndexRoute =
-  AuthenticatedExpensesIndexRouteImport.update({
-    id: '/expenses/',
-    path: '/expenses/',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
+const AuthenticatedGroupsIdRoute = AuthenticatedGroupsIdRouteImport.update({
+  id: '/groups/$id',
+  path: '/groups/$id',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
+const AuthenticatedGroupsNewRoute = AuthenticatedGroupsNewRouteImport.update({
+  id: '/groups/new',
+  path: '/groups/new',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedReportsYearMonthRoute =
   AuthenticatedReportsYearMonthRouteImport.update({
     id: '/reports/$yearMonth',
     path: '/reports/$yearMonth',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedGroupsNewRoute = AuthenticatedGroupsNewRouteImport.update({
-  id: '/groups/new',
-  path: '/groups/new',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedGroupsIdRoute = AuthenticatedGroupsIdRouteImport.update({
-  id: '/groups/$id',
-  path: '/groups/$id',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
-const AuthenticatedExpensesIdRoute = AuthenticatedExpensesIdRouteImport.update({
-  id: '/expenses/$id',
-  path: '/expenses/$id',
-  getParentRoute: () => AuthenticatedRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -177,11 +177,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/line-link': {
-      id: '/line-link'
-      path: '/line-link'
-      fullPath: '/line-link'
-      preLoaderRoute: typeof LineLinkRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -191,18 +191,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/line-link': {
+      id: '/line-link'
+      path: '/line-link'
+      fullPath: '/line-link'
+      preLoaderRoute: typeof LineLinkRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/settings': {
-      id: '/_authenticated/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/overview': {
@@ -212,18 +212,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOverviewRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
-    '/_authenticated/groups/': {
-      id: '/_authenticated/groups/'
-      path: '/groups'
-      fullPath: '/groups/'
-      preLoaderRoute: typeof AuthenticatedGroupsIndexRouteImport
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/expenses/': {
@@ -233,18 +226,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExpensesIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/reports/$yearMonth': {
-      id: '/_authenticated/reports/$yearMonth'
-      path: '/reports/$yearMonth'
-      fullPath: '/reports/$yearMonth'
-      preLoaderRoute: typeof AuthenticatedReportsYearMonthRouteImport
+    '/_authenticated/expenses/$id': {
+      id: '/_authenticated/expenses/$id'
+      path: '/expenses/$id'
+      fullPath: '/expenses/$id'
+      preLoaderRoute: typeof AuthenticatedExpensesIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/groups/new': {
-      id: '/_authenticated/groups/new'
-      path: '/groups/new'
-      fullPath: '/groups/new'
-      preLoaderRoute: typeof AuthenticatedGroupsNewRouteImport
+    '/_authenticated/groups/': {
+      id: '/_authenticated/groups/'
+      path: '/groups'
+      fullPath: '/groups/'
+      preLoaderRoute: typeof AuthenticatedGroupsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/groups/$id': {
@@ -254,11 +247,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGroupsIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/expenses/$id': {
-      id: '/_authenticated/expenses/$id'
-      path: '/expenses/$id'
-      fullPath: '/expenses/$id'
-      preLoaderRoute: typeof AuthenticatedExpensesIdRouteImport
+    '/_authenticated/groups/new': {
+      id: '/_authenticated/groups/new'
+      path: '/groups/new'
+      fullPath: '/groups/new'
+      preLoaderRoute: typeof AuthenticatedGroupsNewRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/reports/$yearMonth': {
+      id: '/_authenticated/reports/$yearMonth'
+      path: '/reports/$yearMonth'
+      fullPath: '/reports/$yearMonth'
+      preLoaderRoute: typeof AuthenticatedReportsYearMonthRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
   }
