@@ -708,6 +708,18 @@ const en = {
         resetSent: 'Reset email sent, please check your inbox',
         resetFailed: 'Failed to send, please try again',
         googleFailed: 'Google sign in failed, please try again'
+    },
+    lineLink: {
+        title: 'Link LINE expense bot',
+        confirmAccount: 'LINE will be linked to this account:',
+        link: 'Link account',
+        switchAccount: 'Use another account',
+        invalidLink: 'This link is invalid. Go back to LINE and send "綁定" again.',
+        errors: {
+            already_bound: 'This account is already linked to another LINE. Send "解除綁定" from that LINE first.',
+            unauthorized: 'Your session has expired. Please sign in again.',
+            failed: 'Linking failed. Go back to LINE and send "綁定" again.'
+        }
     }
 }
 export default en
