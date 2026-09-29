@@ -31,6 +31,7 @@ import { CategoryUtils, categoryIds } from '@/features/expense/lib/categories'
 import { formatCurrency } from '@/shared/lib/money'
 import { queryKeys } from '@/shared/lib/queryKeys'
 import { cn } from '@/shared/lib/utils'
+import { goBack } from '@/shared/lib/navigation'
 import type { CategoryId } from '@/entities/expense/types'
 import type { SplitParticipant } from '@/entities/split/types'
 import type { SplitMethod } from '@/shared/lib/database.types'
@@ -193,7 +194,7 @@ export default function ExpenseDetailPage({ id }: { id: string }) {
         const title = expense.title
         try {
             const snapshot = await remove.mutateAsync({ expenseId: id, groupId: expense.group_id })
-            router.history.back()
+            goBack(router)
             toast.success(`${t('expense.deleted')}「${title}」`, {
                 action: {
                     label: t('common.undo'),

@@ -9,6 +9,7 @@ import { usePullToRefresh } from '@/shared/hooks/usePullToRefresh'
 import { useActiveGroupGuard } from '@/shared/hooks/useActiveGroupGuard'
 import { queryClient } from '@/shared/lib/queryClient'
 import { requireAuth } from '@/features/auth/guard'
+import { goBack } from '@/shared/lib/navigation'
 
 // 受保護頁的共用佈局（pathless layout route）。beforeLoad 先過 auth guard，
 // 再掛 TopBar / BottomNavigation / 全域 AddExpenseDrawer，並以 key 觸發 0.2s fade 轉場。
@@ -69,7 +70,7 @@ function AuthenticatedLayout() {
             <TopBar
                 title={t(meta.titleKey)}
                 showBackButton={meta.showBack}
-                onBack={() => router.history.back()}
+                onBack={() => goBack(router)}
             />
 
             {/* key 隨路徑改變 → 每次導航重掛，套用 0.2s fade 轉場（tw-animate-css）。 */}
