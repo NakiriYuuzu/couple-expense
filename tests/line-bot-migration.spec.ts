@@ -62,7 +62,7 @@ beforeAll(async () => {
         GRANT USAGE ON SCHEMA auth TO anon, authenticated;
     `)
     await admin.query(await readFile(new URL('./fixtures/group-expense-live-subset.sql', import.meta.url), 'utf8'))
-    migrations = await Promise.all(['line-bot-01-webhook.sql', 'line-bot-02-link.sql', 'line-bot-03-drafts.sql', 'line-bot-04-queries.sql'].map(name =>
+    migrations = await Promise.all(['line-bot-01-webhook.sql', 'line-bot-02-link.sql', 'line-bot-03-drafts.sql', 'line-bot-04-queries.sql', 'line-bot-05-notifications.sql'].map(name =>
         readFile(new URL(`../migrations/${name}`, import.meta.url), 'utf8')))
     for (const migration of migrations) await admin.query(migration)
 }, 60_000)
@@ -413,6 +413,155 @@ describe('line-bot menu queries (acting as the bound user)', () => {
             "SELECT * FROM line_bot.month_summary('U-dave')",
             "SELECT * FROM line_bot.ledger_debts('U-dave')"
         ]) {
+            await admin.query('BEGIN')
+            try {
+                await admin.query(`SET LOCAL ROLE ${role}`)
+                await expect(admin.query(query)).rejects.toThrow(/permission denied/)
+            } finally {
+                await admin.query('ROLLBACK')
+            }
+        }
+    })
+})
+
+describe('line-bot group expense notifications', () => {
+    const creator = '00000000-0000-0000-0000-000000000021'
+    const partner = '00000000-0000-0000-0000-000000000022'
+    const blocked = '00000000-0000-0000-0000-000000000023'
+    const optedOut = '00000000-0000-0000-0000-000000000024'
+    const unbound = '00000000-0000-0000-0000-000000000025'
+    const former = '00000000-0000-0000-0000-000000000026'
+    const home = '20000000-0000-0000-0000-000000000021'
+
+    async function rows(query: string, params: unknown[] = []) {
+        return (await admin.query(query, params)).rows
+    }
+
+    /** 以 creator 身分經 add_group_expense 新增（與 App／Bot 相同路徑），整個交易提交後才觸發通知。 */
+    async function addGroupExpense(client: Client, title: string, amount: number) {
+        await client.query('BEGIN')
+        await client.query("SELECT set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: creator, role: 'authenticated' })])
+        await client.query('SET LOCAL ROLE authenticated')
+        const { rows: [row] } = await client.query(
+            `SELECT group_expense.add_group_expense($1, $2, $3, 'food', 'restaurant', CURRENT_DATE, 'TWD', 'equal', $4, NULL, $5) AS id`,
+            [home, title, amount, creator, JSON.stringify([
+                { user_id: creator, amount: amount / 2 },
+                { user_id: partner, amount: amount / 2 }
+            ])]
+        )
+        return row.id as string
+    }
+
+    beforeAll(async () => {
+        await admin.query(`
+            INSERT INTO auth.users VALUES ('${creator}'), ('${partner}'), ('${blocked}'), ('${optedOut}'), ('${unbound}'), ('${former}');
+            INSERT INTO group_expense.user_profiles (id, email, display_name) VALUES ('${creator}', 'kuri@example.com', 'Kuri');
+            INSERT INTO group_expense.groups (id, name, created_by) VALUES ('${home}', '我們的家庭', '${creator}');
+            INSERT INTO group_expense.group_members (group_id, user_id, is_active) VALUES
+                ('${home}', '${creator}', true), ('${home}', '${partner}', true), ('${home}', '${blocked}', true),
+                ('${home}', '${optedOut}', true), ('${home}', '${unbound}', true), ('${home}', '${former}', false);
+            INSERT INTO line_bot.identities (line_user_id, user_id, is_following) VALUES
+                ('U-creator', '${creator}', true), ('U-partner', '${partner}', true), ('U-blocked', '${blocked}', false),
+                ('U-opted-out', '${optedOut}', true), ('U-former', '${former}', true);
+            INSERT INTO group_expense.user_settings (user_id, notification_prefs) VALUES
+                ('${optedOut}', '{"split_assigned": false}'), ('${partner}', '{"split_assigned": true}');
+        `)
+    })
+
+    it('notifies only other active, bound, following members who did not opt out, after commit', async () => {
+        const client = database.getPgClient('postgres', '127.0.0.1')
+        await client.connect()
+        try {
+            const expenseId = await addGroupExpense(client, '全聯', 300)
+            await client.query('RESET ROLE')
+            // deferred trigger：提交前還沒有通知
+            expect((await client.query('SELECT count(*)::int AS n FROM line_bot.notification_outbox WHERE expense_id = $1', [expenseId])).rows[0].n).toBe(0)
+            await client.query('COMMIT')
+            expect(await rows('SELECT line_user_id, status FROM line_bot.notification_outbox WHERE expense_id = $1', [expenseId]))
+                .toEqual([{ line_user_id: 'U-partner', status: 'pending' }])
+        } finally {
+            await client.end()
+        }
+    })
+
+    it('does not notify for personal expenses or rolled back inserts', async () => {
+        const before = (await rows('SELECT count(*)::int AS n FROM line_bot.notification_outbox'))[0].n
+        await admin.query(`INSERT INTO group_expense.expenses (user_id, title, amount, category) VALUES ('${creator}', '個人', 10, 'other')`)
+        const client = database.getPgClient('postgres', '127.0.0.1')
+        await client.connect()
+        try {
+            await addGroupExpense(client, '反悔', 100)
+            await client.query('ROLLBACK')
+        } finally {
+            await client.end()
+        }
+        expect((await rows('SELECT count(*)::int AS n FROM line_bot.notification_outbox'))[0].n).toBe(before)
+    })
+
+    it('claims with the message details and the recipient share, never twice', async () => {
+        const [first] = await rows(`SELECT * FROM line_bot.claim_notifications(10) WHERE line_user_id = 'U-partner'`)
+        expect(first).toMatchObject({
+            group_name: '我們的家庭', creator_name: 'Kuri', title: '全聯', amount: '300', currency: 'TWD',
+            category: 'food', my_share: '150', recipient_active: true, attempts: 1
+        })
+        expect(await rows('SELECT * FROM line_bot.claim_notifications(10)')).toEqual([])
+
+        await admin.query("SELECT line_bot.finish_notification($1, 'sent', NULL)", [first.id])
+        expect((await rows('SELECT status, sent_at IS NOT NULL AS sent FROM line_bot.notification_outbox WHERE id = $1', [first.id]))[0])
+            .toEqual({ status: 'sent', sent: true })
+        // 已完成的不能再被改狀態
+        await admin.query("SELECT line_bot.finish_notification($1, 'retry', 'late')", [first.id])
+        expect((await rows('SELECT status FROM line_bot.notification_outbox WHERE id = $1', [first.id]))[0].status).toBe('sent')
+    })
+
+    it('retries up to five attempts and reclaims interrupted sends', async () => {
+        const client = database.getPgClient('postgres', '127.0.0.1')
+        await client.connect()
+        try {
+            await addGroupExpense(client, '水電', 1000)
+            await client.query('COMMIT')
+        } finally {
+            await client.end()
+        }
+        for (let attempt = 1; attempt <= 5; attempt++) {
+            const [claimed] = await rows('SELECT id, attempts FROM line_bot.claim_notifications(10)')
+            expect(claimed.attempts).toBe(attempt)
+            if (attempt === 3) {
+                // 模擬函式在送出途中中斷：5 分鐘後可再次取出
+                await admin.query("UPDATE line_bot.notification_outbox SET claimed_at = now() - interval '6 minutes' WHERE id = $1", [claimed.id])
+                continue
+            }
+            await admin.query("SELECT line_bot.finish_notification($1, 'retry', 'HTTP 500')", [claimed.id])
+        }
+        expect(await rows('SELECT * FROM line_bot.claim_notifications(10)')).toEqual([])
+        expect(await rows("SELECT status, attempts, last_error FROM line_bot.notification_outbox WHERE status = 'failed'"))
+            .toEqual([{ status: 'failed', attempts: 5, last_error: 'HTTP 500' }])
+    })
+
+    it('reports deleted expenses and recipients who left so they can be skipped', async () => {
+        const client = database.getPgClient('postgres', '127.0.0.1')
+        await client.connect()
+        let deleted: string
+        try {
+            deleted = await addGroupExpense(client, '刪掉', 20)
+            await client.query('COMMIT')
+            await addGroupExpense(client, '離開', 40)
+            await client.query('COMMIT')
+        } finally {
+            await client.end()
+        }
+        await admin.query('DELETE FROM group_expense.expenses WHERE id = $1', [deleted])
+        await admin.query('UPDATE group_expense.group_members SET is_active = false WHERE group_id = $1 AND user_id = $2', [home, partner])
+        try {
+            const claimed = await rows('SELECT title, recipient_active FROM line_bot.claim_notifications(10) ORDER BY title NULLS FIRST')
+            expect(claimed).toEqual([{ title: null, recipient_active: false }, { title: '離開', recipient_active: false }])
+        } finally {
+            await admin.query('UPDATE group_expense.group_members SET is_active = true WHERE group_id = $1 AND user_id = $2', [home, partner])
+        }
+    })
+
+    it.each(['anon', 'authenticated'])('denies %s the notification functions', async role => {
+        for (const query of ['SELECT * FROM line_bot.claim_notifications(1)', 'SELECT line_bot.request_notify_drain()']) {
             await admin.query('BEGIN')
             try {
                 await admin.query(`SET LOCAL ROLE ${role}`)
