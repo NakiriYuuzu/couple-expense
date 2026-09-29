@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2500" height="1686" viewBox="0 0 2500 1686">
+<rect width="2500" height="1686" fill="#F1F2F8"/>
+<rect x="24" y="24" width="797" height="807" rx="48" fill="#777FE6"/>
+<circle cx="422.5" cy="314.52" r="120" fill="rgba(255,255,255,0.22)"/>
+<g transform="translate(350.5 242.51999999999998) scale(6)" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 21h8"/><path d="m15 5 4 4"/><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></g>
+<text x="422.5" y="605.04" text-anchor="middle" font-family="PingFang TC" font-weight="600" font-size="112" fill="#FFFFFF">記一筆</text>
+<text x="422.5" y="718.02" text-anchor="middle" font-family="PingFang TC" font-size="56" fill="rgba(255,255,255,0.85)">例：午餐 120</text>
+<rect x="845" y="24" width="810" height="807" rx="48" fill="#FFFFFF"/>
+<circle cx="1250" cy="314.52" r="120" fill="#E8ECFE"/>
+<g transform="translate(1178 242.51999999999998) scale(6)" fill="none" stroke="#777FE6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></g>
+<text x="1250" y="605.04" text-anchor="middle" font-family="PingFang TC" font-weight="600" font-size="112" fill="#1F2340">帳本</text>
+<text x="1250" y="718.02" text-anchor="middle" font-family="PingFang TC" font-size="56" fill="#8A8FA8">個人／群組</text>
+<rect x="1679" y="24" width="797" height="807" rx="48" fill="#FFFFFF"/>
+<circle cx="2077.5" cy="314.52" r="120" fill="#E8ECFE"/>
+<g transform="translate(2005.5 242.51999999999998) scale(6)" fill="none" stroke="#777FE6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 16H8"/><path d="M14 8H8"/><path d="M16 12H8"/><path d="M4 3a1 1 0 0 1 1-1 1.3 1.3 0 0 1 .7.2l.933.6a1.3 1.3 0 0 0 1.4 0l.934-.6a1.3 1.3 0 0 1 1.4 0l.933.6a1.3 1.3 0 0 0 1.4 0l.933-.6a1.3 1.3 0 0 1 1.4 0l.934.6a1.3 1.3 0 0 0 1.4 0l.933-.6A1.3 1.3 0 0 1 19 2a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1 1.3 1.3 0 0 1-.7-.2l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.934.6a1.3 1.3 0 0 1-1.4 0l-.933-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-1.4 0l-.934-.6a1.3 1.3 0 0 0-1.4 0l-.933.6a1.3 1.3 0 0 1-.7.2 1 1 0 0 1-1-1z"/></g>
+<text x="2077.5" y="605.04" text-anchor="middle" font-family="PingFang TC" font-weight="600" font-size="112" fill="#1F2340">最近紀錄</text>
+<text x="2077.5" y="718.02" text-anchor="middle" font-family="PingFang TC" font-size="56" fill="#8A8FA8">查看明細</text>
+<rect x="24" y="855" width="797" height="807" rx="48" fill="#FFFFFF"/>
+<circle cx="422.5" cy="1145.52" r="120" fill="#E8ECFE"/>
+<g transform="translate(350.5 1073.52) scale(6)" fill="none" stroke="#777FE6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></g>
+<text x="422.5" y="1436.04" text-anchor="middle" font-family="PingFang TC" font-weight="600" font-size="112" fill="#1F2340">本月統計</text>
+<text x="422.5" y="1549.02" text-anchor="middle" font-family="PingFang TC" font-size="56" fill="#8A8FA8">分類支出</text>
+<rect x="845" y="855" width="810" height="807" rx="48" fill="#FFFFFF"/>
+<circle cx="1250" cy="1145.52" r="120" fill="#E8ECFE"/>
+<g transform="translate(1178 1073.52) scale(6)" fill="none" stroke="#777FE6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17"/><path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/><path d="m2 16 6 6"/><circle cx="16" cy="9" r="2.9"/><circle cx="6" cy="5" r="3"/></g>
+<text x="1250" y="1436.04" text-anchor="middle" font-family="PingFang TC" font-weight="600" font-size="112" fill="#1F2340">誰欠誰</text>
+<text x="1250" y="1549.02" text-anchor="middle" font-family="PingFang TC" font-size="56" fill="#8A8FA8">群組欠款</text>
+<rect x="1679" y="855" width="797" height="807" rx="48" fill="#FFFFFF"/>
+<circle cx="2077.5" cy="1145.52" r="120" fill="#E8ECFE"/>
+<g transform="translate(2005.5 1073.52) scale(6)" fill="none" stroke="#777FE6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></g>
+<text x="2077.5" y="1436.04" text-anchor="middle" font-family="PingFang TC" font-weight="600" font-size="112" fill="#1F2340">說明</text>
+<text x="2077.5" y="1549.02" text-anchor="middle" font-family="PingFang TC" font-size="56" fill="#8A8FA8">使用方式</text>
+</svg>

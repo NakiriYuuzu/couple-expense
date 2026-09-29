@@ -1,16 +1,34 @@
 // LINE webhook 核心邏輯：不依賴 Deno 或遠端套件，方便在 Vitest 直接測試。
 import {
+    debtsText,
     draftMessage,
     formatAmount,
     ledgerLabel,
     ledgerMessage,
     parseExpense,
     parsePostback,
+    recentMessage,
+    RECENT_PAGE_SIZE,
+    summaryMessage,
+    taipeiMonth,
     type Category,
+    type CategoryTotal,
+    type Debt,
     type Draft,
+    type ExpenseItem,
     type Ledger,
     type LineMessage
 } from './bookkeeping.ts'
+
+/** 圖文選單按鈕送出的文字；手動輸入同樣有效。 */
+export const menuCommands = {
+    add: '記一筆',
+    ledger: '帳本',
+    recent: '最近紀錄',
+    summary: '本月統計',
+    debts: '誰欠誰',
+    help: '說明'
+} as const
 
 export type { LineMessage }
 
@@ -47,6 +65,11 @@ export interface WebhookStore {
     setDraftCategory(lineUserId: string, draftId: string, category: Category): Promise<boolean>
     cancelDraft(lineUserId: string, draftId: string): Promise<boolean>
     confirmDraft(lineUserId: string, draftId: string): Promise<ConfirmResult>
+    /** 目前帳本名稱；null = 個人帳（含已失去成員資格的群組） */
+    currentLedgerName(lineUserId: string): Promise<string | null>
+    recentExpenses(lineUserId: string, offset: number, limit: number): Promise<ExpenseItem[]>
+    monthSummary(lineUserId: string): Promise<CategoryTotal[]>
+    ledgerDebts(lineUserId: string): Promise<Debt[]>
 }
 
 export interface LineApi {
@@ -66,7 +89,14 @@ export const messages = {
     lineAlreadyBound: '這個 LINE 已綁定其他記帳帳號，請先輸入「解除綁定」。',
     userAlreadyBound: '這個記帳帳號已綁定其他 LINE，請先在該 LINE 輸入「解除綁定」。',
     unlinked: '已解除綁定。',
-    help: '記帳：輸入「品項 金額」，例如「午餐 120」\n帳本：切換個人或群組帳本\n解除綁定：解除 LINE 與記帳帳號的連結',
+    help: [
+        '記帳：輸入「品項 金額」，例如「午餐 120」，確認後才入帳',
+        '帳本：切換個人或群組帳本',
+        '最近紀錄／本月統計／誰欠誰：查詢目前帳本',
+        '解除綁定：解除 LINE 與記帳帳號的連結',
+        '',
+        '也可以直接使用下方的選單。'
+    ].join('\n'),
     textOnly: '目前只支援文字訊息。輸入「說明」查看用法。',
     ledgerNotMember: '你已不是這個群組的成員，請輸入「帳本」重新選擇。',
     draftNotEditable: '這筆草稿已入帳、取消或過期，無法修改。',
@@ -155,8 +185,9 @@ export function createWebhookHandler(deps: {
     /** 綁定網頁，例如 https://<user>.github.io/couple-expense/line-link */
     linkPageUrl: string
     logError?: (message: string) => void
+    now?: () => Date
 }) {
-    const { channelSecret, store, line, linkPageUrl, logError = () => {} } = deps
+    const { channelSecret, store, line, linkPageUrl, logError = () => {}, now = () => new Date() } = deps
 
     async function reply(event: LineEvent, message: string | LineMessage) {
         if (!event.replyToken) return
@@ -177,6 +208,14 @@ export function createWebhookHandler(deps: {
         await reply(event, draft ? draftMessage(draft) : messages.draftNotFound)
     }
 
+    async function replyRecent(event: LineEvent, lineUserId: string, offset: number) {
+        const [ledgerName, items] = await Promise.all([
+            store.currentLedgerName(lineUserId),
+            store.recentExpenses(lineUserId, offset, RECENT_PAGE_SIZE + 1)
+        ])
+        await reply(event, recentMessage(ledgerName, items, offset))
+    }
+
     async function handleBoundText(event: LineEvent, lineUserId: string, text: string | null) {
         if (text === null) {
             await reply(event, messages.textOnly)
@@ -185,8 +224,27 @@ export function createWebhookHandler(deps: {
         } else if (text === '解除綁定') {
             await store.unlink(lineUserId)
             await reply(event, messages.unlinked)
-        } else if (text === '帳本') {
+        } else if (text === menuCommands.ledger) {
             await reply(event, ledgerMessage(await store.listLedgers(lineUserId)))
+        } else if (text === menuCommands.add) {
+            const ledgerName = await store.currentLedgerName(lineUserId)
+            await reply(event, `目前帳本：${ledgerLabel(ledgerName)}。\n請輸入「品項 金額」，例如「午餐 120」。`)
+        } else if (text === menuCommands.recent) {
+            await replyRecent(event, lineUserId, 0)
+        } else if (text === menuCommands.summary) {
+            const [ledgerName, totals] = await Promise.all([
+                store.currentLedgerName(lineUserId),
+                store.monthSummary(lineUserId)
+            ])
+            await reply(event, summaryMessage(ledgerName, taipeiMonth(now()), totals))
+        } else if (text === menuCommands.debts) {
+            const [ledgerName, debts] = await Promise.all([
+                store.currentLedgerName(lineUserId),
+                store.ledgerDebts(lineUserId)
+            ])
+            await reply(event, debtsText(ledgerName, debts))
+        } else if (text === menuCommands.help) {
+            await reply(event, messages.help)
         } else {
             const expense = parseExpense(text)
             if (!expense) {
@@ -201,6 +259,9 @@ export function createWebhookHandler(deps: {
         const postback = parsePostback(event.postback?.data ?? '')
         if (!postback) return
         switch (postback.action) {
+            case 'recent':
+                await replyRecent(event, lineUserId, postback.offset)
+                return
             case 'ledger': {
                 if (!await store.setLedger(lineUserId, postback.groupId)) {
                     await reply(event, messages.ledgerNotMember)
